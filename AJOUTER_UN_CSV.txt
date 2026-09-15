@@ -1,0 +1,24 @@
+AJOUTER UN NOUVEAU CSV
+
+1. Dépose le nouveau fichier dans le dossier csv/.
+2. Ouvre timeline-files.json.
+3. Ajoute son chemin dans la liste "files", par exemple :
+
+{
+  "files": [
+    {"path": "csv/culture_patrimoine_musees_timeline.csv", "enabled": true},
+    {"path": "csv/mon_nouveau_deck.csv", "enabled": true}
+  ]
+}
+
+4. Si le nouveau CSV référence des images avec des chemins comme
+   ict_timeline_media/mon-image.jpg, ajoute ces images dans le dossier
+   ict_timeline_media/ au même niveau que index.html.
+5. Mets à jour ces fichiers sur GitHub Pages. L'index chargera et fusionnera
+   automatiquement tous les CSV actifs au prochain chargement.
+
+Pour désactiver temporairement un CSV sans le supprimer, mets "enabled": false.
+
+Note : le chargement automatique par fetch fonctionne sur GitHub Pages / un serveur web.
+En ouvrant index.html par double-clic (file://), certains navigateurs bloquent ces lectures ;
+l'HTML contient donc le CSV Culture comme secours local.

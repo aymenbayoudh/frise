@@ -1,0 +1,6 @@
+{
+  "files": [
+    {"path": "csv/culture_patrimoine_musees_timeline.csv", "enabled": true},
+    {"path": "csv/arte.csv", "enabled": true}
+  ]
+}
