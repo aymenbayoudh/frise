@@ -1,0 +1,58 @@
+name: Améliorer le layout horizontal
+
+on:
+  push:
+    paths:
+      - .github/workflows/improve-horizontal-layout.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Appliquer le patch du layout horizontal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          replacements=[]
+          replacements.append((
+          '''function compactCards(side,width,cardWidth,laneCount=2){if(!side.length)return 0;const gap=10,edge=12,lanes=Array.from({length:laneCount},()=>[]);side.forEach((it,i)=>lanes[i%laneCount].push(it));lanes.forEach((lane,laneIndex)=>{let right=edge-gap;lane.forEach(it=>{it.lane=laneIndex;it.left=Math.max(edge,Math.min(width-cardWidth-edge,it.x-cardWidth/2),right+gap);right=it.left+cardWidth});const overflow=Math.max(0,right-(width-edge));if(overflow)lane.forEach(it=>it.left-=overflow);const underflow=Math.max(0,edge-lane[0].left);if(underflow)lane.forEach(it=>it.left+=underflow)});return laneCount}''',
+          '''function compactCards(side,width,cardWidth,laneCount=2){if(!side.length)return{count:0,requiredWidth:width};const gap=10,edge=12,lanes=Array.from({length:Math.max(1,laneCount)},()=>({right:edge-gap,items:[]}));[...side].sort((a,b)=>a.x-b.x||a.anchor-b.anchor).forEach(it=>{const desired=Math.max(edge,Math.min(width-cardWidth-edge,it.x-cardWidth/2));let bestLane=0,bestLeft=Infinity,bestCost=Infinity;lanes.forEach((lane,laneIndex)=>{const left=Math.max(desired,lane.right+gap),shift=left-desired,cost=shift*1000+laneIndex;if(cost<bestCost){bestCost=cost;bestLane=laneIndex;bestLeft=left}});const lane=lanes[bestLane];it.lane=bestLane;it.left=bestLeft;lane.right=bestLeft+cardWidth;lane.items.push(it)});const used=lanes.filter(l=>l.items.length),requiredWidth=Math.ceil(Math.max(width,...used.map(l=>l.right+edge)));return{count:used.length,requiredWidth}}'''))
+          replacements.append((
+          '''function draw(events){const canvas=$("canvas");canvas.innerHTML="";if(!events.length){canvas.style.width="100%";canvas.style.height="430px";canvas.innerHTML='<div class="empty">'+(rows.length?'Aucun événement ne correspond aux filtres.':'Aucune frise chargée — utilise « Importer CSV » pour commencer.')+'</div>';return}const dir=$("direction").value,vertical=dir==="tb"||dir==="bt",reverse=dir==="rl"||dir==="bt",overlapping=$("overlap").checked,viewport=$("viewport"),availableWidth=Math.max(320,viewport.clientWidth),periods=events.filter(e=>e.kind==="period"),verticalColumnsTarget=availableWidth>=1050?4:availableWidth>=680?3:availableWidth>=430?2:1,verticalCardWidth=Math.max(68,Math.min(110,(availableWidth/2-50-(verticalColumnsTarget-1)*6)/verticalColumnsTarget)),cardWidth=vertical?verticalCardWidth:110,automaticLaneCap=Math.min(4,Math.max(2,Math.ceil(events.length/45))),horizontalLaneCap=layoutSettings.horizontalLanes==="auto"?automaticLaneCap:layoutSettings.horizontalLanes,comfortableWidth=Math.ceil(events.length/(horizontalLaneCap*2))*(cardWidth+10),baseWidth=Math.max(availableWidth,comfortableWidth),cardSafeWidth=Math.ceil(Math.ceil(events.length/2)/horizontalLaneCap)*(cardWidth+10)+24,width=vertical?availableWidth:Math.max(cardSafeWidth,baseWidth*zoom);canvas.style.width=width+"px";''',
+          '''function draw(events){const canvas=$("canvas");canvas.innerHTML="";if(!events.length){canvas.style.width="100%";canvas.style.height="430px";canvas.innerHTML='<div class="empty">'+(rows.length?'Aucun événement ne correspond aux filtres.':'Aucune frise chargée — utilise « Importer CSV » pour commencer.')+'</div>';return}const dir=$("direction").value,vertical=dir==="tb"||dir==="bt",reverse=dir==="rl"||dir==="bt",overlapping=$("overlap").checked,viewport=$("viewport"),availableWidth=Math.max(320,viewport.clientWidth),periods=events.filter(e=>e.kind==="period"),verticalColumnsTarget=availableWidth>=1050?4:availableWidth>=680?3:availableWidth>=430?2:1,verticalCardWidth=Math.max(68,Math.min(110,(availableWidth/2-50-(verticalColumnsTarget-1)*6)/verticalColumnsTarget)),cardWidth=vertical?verticalCardWidth:110,automaticLaneCap=Math.min(4,Math.max(2,Math.ceil(events.length/45))),horizontalLaneCap=layoutSettings.horizontalLanes==="auto"?automaticLaneCap:layoutSettings.horizontalLanes,comfortableWidth=Math.ceil(events.length/(horizontalLaneCap*2))*(cardWidth+10),baseWidth=Math.max(availableWidth,comfortableWidth),cardSafeWidth=Math.ceil(Math.ceil(events.length/2)/horizontalLaneCap)*(cardWidth+10)+24;let width=vertical?availableWidth:Math.max(cardSafeWidth,baseWidth*zoom);canvas.style.width=width+"px";'''))
+          replacements.append((
+          '''if(!vertical){\n  const sides=[[],[]];\n  items.forEach((it,i)=>{it.side=i%2;it.x=34+ratio(it.anchor)*(width-68);sides[it.side].push(it)});\n  const topLanes=compactCards(sides[0],width,cardWidth,Math.min(horizontalLaneCap,sides[0].length)),bottomLanes=compactCards(sides[1],width,cardWidth,Math.min(horizontalLaneCap,sides[1].length)),stride=Math.max(62,...items.map(it=>it.height))+12;\n  const periodSpace=periods.length?periodLayout.count*bandGap+56:40,y=topLanes*stride+42;''',
+          '''if(!vertical){\n  const layoutHorizontal=()=>{const sides=[[],[]];items.forEach((it,i)=>{it.side=i%2;it.x=34+ratio(it.anchor)*(width-68);sides[it.side].push(it)});const top=compactCards(sides[0],width,cardWidth,Math.min(horizontalLaneCap,sides[0].length)),bottom=compactCards(sides[1],width,cardWidth,Math.min(horizontalLaneCap,sides[1].length));return{sides,top,bottom}};\n  let packed=layoutHorizontal();\n  for(let pass=0;pass<4;pass++){const needed=Math.max(packed.top.requiredWidth,packed.bottom.requiredWidth);if(needed<=width+1)break;width=Math.ceil(needed+24);canvas.style.width=width+"px";packed=layoutHorizontal()}\n  const sides=packed.sides,topLanes=packed.top.count,bottomLanes=packed.bottom.count,stride=Math.max(62,...items.map(it=>it.height))+12;\n  const periodSpace=periods.length?periodLayout.count*bandGap+56:40,y=topLanes*stride+42;'''))
+          replacements.append((
+          '''items.forEach(it=>{const top=it.side===0?y-32-(it.lane+1)*stride:y+periodSpace+26+it.lane*stride;it.button.style.left=it.left+"px";it.button.style.top=top+"px";const cx=it.left+cardWidth/2,cy=it.side===0?top+it.height:top,anchorY=it.e.kind==="period"?it.e._bandY:y,elbow=it.side===0?y-20-it.lane*6:y+periodSpace+14+it.lane*6;lines+=path("M "+it.x+" "+anchorY+" L "+it.x+" "+elbow+" L "+cx+" "+cy,it.e.color,'stroke-width="1.15" opacity=".65" data-connector="'+it.e.id+'"');''',
+          '''items.forEach(it=>{const top=it.side===0?y-32-(it.lane+1)*stride:y+periodSpace+26+it.lane*stride;it.button.style.left=it.left+"px";it.button.style.top=top+"px";const cx=it.left+cardWidth/2,cy=it.side===0?top+it.height:top,anchorY=it.e.kind==="period"?it.e._bandY:y,elbow=it.side===0?y-20-it.lane*7:y+periodSpace+14+it.lane*7;lines+=path("M "+it.x+" "+anchorY+" L "+it.x+" "+elbow+" L "+cx+" "+elbow+" L "+cx+" "+cy,it.e.color,'stroke-width="1.1" opacity=".58" data-connector="'+it.e.id+'"');'''))
+          for old,new in replacements:
+              if old not in s:
+                  raise SystemExit('Motif attendu introuvable, abandon du patch')
+              s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          blocks=re.findall(r'<script(?:[^>]*)>(.*?)</script>',s,flags=re.S)
+          js='\n'.join(b for b in blocks if '(()=>{"use strict"' in b)
+          Path('/tmp/frise-check.js').write_text(js)
+          PY
+          node --check /tmp/frise-check.js
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Améliorer le layout horizontal de la frise"
+          git push
