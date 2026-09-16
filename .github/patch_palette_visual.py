@@ -4,7 +4,7 @@ p = Path('index.html')
 s = p.read_text()
 
 # Tableau : le point de couleur suit aussi la palette temporaire.
-s = s.replace("'<span style=\"color:'+e.color+'\">●</span> '", "'<span style=\"color:'+temporaryEventColor(e)+'\">●</span> '")
+s = s.replace("color:'+e.color+'", "color:'+temporaryEventColor(e)+'")
 
 # Fiche détail : bordure et date suivent la palette temporaire.
 s = s.replace('d.style.setProperty("--event-color",e.color);', 'd.style.setProperty("--event-color",temporaryEventColor(e));')
