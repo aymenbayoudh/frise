@@ -1,0 +1,66 @@
+name: Corriger les bornes horizontales
+
+on:
+  push:
+    paths:
+      - .github/workflows/fix-horizontal-bounds.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Corriger le placement horizontal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text()
+
+          new_compact = r'''function compactCards(side,width,cardWidth,laneCount=2){if(!side.length)return{count:0,requiredWidth:width};const gap=10,edge=12,count=Math.max(1,laneCount),lanes=Array.from({length:count},()=>[]);[...side].sort((a,b)=>a.x-b.x||a.anchor-b.anchor).forEach((it,i)=>lanes[i%count].push(it));let used=0;lanes.forEach((lane,laneIndex)=>{if(!lane.length)return;used++;let right=edge-gap;lane.forEach(it=>{it.lane=laneIndex;const desired=Math.max(edge,Math.min(width-cardWidth-edge,it.x-cardWidth/2));it.left=Math.max(desired,right+gap);right=it.left+cardWidth});const rightLimit=width-edge;if(right>rightLimit){let nextLeft=rightLimit+gap;for(let i=lane.length-1;i>=0;i--){const it=lane[i],latest=nextLeft-gap-cardWidth;it.left=Math.min(it.left,latest);nextLeft=it.left}}});const minLeft=Math.min(...side.map(it=>it.left)),maxRight=Math.max(...side.map(it=>it.left+cardWidth));if(minLeft<edge||maxRight>width-edge){const shift=minLeft<edge?edge-minLeft:maxRight>width-edge?(width-edge)-maxRight:0;side.forEach(it=>it.left+=shift)}return{count:used,requiredWidth:width}}'''
+
+          s, n = re.subn(r'function compactCards\(side,width,cardWidth,laneCount=2\)\{.*?\}\nfunction compactVerticalCards', new_compact + '\nfunction compactVerticalCards', s, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit('compactCards introuvable')
+
+          old_layout = r'''  let packed=layoutHorizontal();
+  for(let pass=0;pass<4;pass++){const needed=Math.max(packed.top.requiredWidth,packed.bottom.requiredWidth);if(needed<=width+1)break;width=Math.ceil(needed+24);canvas.style.width=width+"px";packed=layoutHorizontal()}
+  const sides=packed.sides,topLanes=packed.top.count,bottomLanes=packed.bottom.count,stride=Math.max(62,...items.map(it=>it.height))+12;'''
+          new_layout = r'''  const packed=layoutHorizontal();
+  const sides=packed.sides,topLanes=packed.top.count,bottomLanes=packed.bottom.count,stride=Math.max(62,...items.map(it=>it.height))+12;'''
+          if old_layout not in s:
+              raise SystemExit('bloc de croissance horizontale introuvable')
+          s = s.replace(old_layout, new_layout, 1)
+
+          # Sécurité supplémentaire : l'axe horizontal et le SVG gardent exactement la même largeur.
+          marker = '  height=y+periodSpace+bottomLanes*stride+42;\n  axis=path("M 2 "+y+" H "+(width-2),"#182334",\'stroke-width="3"\');'
+          replacement = '  height=y+periodSpace+bottomLanes*stride+42;\n  canvas.style.width=width+"px";\n  axis=path("M 2 "+y+" H "+(width-2),"#182334",\'stroke-width="3"\');'
+          if marker not in s:
+              raise SystemExit('axe horizontal introuvable')
+          s = s.replace(marker, replacement, 1)
+
+          p.write_text(s)
+          PY
+
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          blocks=re.findall(r'<script(?:[^>]*)>(.*?)</script>',s,flags=re.S)
+          js='\n'.join(b for b in blocks if '(()=>{"use strict"' in b)
+          Path('/tmp/frise-check.js').write_text(js)
+          PY
+          node --check /tmp/frise-check.js
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Corriger les débordements du layout horizontal"
+          git push
