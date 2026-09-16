@@ -1,0 +1,55 @@
+name: Débrider le dézoom horizontal
+
+on:
+  push:
+    paths:
+      - .github/workflows/unlock-horizontal-zoom.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Débrider le dézoom et adapter les rangées
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path('index.html')
+          s=p.read_text()
+
+          old='''comfortableWidth=Math.ceil(events.length/(horizontalLaneCap*2))*(cardWidth+10),baseWidth=Math.max(availableWidth,comfortableWidth),cardSafeWidth=Math.ceil(Math.ceil(events.length/2)/horizontalLaneCap)*(cardWidth+10)+24;let width=vertical?availableWidth:Math.max(cardSafeWidth,baseWidth*zoom);'''
+          new='''comfortableWidth=Math.ceil(events.length/(horizontalLaneCap*2))*(cardWidth+10),baseWidth=Math.max(availableWidth,comfortableWidth);let width=vertical?availableWidth:Math.max(availableWidth,baseWidth*zoom);'''
+          if old not in s:
+              raise SystemExit('Calcul de largeur attendu introuvable')
+          s=s.replace(old,new,1)
+
+          old='''const layoutHorizontal=()=>{const sides=[[],[]];items.forEach((it,i)=>{it.side=i%2;it.x=34+ratio(it.anchor)*(width-68);sides[it.side].push(it)});const top=compactCards(sides[0],width,cardWidth,Math.min(horizontalLaneCap,sides[0].length)),bottom=compactCards(sides[1],width,cardWidth,Math.min(horizontalLaneCap,sides[1].length));return{sides,top,bottom}};'''
+          new='''const layoutHorizontal=()=>{const sides=[[],[]];items.forEach((it,i)=>{it.side=i%2;it.x=34+ratio(it.anchor)*(width-68);sides[it.side].push(it)});const gap=10,edge=12,capacity=Math.max(1,Math.floor((width-edge*2+gap)/(cardWidth+gap))),laneCount=side=>Math.min(side.length,Math.max(Math.min(horizontalLaneCap,side.length),Math.ceil(side.length/capacity))),top=compactCards(sides[0],width,cardWidth,laneCount(sides[0])),bottom=compactCards(sides[1],width,cardWidth,laneCount(sides[1]));return{sides,top,bottom}};'''
+          if old not in s:
+              raise SystemExit('Layout horizontal attendu introuvable')
+          s=s.replace(old,new,1)
+
+          p.write_text(s)
+          PY
+
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text()
+          blocks=re.findall(r'<script(?:[^>]*)>(.*?)</script>',s,flags=re.S)
+          js='\n'.join(b for b in blocks if '(()=>{"use strict"' in b)
+          Path('/tmp/frise-check.js').write_text(js)
+          PY
+          node --check /tmp/frise-check.js
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Débrider le dézoom horizontal"
+          git push
