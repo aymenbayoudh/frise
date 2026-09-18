@@ -211,6 +211,40 @@ main{padding:16px}.toolbar-shell{position:relative;z-index:12;margin:-16px -16px
     font-size:.74rem!important;
   }
 }
+
+/* Défilement invisible dans les panneaux : on garde le scroll, sans barre/curseur visible. */
+.game-panel,.game-session-summary,.game-menu-pop,.game-history-list,.deck-menu-pop,
+.search-results,#editor,.import-help,#tableView,.batch-panel,.palette-panel,.file-menu-pop{
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+.game-panel::-webkit-scrollbar,.game-session-summary::-webkit-scrollbar,.game-menu-pop::-webkit-scrollbar,
+.game-history-list::-webkit-scrollbar,.deck-menu-pop::-webkit-scrollbar,.search-results::-webkit-scrollbar,
+#editor::-webkit-scrollbar,.import-help::-webkit-scrollbar,#tableView::-webkit-scrollbar,
+.batch-panel::-webkit-scrollbar,.palette-panel::-webkit-scrollbar,.file-menu-pop::-webkit-scrollbar{
+  width:0!important;
+  height:0!important;
+  display:none!important;
+}
+.game-panel,.game-session-summary,.game-menu-pop,.game-history-list,.deck-menu-pop,#editor{
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+.scrim{
+  touch-action:none;
+  overscroll-behavior:none;
+}
+html.overlay-scroll-locked{
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
+body.overlay-scroll-locked{
+  position:fixed!important;
+  left:0!important;
+  right:0!important;
+  width:100%!important;
+  overflow:hidden!important;
+}
 </style>
 </head>
 <body>
@@ -321,6 +355,24 @@ const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>(
 const KEY="chronique-v3:"+location.pathname,SETTINGS_KEY=KEY+":display",SOURCE_KEY=KEY+":sources",FILTER_STATE_KEY=KEY+":filters",GITHUB_KEY=KEY+":github-owner",LAST_SOURCE_KEY=KEY+":last-source",CLOUD_UPDATED_KEY=KEY+":cloud-state-updated",GITHUB_OWNER="aymenbayoudh",GITHUB_REPO="frise-data",GITHUB_BRANCH="main",GITHUB_MANIFEST="timeline-files.json",GITHUB_STATE_FILE="user-state.json";let rows=[],view="timeline",filters=new Set(),editedId=null,detailId=null,pinned=false,hoverTimer=null,zoom=1.5,batchMode=false,batchSelected=new Set(),searchMatches=[],searchIndex=-1,editingExtras={deck:[],image:[]},deckTreeRoot=null,layoutSettings={horizontalLanes:"auto",periodLanes:4},activeSourceSignature="public-local",githubMode=false,githubConfig=null,githubFiles=[],githubFileShas={},githubFileMaxIds={},githubSyncChain=Promise.resolve(),privateMediaCache=new Map(),cloudStateTimer=null,applyingCloudState=false;
 try{const stored=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"{}");if(stored.horizontalLanes==="auto"||[2,3,4,5,6].includes(Number(stored.horizontalLanes)))layoutSettings.horizontalLanes=stored.horizontalLanes==="auto"?"auto":Number(stored.horizontalLanes);layoutSettings.periodLanes=Math.max(1,Math.min(8,Number(stored.periodLanes)||4))}catch{}
 function notice(s){}
+let pageScrollLockY=0,pageScrollLocked=false;
+function setPageScrollLocked(lock){
+  if(lock===pageScrollLocked)return;
+  pageScrollLocked=lock;
+  if(lock){
+    pageScrollLockY=scrollY;
+    document.documentElement.classList.add("overlay-scroll-locked");
+    document.body.classList.add("overlay-scroll-locked");
+    document.body.style.top="-"+pageScrollLockY+"px";
+  }else{
+    document.documentElement.classList.remove("overlay-scroll-locked");
+    document.body.classList.remove("overlay-scroll-locked");
+    document.body.style.top="";
+    scrollTo(0,pageScrollLockY);
+  }
+}
+function syncPageScrollLock(){const scrim=$("scrim");setPageScrollLocked(!!scrim&&!scrim.hidden)}
+
 function toAstronomicalYear(y){return y<0?y+1:y}
 function fromAstronomicalYear(y){return y<=0?y-1:y}
 function day(y,m,d){if(!Number.isInteger(y)||y===0||y<-200000||y>200000)throw Error("Utilise une année entre -200000 et 200000, sans année 0.");const ay=toAstronomicalYear(y),x=new Date(0);x.setUTCFullYear(ay,m-1,d);x.setUTCHours(0,0,0,0);if(x.getUTCFullYear()!==ay||x.getUTCMonth()!==m-1||x.getUTCDate()!==d)throw Error("Cette date n’existe pas.");return x.getTime()/86400000}
@@ -543,7 +595,7 @@ function closeFileMenu(){$("fileMenu").hidden=true;$("fileMenuButton").setAttrib
 function openSettings(){$("settingHorizontalLanes").value=String(layoutSettings.horizontalLanes);$("settingPeriodLanes").value=String(layoutSettings.periodLanes);closeFileMenu();$("settingsPanel").hidden=false;$("scrim").hidden=false}
 function closeSettings(){$("settingsPanel").hidden=true;$("scrim").hidden=true}
 $("openSettings").onclick=openSettings;$("settingsCancel").onclick=closeSettings;$("settingsApply").onclick=()=>{const lanes=$("settingHorizontalLanes").value;layoutSettings.horizontalLanes=lanes==="auto"?"auto":Number(lanes);layoutSettings.periodLanes=Number($("settingPeriodLanes").value);localStorage.setItem(SETTINGS_KEY,JSON.stringify(layoutSettings));closeSettings();render();notice("Paramètres d’affichage appliqués.")};
-$("undoButton").onclick=()=>{undoLastChange();closeFileMenu()};updateUndoButton();$("randomEvent").onclick=e=>{e.stopPropagation();showRandomEvent()};renderTemporaryPaletteInputs();$("paletteButton").onclick=e=>{e.stopPropagation();closeFileMenu();closeDeckMenu();const panel=$("palettePanel"),open=panel.hidden;panel.hidden=!open;$("paletteButton").setAttribute("aria-expanded",String(open));if(open)renderTemporaryPaletteInputs()};$("palettePanel").onclick=e=>e.stopPropagation();$("paletteCount").onchange=()=>{temporaryPaletteCount=Number($("paletteCount").value);temporaryPaletteAssignments.clear();renderTemporaryPaletteInputs();if(temporaryPaletteActive)render()};$("applyPalette").onclick=()=>applyTemporaryPalette();$("harmoniousPalette").onclick=harmoniousTemporaryPalette;$("resetPalette").onclick=resetTemporaryPalette;updateGameRecords();$("gameButton").onclick=e=>{e.stopPropagation();closeTemporaryPalettePanel();closeFileMenu();closeDeckMenu();const open=$("gameMenu").hidden;$("gameMenu").hidden=!open;$("gameButton").setAttribute("aria-expanded",String(open));if(open){updateGameRecords();if(!$("gameHistoryPane").hidden)renderGameHistory()}};$("gameMenu").onclick=e=>e.stopPropagation();$("gameTabPlay").onclick=()=>showGameMenuTab("play");$("gameTabHistory").onclick=()=>showGameMenuTab("history");$("reviewErrors").onclick=()=>openGame("choice",true);$("gameMenu").querySelectorAll("[data-game-mode]").forEach(b=>b.onclick=()=>openGame(b.dataset.gameMode));$("gameClose").onclick=closeGamePanel;$("gameQuestion").onclick=renderGamePreview;$("gameQuestion").onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();renderGamePreview()}};$("gamePreviewEdit").onclick=e=>{e.stopPropagation();openGameEventEditor()};$("gameQuit").onclick=closeGamePanel;$("gameReplay").onclick=replayGame;$("gameFreeForm").onsubmit=e=>{e.preventDefault();if(gameState.locked||!gameState.active)return;gameFreeCorrect(gameState.current.spec,$("gameAnswer").value)?gameCorrect():gameFail()};$("fileMenuButton").onclick=e=>{e.stopPropagation();closeDeckMenu();const open=$("fileMenu").hidden;$("fileMenu").hidden=!open;$("fileMenuButton").setAttribute("aria-expanded",String(open))};$("fileMenu").onclick=e=>e.stopPropagation();$("toggleDecks").onclick=e=>{e.stopPropagation();closeFileMenu();const open=$("deckMenu").hidden;$("deckMenu").hidden=!open;$("toggleDecks").setAttribute("aria-expanded",String(open))};$("deckMenu").onclick=e=>e.stopPropagation();$("checkAllDecks").onclick=()=>setAllDecks(true);$("uncheckAllDecks").onclick=()=>setAllDecks(false);$("detail").onclick=e=>e.stopPropagation();
+$("undoButton").onclick=()=>{undoLastChange();closeFileMenu()};updateUndoButton();$("randomEvent").onclick=e=>{e.stopPropagation();showRandomEvent()};renderTemporaryPaletteInputs();$("paletteButton").onclick=e=>{e.stopPropagation();closeFileMenu();closeDeckMenu();const panel=$("palettePanel"),open=panel.hidden;panel.hidden=!open;$("paletteButton").setAttribute("aria-expanded",String(open));if(open)renderTemporaryPaletteInputs()};$("palettePanel").onclick=e=>e.stopPropagation();$("paletteCount").onchange=()=>{temporaryPaletteCount=Number($("paletteCount").value);temporaryPaletteAssignments.clear();renderTemporaryPaletteInputs();if(temporaryPaletteActive)render()};$("applyPalette").onclick=()=>applyTemporaryPalette();$("harmoniousPalette").onclick=harmoniousTemporaryPalette;$("resetPalette").onclick=resetTemporaryPalette;updateGameRecords();$("gameButton").onclick=e=>{e.stopPropagation();closeTemporaryPalettePanel();closeFileMenu();closeDeckMenu();const open=$("gameMenu").hidden;$("gameMenu").hidden=!open;$("gameButton").setAttribute("aria-expanded",String(open));if(open){updateGameRecords();if(!$("gameHistoryPane").hidden)renderGameHistory()}};$("gameMenu").onclick=e=>e.stopPropagation();$("gameTabPlay").onclick=()=>showGameMenuTab("play");$("gameTabHistory").onclick=()=>showGameMenuTab("history");$("reviewErrors").onclick=()=>openGame("choice",true);$("gameMenu").querySelectorAll("[data-game-mode]").forEach(b=>b.onclick=()=>openGame(b.dataset.gameMode));$("gamePanel").addEventListener("wheel",e=>{const p=$("gamePanel"),atTop=p.scrollTop<=0,atBottom=Math.ceil(p.scrollTop+p.clientHeight)>=p.scrollHeight;if((e.deltaY<0&&atTop)||(e.deltaY>0&&atBottom))e.preventDefault()},{passive:false});$("gameClose").onclick=closeGamePanel;$("gameQuestion").onclick=renderGamePreview;$("gameQuestion").onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();renderGamePreview()}};$("gamePreviewEdit").onclick=e=>{e.stopPropagation();openGameEventEditor()};$("gameQuit").onclick=closeGamePanel;$("gameReplay").onclick=replayGame;$("gameFreeForm").onsubmit=e=>{e.preventDefault();if(gameState.locked||!gameState.active)return;gameFreeCorrect(gameState.current.spec,$("gameAnswer").value)?gameCorrect():gameFail()};$("fileMenuButton").onclick=e=>{e.stopPropagation();closeDeckMenu();const open=$("fileMenu").hidden;$("fileMenu").hidden=!open;$("fileMenuButton").setAttribute("aria-expanded",String(open))};$("fileMenu").onclick=e=>e.stopPropagation();$("toggleDecks").onclick=e=>{e.stopPropagation();closeFileMenu();const open=$("deckMenu").hidden;$("deckMenu").hidden=!open;$("toggleDecks").setAttribute("aria-expanded",String(open))};$("deckMenu").onclick=e=>e.stopPropagation();$("checkAllDecks").onclick=()=>setAllDecks(true);$("uncheckAllDecks").onclick=()=>setAllDecks(false);$("detail").onclick=e=>e.stopPropagation();
 function gameKeyboardShortcut(e){if($("gamePanel").hidden||$("editor").hidden===false)return false;const tag=(document.activeElement?.tagName||"").toLowerCase(),editing=tag==="input"||tag==="textarea"||document.activeElement?.isContentEditable;if((e.key==="a"||e.key==="A")&&!e.metaKey&&!e.ctrlKey&&!e.altKey){if(gameState.current){e.preventDefault();renderGamePreview();return true}}if(!gameState.active||gameState.locked||editing)return false;if(gameState.mode==="choice"&&/^[1-4]$/.test(e.key)){const b=$("gameChoices").querySelectorAll("button")[Number(e.key)-1];if(b&&!b.disabled){e.preventDefault();b.click();return true}}if(gameState.mode==="reverse"&&/^[1-2]$/.test(e.key)){const b=$("gameChoices").querySelectorAll("button")[Number(e.key)-1];if(b&&!b.disabled){e.preventDefault();b.click();return true}}return false}
 document.addEventListener("keydown",e=>{const ae=document.activeElement,tag=(ae?.tagName||"").toLowerCase(),editing=tag==="input"||tag==="textarea"||ae?.isContentEditable;if(e.metaKey&&!e.ctrlKey&&e.key.toLowerCase()==="z"&&!editing){e.preventDefault();undoLastChange();return}if(gameKeyboardShortcut(e))return;if(e.key==="Escape"){closeGameMenu();closeTemporaryPalettePanel();closeFileMenu();closeDeckMenu();if(!$("gamePanel").hidden)closeGamePanel();else if(!$("githubPanel").hidden)closeGitHubPanel();else if(!$("importPanel").hidden)closeImportPanel();else if(!$("settingsPanel").hidden)closeSettings();else if(!$("batchPanel").hidden)closeBatchPanel();else $("editor").hidden?closeDetail():closeEditor()}});$("timelineButton").onclick=()=>{view="timeline";render()};$("tableButton").onclick=()=>{view="table";render()};$("direction").onchange=render;$("overlap").onchange=render;$("toggleFilters").onclick=()=>{const open=$("filters").hidden;$("filters").hidden=!open;$("toggleFilters").setAttribute("aria-expanded",String(open))};function changeZoom(factor){const vp=$("viewport"),vertical=["tb","bt"].includes($("direction").value),oldExtent=vertical?$("canvas").offsetHeight:vp.scrollWidth,oldPosition=vertical?scrollY:vp.scrollLeft,visible=vertical?innerHeight:vp.clientWidth,center=(oldPosition+visible/2)/Math.max(1,oldExtent);zoom*=factor;if(!Number.isFinite(zoom)||zoom<=0)zoom=Number.MIN_VALUE;render();const newExtent=vertical?$("canvas").offsetHeight:vp.scrollWidth,newPosition=Math.max(0,center*newExtent-visible/2);vertical?scrollTo({top:newPosition}):vp.scrollLeft=newPosition}$("zoomOut").onclick=()=>changeZoom(1/1.25);$("zoomIn").onclick=()=>changeZoom(1.25);
 document.addEventListener("click",e=>{if(!$("gameMenu").hidden&&!e.target.closest(".game-tool"))closeGameMenu();if(!$("palettePanel").hidden&&!e.target.closest(".palette-tool"))closeTemporaryPalettePanel();if(!$("fileMenu").hidden)closeFileMenu();if(!$("deckMenu").hidden&&!e.target.closest(".deck-filter-menu"))closeDeckMenu();if(!$("detail").hidden&&!e.target.closest(".event")&&!e.target.closest("#detail"))closeDetail()});
@@ -593,7 +645,7 @@ function openImportPanel(){closeFileMenu();$("importPanel").hidden=false;$("scri
 function closeImportPanel(){$("importPanel").hidden=true;$("scrim").hidden=true}
 $("openImportHelp").onclick=openImportPanel;$("importPanelCancel").onclick=closeImportPanel;$("chooseCsv").onclick=()=>{closeImportPanel();$("importCsv").click()};$("downloadCsvTemplate").onclick=()=>{const sample='id,name,subtitle,kind,start,end,includeStart,includeEnd,tags,color,html,deck,image\r\n1,"Exemple","Sous-titre court",point,1789,,true,true,"[""Évènement""]",#21BCFF,"<p>Description</p>","[""ICT::Exemple""]","[]"\r\n',blob=new Blob(["\ufeff"+sample],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="modele-frise.csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 $("openGitHub").onclick=openGitHubPanel;$("ghCancel").onclick=closeGitHubPanel;$("ghConnect").onclick=connectGitHubFromPanel;$("ghForget").onclick=forgetGitHubDevice;$("syncGitHub").onclick=()=>{queueGitHubSync(githubFiles,"Synchronisation manuelle depuis la frise");scheduleCloudStateSync(0)};
-let resizeTimer;addEventListener("resize",()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>view==="timeline"&&render(),150)});document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"&&githubMode&&localCloudUpdated())syncCloudStateToGitHub()});boot();
+let resizeTimer;addEventListener("resize",()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>view==="timeline"&&render(),150)});document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"&&githubMode&&localCloudUpdated())syncCloudStateToGitHub()});new MutationObserver(syncPageScrollLock).observe($("scrim"),{attributes:true,attributeFilter:["hidden"]});syncPageScrollLock();boot();
 })();
 </script>
 </body>
