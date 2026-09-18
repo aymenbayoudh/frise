@@ -33,6 +33,97 @@ main{padding:16px}.toolbar-shell{position:relative;z-index:12;margin:-16px -16px
 .file-menu{position:relative}.file-menu>button{font-size:1.2rem;line-height:1}.file-menu-pop{position:absolute;right:0;top:39px;z-index:35;width:190px;padding:5px;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:var(--shadow)}.file-menu-pop button,.file-menu-pop .file-button{display:flex;width:100%;min-height:30px;padding:5px 8px;border:0;border-radius:6px;font-size:.76rem}.file-menu-pop #undoButton{min-height:26px;padding:3px 7px;font-size:.7rem;color:var(--muted)}.file-menu-pop #undoButton:not(:disabled){color:var(--ink)}.compact-control{min-height:34px!important;padding:5px 9px!important;font-size:.78rem}.filters button{min-height:27px;padding:3px 8px;font-size:.7rem}.filters .filter-label{font-size:.72rem}.image-attachments{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.image-attachment{position:relative;width:92px;height:66px}.image-attachment img{width:100%;height:100%;object-fit:cover;border:1px solid var(--line);border-radius:6px}.image-attachment button{position:absolute;top:-7px;right:-7px;width:20px;height:20px;min-height:20px;padding:0;border-radius:50%;background:#fff;font-size:.85rem;line-height:1;box-shadow:0 1px 4px #17223635}.settings-grid{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}.settings-grid label{display:contents}.settings-grid select{min-width:120px;padding:7px}.settings-secret{display:flex;align-items:center;justify-content:flex-end;gap:7px;margin-top:14px;padding-top:10px;border-top:1px solid #edf0f4}.settings-private-button{min-height:28px!important;padding:3px 8px!important;border:0!important;background:transparent!important;color:var(--muted);font-size:.68rem!important;font-weight:550!important}.settings-private-button:hover{color:var(--ink);background:#f5f7fa!important}
 .owner-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.owner-grid label{display:flex;flex-direction:column;gap:5px;font-size:.82rem;font-weight:650}.owner-grid input{min-height:38px;padding:8px}.owner-grid .full{grid-column:1/-1}.owner-status{padding:9px 11px;border-radius:8px;background:#f1f5fa;color:var(--muted);font-size:.8rem}.owner-status.ok{background:#e9f8ef;color:#17643a}.owner-status.bad{background:#fff0f2;color:#9b2438}.import-help{max-height:min(70vh,620px);overflow:auto}.import-help h3{margin:14px 0 5px;font-size:.9rem}.import-help p,.import-help li{font-size:.8rem}.import-help code,.import-help pre{font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace}.import-help pre{overflow:auto;padding:10px;background:#f5f7fa;border:1px solid var(--line);border-radius:8px;white-space:pre}.import-columns{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:.76rem}.import-columns dt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:750}.import-columns dd{margin:0;color:var(--muted)}.sync-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 7px;border-radius:999px;background:#eef2f7;color:var(--muted);font-size:.7rem;font-weight:700}.sync-pill.connected{background:#e9f8ef;color:#17643a}.source-note{font-size:.76rem;color:var(--muted)}
 
+
+/* Ajustements tactiles finaux : placés en dernier pour primer sur les règles desktop. */
+@media(pointer:coarse) and (max-width:1100px){
+  .game-session-summary{
+    width:100%!important;
+    max-width:100%!important;
+    padding:0 4px 0 1px!important;
+    overflow-x:hidden!important;
+    box-sizing:border-box!important;
+  }
+  .game-summary-entry{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+  .game-summary-card{
+    width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+  .game-summary-card>div{min-width:0!important}
+  .game-summary-card strong,.game-summary-card small{
+    overflow-wrap:anywhere;
+    word-break:normal;
+  }
+
+  .toolbar-shell{
+    padding:5px 7px!important;
+    margin:-8px -8px 7px!important;
+  }
+  .toolbar{
+    gap:4px!important;
+    row-gap:4px!important;
+  }
+  .compact-control{
+    min-height:28px!important;
+    padding:3px 6px!important;
+    font-size:.69rem!important;
+    border-radius:7px!important;
+  }
+  .toolbar label{
+    gap:4px!important;
+    font-size:.69rem!important;
+  }
+  .toolbar select{
+    height:28px!important;
+    min-height:28px!important;
+    padding:2px 23px 2px 6px!important;
+    font-size:.69rem!important;
+    border-radius:7px!important;
+  }
+  .search-box input{
+    width:150px!important;
+    min-height:28px!important;
+    height:28px!important;
+    padding:3px 24px 3px 7px!important;
+    font-size:.69rem!important;
+    border-radius:7px!important;
+  }
+  .date-jump{
+    height:28px!important;
+    border-radius:7px!important;
+  }
+  .date-jump input{
+    width:30px!important;
+    height:26px!important;
+    min-height:26px!important;
+    padding:2px!important;
+    font-size:.63rem!important;
+  }
+  .date-jump button{
+    width:23px!important;
+    min-width:23px!important;
+    height:26px!important;
+    min-height:26px!important;
+    padding:0!important;
+    font-size:.68rem!important;
+  }
+  #overlap{
+    width:13px!important;
+    height:13px!important;
+  }
+  #batchToggle,#timelineButton,#tableButton,#toggleFilters,#toggleDecks{
+    white-space:nowrap;
+  }
+}
+@media(pointer:coarse) and (max-width:720px){
+  .search-box input{width:138px!important}
+  .toolbar select{width:150px!important;max-width:150px!important}
+}
 </style>
 </head>
 <body>
