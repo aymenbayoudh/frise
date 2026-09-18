@@ -338,14 +338,14 @@ body.overlay-scroll-locked{
     <label>Date ou début<input id="start" required placeholder="7/12/1637, 1637, XIXe siècle, IIe avant J.-C."></label>
     <label id="endLabel">Fin de la période<input id="end" placeholder="1639, XIXe siècle ou -IIe siècle"></label>
     <label>Étiquettes<input id="tags" placeholder="urbanisme, lois, culture"></label>
-    <div class="full field"><span>Deck(s)</span><div class="deck-editor"><div id="deckEditorChips" class="deck-editor-chips"></div><div class="deck-editor-row"><input id="deckEditorInput" list="deckEditorOptions" placeholder="ICT::Thème::Chapitre" autocomplete="off"><datalist id="deckEditorOptions"></datalist><button id="deckEditorAdd" type="button">Ajouter</button></div><span class="deck-hint">Choisis un deck existant ou saisis un nouveau chemin avec <code>::</code>.</span></div></div>
-    <label id="sourceFileLabel" class="full" hidden>Fichier CSV GitHub<select id="sourceFile"></select><span class="source-note">Pour un nouvel événement en mode propriétaire, choisis le CSV qui doit recevoir la ligne.</span></label>
+    <div class="full field"><span>Deck(s)</span><div class="deck-editor"><div id="deckEditorChips" class="deck-editor-chips"></div><div class="deck-editor-row"><input id="deckEditorInput" list="deckEditorOptions" placeholder="ICT::Thème::Chapitre" autocomplete="off"><datalist id="deckEditorOptions"></datalist><button id="deckEditorAdd" type="button">Ajouter</button></div></div></div>
+    <label id="sourceFileLabel" class="full" hidden>Fichier CSV GitHub<select id="sourceFile"></select></label>
     <div class="full field">Couleur
       <div class="color-line event-color-line"><input id="eventColor" type="color" value="#21BCFF" aria-label="Choisir la couleur"><input id="colorCode" value="#21BCFF" maxlength="7" aria-label="Code couleur hexadécimal"></div><details class="color-library-details"><summary>Couleurs prédéfinies</summary><div id="swatches" class="preset-color-library"></div></details>
     </div>
     <div id="periodOptions" class="full checks"><label><input id="includeStart" type="checkbox" checked>Borne initiale incluse</label><label><input id="includeEnd" type="checkbox" checked>Borne finale incluse</label></div>
-    <p class="full help">Une année saisie comme événement ponctuel reste une date approximative. Pour av. J.-C., utilisez une année négative (ex. -425). Pour une année entière, choisissez « Période » et laissez la fin vide.</p>
-    <div class="full field">Description — visible uniquement dans la fiche
+    
+    <div class="full field">Description
       <div class="richbar"><button type="button" data-command="bold" data-rich-target="description"><b>Gras</b></button><button type="button" data-command="italic" data-rich-target="description"><i>Italique</i></button><button type="button" data-command="underline" data-rich-target="description"><u>Souligné</u></button><button type="button" data-command="insertUnorderedList" data-rich-target="description">Liste</button><button type="button" id="link">Lien</button><label class="small">Ajouter une image <input id="image" type="file" accept="image/png,image/jpeg,image/webp"></label></div>
       <div id="imageAttachments" class="image-attachments" aria-label="Images attachées à l’événement"></div>
       <div id="description" contenteditable="true" role="textbox" aria-label="Description enrichie" aria-multiline="true"></div>
