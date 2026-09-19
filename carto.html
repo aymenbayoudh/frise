@@ -391,7 +391,7 @@ map.attributionControl.addAttribution('<a href="https://github.com/gregoiredavid
 const satelliteTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,keepBuffer:2,updateWhenZooming:false,attribution:'Tiles © Esri'});
 map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
-let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,accent='#265f8c';
+let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,accent='#265f8c';
 const communeLabels=L.layerGroup().addTo(map);
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stripHtml=html=>{const t=document.createElement('template');t.innerHTML=String(html||'');return t.content.textContent||''},unique=a=>[...new Set((a||[]).filter(Boolean).map(String))];
@@ -464,7 +464,7 @@ function mainOutlineStyle(f){
 function restyleMainOutline(layer){if(layer.feature&&layer.setStyle)layer.setStyle(mainOutlineStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleMainOutline)}
 function drawMainOutline(){
  mainOutline.clearLayers();
- const geo=mode===3?regionGeo:mode===2?deptGeo:mode===1?epciGeo:null;
+ const geo=mode===3?regionGeo:mode===2?(arrDeptGeo||deptGeo):mode===1?epciGeo:null;
  if(geo)L.geoJSON(geo,{pane:'mainOutlinePane',interactive:false,style:mainOutlineStyle}).addTo(mainOutline)
 }
 function drawContextAdmin(){
@@ -483,8 +483,8 @@ function drawAdmin(){
      geoLayer(mapped,admin,true)
    }else if(mode===3&&d.regionOnly){
      const n=domItems(d).length,c=L.circle(d.at,{radius:d.radius||120000,color:'#111315',weight:1.25,fillColor:shade(n,d.region),fillOpacity:.68}).addTo(admin);
-     c.bindTooltip(escape(d.name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true});
-     c.on('click',()=>{const g=groups().find(g=>String(g.code)===String(d.region));choose(g||{key:'empty-'+d.region,name:d.name,code:d.region,items:[],at:d.at},c.getBounds())})
+     c.bindTooltip(escape(d.name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
+     c.on({mouseover:e=>{c.openTooltip(e.latlng);c.setStyle({weight:2.5,color:'#000000'})},mouseout:()=>{c.closeTooltip();c.setStyle({weight:1.25,color:'#111315'})},click:()=>{const g=groups().find(g=>String(g.code)===String(d.region));choose(g||{key:'empty-'+d.region,name:d.name,code:d.region,items:[],at:d.at},c.getBounds())}})
    }
  }
  drawMainOutline();drawContextAdmin()
@@ -530,8 +530,25 @@ function loadAdminMeta(){if(metaPromise)return metaPromise;metaPromise=(async()=
        arrondissements=a.status==='fulfilled'&&Array.isArray(a.value)?a.value:[];
  return{departements,regions,arrondissements}
 })();return metaPromise}
-async function ensureArrGeo(){if(arrGeo)return arrGeo;arrGeo=await getJSON('https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-version-simplifiee.geojson');return arrGeo}
-function arrBelongs(a,dept){const explicit=String(a.departement??a.codeDepartement??a.dep??'');return explicit?explicit===String(dept):String(a.code||'').startsWith(String(dept))}
+async function ensureArrGeo(){
+ if(arrGeo)return arrGeo;
+ const [arr,dep]=await Promise.all([
+  getJSON('https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-version-simplifiee.geojson'),
+  getJSON('https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson').catch(()=>null)
+ ]);
+ arrGeo=arr;arrDeptGeo=dep;
+ if(mode===2)drawMainOutline();
+ return arrGeo
+}
+function arrondissementDepartmentCode(value){
+ const code=String(value?.properties?.code??value?.code??'');
+ const explicit=String(value?.properties?.departement??value?.properties?.codeDepartement??value?.departement??value?.codeDepartement??value?.dep??'');
+ if(explicit)return explicit;
+ if(/^97[1-6]/.test(code))return code.slice(0,3);
+ if(/^2[AB]/i.test(code))return code.slice(0,2).toUpperCase();
+ return code.slice(0,2)
+}
+function arrBelongs(a,dept){return arrondissementDepartmentCode(a)===String(dept)}
 function featureBounds(f){if(featureBoundsCache.has(f))return featureBoundsCache.get(f);const b=L.geoJSON(f).getBounds();featureBoundsCache.set(f,b);return b}
 function visibleCodesFromGeo(geo){if(!geo?.features?.length)return[];const view=map.getBounds().pad(.18),out=[];for(const f of geo.features){const code=featureAdminCode(f);if(code&&view.intersects(featureBounds(f)))out.push(code)}return out}
 function pointInRing(lng,lat,ring){let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1],cross=((yi>lat)!==(yj>lat))&&(lng<(xj-xi)*(lat-yi)/((yj-yi)||1e-12)+xi);if(cross)inside=!inside}return inside}
@@ -599,7 +616,7 @@ async function updateSubdivisions(force=false){
      L.geoJSON(deptGeo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#20262B',weight:.72,opacity:.92,fillOpacity:0}}).addTo(subAdmin)
    }else if(kind.startsWith('arrondissements:')){
      const geo=await ensureArrGeo();if(key!==subdivisionKey)return;
-     const wanted=new Set(wantedCodes),filtered={type:'FeatureCollection',features:geo.features.filter(f=>[...wanted].some(code=>String(f.properties.code||'').startsWith(code)))};
+     const wanted=new Set(wantedCodes),filtered={type:'FeatureCollection',features:geo.features.filter(f=>wanted.has(arrondissementDepartmentCode(f)))};
      L.geoJSON(filtered,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#30363B',weight:.66,opacity:.88,fillOpacity:0}}).addTo(subAdmin)
    }else if(kind.startsWith('epci-communes:')){
      const epci=kind.slice('epci-communes:'.length),geo=await epciCommuneGeo(epci);if(key!==subdivisionKey||!geo?.features||contextEpci()!==epci)return;
