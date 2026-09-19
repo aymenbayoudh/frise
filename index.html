@@ -254,6 +254,59 @@ body.overlay-scroll-locked{
   .palette-panel{max-height:calc(100dvh - 70px);overflow:auto;scrollbar-width:none}
   .palette-panel::-webkit-scrollbar{display:none}
 }
+
+/* Jeux plus spacieux sur ordinateur uniquement. */
+@media(pointer:fine) and (min-width:900px){
+  .game-panel{
+    width:min(780px,calc(100vw - 64px));
+    max-height:min(840px,calc(100dvh - 56px));
+    padding:24px;
+    border-radius:18px;
+  }
+  .game-panel-head{gap:18px}
+  .game-panel-head h2{font-size:1.12rem}
+  .game-stats{gap:16px;font-size:.79rem}
+  .game-progress-row{margin-top:10px}
+  .game-question{
+    margin:20px 0 15px;
+    padding:19px 20px;
+    border-radius:14px;
+  }
+  .game-event-name{font-size:1.18rem}
+  .game-event-subtitle{font-size:.9rem}
+  .game-prompt{margin:15px 0 10px;font-size:.96rem}
+  .game-choices{gap:12px}
+  .game-choice{
+    min-height:64px;
+    padding:12px 14px;
+    font-size:.96rem;
+    border-radius:11px;
+  }
+  .game-reverse-choice{min-height:72px}
+  .game-reverse-choice strong{font-size:.92rem}
+  .game-reverse-choice small{font-size:.73rem}
+  .game-free-form input{
+    min-height:50px;
+    padding:10px 13px;
+    font-size:1.04rem;
+  }
+  .game-free-form button{min-height:50px;padding:8px 16px}
+  .game-feedback{font-size:.88rem}
+  .game-preview{
+    margin:-15px 0 15px;
+    padding:15px 18px 17px;
+    font-size:.84rem;
+  }
+  .game-session-summary{
+    max-height:390px;
+    gap:7px;
+  }
+  .game-summary-card{padding:10px 11px}
+  .game-summary-card strong{font-size:.79rem}
+  .game-summary-card small{font-size:.68rem}
+  .game-summary-preview{padding:11px 13px 13px;font-size:.76rem}
+  .game-over{padding:15px}
+}
 </style>
 </head>
 <body>
