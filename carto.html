@@ -472,16 +472,16 @@ Promise.allSettled([
  getJSONFallback([
   'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson',
   'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/departements-1000m.geojson'
- ]).then(j=>{deptGeo=j;scheduleAdminDraw()}),
+ ]).then(j=>{deptGeo=j;scheduleAdminDraw();updateSubdivisions(true);updateCenters(true)}),
  getJSONFallback([
   'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson',
   'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/regions-1000m.geojson'
- ]).then(j=>{regionGeo=j;scheduleAdminDraw()}),
+ ]).then(j=>{regionGeo=j;scheduleAdminDraw();updateSubdivisions(true);updateCenters(true)}),
  getJSONFallback([
   'https://raw.githubusercontent.com/MTES-MCT/otelo/dev/apps/web/public/geojson/epci-1000m.geojson',
   'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/epci-1000m.geojson',
   'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/latest/geojson/epci-1000m.geojson'
- ]).then(j=>{epciGeo=j;scheduleAdminDraw()})
+ ]).then(j=>{epciGeo=j;scheduleAdminDraw();if(mode===1)drawAdmin()})
 ]).then(results=>{drawAdmin();refreshAdminStyle();const failed=results.filter(r=>r.status==='rejected').length;$('status').textContent=failed===3?'Impossible de charger les contours administratifs. Recharge la page.':failed?'Une couche administrative secondaire est indisponible.':'';});
 for(const d of doms.filter(d=>!d.regionOnly))getJSON('https://geo.api.gouv.fr/communes?codeDepartement='+d.dept+'&fields=nom,code&format=geojson&geometry=contour').then(j=>{if(!j.features)return;d.geo=j;const bounds=L.geoJSON(j).getBounds();d.map.fitBounds(bounds,{padding:[6,6]});updateInsets();scheduleAdminDraw();}).catch(()=>{d.count.title='Contour indisponible ; fond cartographique conservé';});
 })();
