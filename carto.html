@@ -292,8 +292,10 @@ function adminLevelColor(level,code){const e=adminItemFor(level,code);return e?t
 function hexRgb(c){const x=validColor(c).slice(1);return[parseInt(x.slice(0,2),16),parseInt(x.slice(2,4),16),parseInt(x.slice(4,6),16)]}
 function relativeLuminance(c){const rgb=hexRgb(c).map(v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]}
 function densityPalette(){
- const source=temporaryPaletteActive?temporaryPalette.slice(0,temporaryPaletteCount):[mixHex('#FFFFFF',accent,.16),mixHex('#FFFFFF',accent,.34),mixHex('#FFFFFF',accent,.52),mixHex('#FFFFFF',accent,.70),accent,mixHex(accent,'#111827',.22)];
- return [...new Set(source.map(validColor))].sort((a,b)=>relativeLuminance(b)-relativeLuminance(a))
+ const source=temporaryPaletteActive?temporaryPalette.slice(0,temporaryPaletteCount):[mixHex('#FFFFFF',accent,.16),mixHex('#FFFFFF',accent,.34),mixHex('#FFFFFF',accent,.52),mixHex('#FFFFFF',accent,.70),accent,mixHex(accent,'#111827',.16)];
+ const ordered=[...new Set(source.map(validColor))].sort((a,b)=>relativeLuminance(b)-relativeLuminance(a));
+ if(!temporaryPaletteActive)return ordered;
+ return ordered.map((c,i)=>{const lum=relativeLuminance(c),pos=ordered.length<=1?1:i/(ordered.length-1),strength=Math.min(.86,.62+.22*lum+.05*pos);return mixHex('#FFFFFF',c,strength)})
 }
 function densityMaxCount(){return Math.max(1,...groups().map(g=>g.items.length))}
 function densityColor(n){
@@ -316,7 +318,7 @@ function shade(n,code=''){
  return mixHex('#ffffff',unitDisplayColor(code),n===1?.18:n===2?.34:n===3?.5:n<=5?.68:.88)
 }
 function countCode(code){return current().filter(d=>String(keyOf(d))===String(code)).length;}
-function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom();let fillOpacity=mode>=2?(z>=8?.72:.86):mode===1?(z>=8?.16:.90):0,opacity=.96;const baseWeight=mode===3?1.8:mode===2?1.45:mode===1?.9:.8;if(hasSelection&&!selected){fillOpacity*=.28;opacity=.34}if(selected){fillOpacity=Math.max(fillOpacity,.88);opacity=1}return {color:selected?'#172f42':'#5f7483',weight:selected?Math.max(3.4,baseWeight+1.7):baseWeight,fillColor:shade(n,code),fillOpacity,opacity};}
+function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom();let fillOpacity=mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0,opacity=.96;const baseWeight=mode===3?1.8:mode===2?1.45:mode===1?.9:.8;if(hasSelection&&!selected){fillOpacity*=.24;opacity=.30}if(selected){fillOpacity=Math.max(fillOpacity,.72);opacity=1}return {color:selected?'#172f42':'#5f7483',weight:selected?Math.max(3.4,baseWeight+1.7):baseWeight,fillColor:shade(n,code),fillOpacity,opacity};}
 function updateBasemap(){if(map.getZoom()>=13){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
 function restyleAdminLayer(layer){if(layer.feature&&layer.setStyle)layer.setStyle(adminStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleAdminLayer)}
 function refreshAdminStyle(){admin.eachLayer(restyleAdminLayer)}
@@ -325,26 +327,25 @@ function maybeDrawPoints(){const key=pointState();if(key!==pointRenderKey)drawPo
 function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true});l.on({mouseover:()=>{l.setStyle({weight:2,color:'#223f54'});l.bringToFront()},mouseout:()=>l.setStyle(adminStyle(f)),click:()=>{if(mode<1)return;const g=groups().find(g=>String(g.code)===code);choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},l.getBounds());}})}}).addTo(target);}
 function drawContextAdmin(){
  contextAdmin.clearLayers();
- if(mode>1)return;
- if(regionGeo)L.geoJSON(regionGeo,{interactive:false,style:{color:'#435563',weight:1.7,opacity:.9,fillOpacity:0}}).addTo(contextAdmin);
- if(deptGeo)L.geoJSON(deptGeo,{interactive:false,style:{color:'#71818c',weight:.68,opacity:.78,fillOpacity:0}}).addTo(contextAdmin)
+ if(mode<=2&&regionGeo)L.geoJSON(regionGeo,{interactive:false,style:{color:mode===2?'#111820':'#202a32',weight:mode===2?2.8:2.45,opacity:.97,fillOpacity:0}}).addTo(contextAdmin);
+ if(mode<=1&&deptGeo)L.geoJSON(deptGeo,{interactive:false,style:{color:'#46545e',weight:1.18,opacity:.9,fillOpacity:0}}).addTo(contextAdmin)
 }
 function drawAdmin(){
  contextAdmin.clearLayers();admin.clearLayers();
  if(mode===3){if(regionGeo)geoLayer(regionGeo,admin,true);else if(deptGeo)geoLayer(deptGeo,admin,false)}
  else if(mode===2){if(deptGeo)geoLayer(deptGeo,admin,true);else if(regionGeo)geoLayer(regionGeo,admin,false)}
- else if(mode===1){drawContextAdmin();if(epciGeo)geoLayer(epciGeo,admin,true)}
- else drawContextAdmin();
+ else if(mode===1){if(epciGeo)geoLayer(epciGeo,admin,true)}
  for(const d of doms){
    if(d.geo&&mode>=2){
      const mapped={type:'FeatureCollection',features:d.geo.features.map(f=>({...f,properties:{code:mode===3?d.region:d.dept,nom:d.name}}))};
      geoLayer(mapped,admin,true)
    }else if(mode===3&&d.regionOnly){
-     const n=domItems(d).length,c=L.circle(d.at,{radius:d.radius||120000,color:'#87939d',weight:1.25,fillColor:shade(n,d.region),fillOpacity:.86}).addTo(admin);
+     const n=domItems(d).length,c=L.circle(d.at,{radius:d.radius||120000,color:'#87939d',weight:1.25,fillColor:shade(n,d.region),fillOpacity:.68}).addTo(admin);
      c.bindTooltip(escape(d.name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true});
      c.on('click',()=>{const g=groups().find(g=>String(g.code)===String(d.region));choose(g||{key:'empty-'+d.region,name:d.name,code:d.region,items:[],at:d.at},c.getBounds())})
    }
  }
+ drawContextAdmin()
 }
 function icon(items,label,pin=false){const n=items.length,global=items.every(x=>x.kind==='global'),s=pin?(global?35:26):Math.min(60,28+Math.sqrt(n)*9),c=temporaryEventColor(items[0]);return L.divIcon({className:pin?'pin-wrap':'bubble',iconSize:[s,s],iconAnchor:[s/2,pin?s:s/2],html:pin?'<div class="pin-body '+(global?'global':'')+'" style="--unit-color:'+c+'"><span>'+(n>1?n:global?'◆':'')+'</span></div>':'<div class="bubble-body" style="--unit-color:'+c+';width:'+s+'px;height:'+s+'px">'+n+'</div><span class="bubble-label">'+escape(label)+'</span>'});}
 function addMarker(at,items,label,pin,fn,target=points){const marker=L.marker(at,{icon:icon(items,label,pin),title:label,alt:label,keyboard:true}).addTo(target);marker.bindTooltip(escape(label)+' · '+items.length+' exemple'+(items.length>1?'s':''));marker.on('click',fn);}
