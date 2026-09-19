@@ -388,17 +388,17 @@ function shade(n,code=''){
  return mixHex('#ffffff',unitDisplayColor(code),n===1?.18:n===2?.34:n===3?.5:n<=5?.68:.88)
 }
 function countCode(code){return current().filter(d=>String(keyOf(d))===String(code)).length;}
-function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom();let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0,opacity=.94;const baseWeight=mode===3?1.8:mode===2?1.45:mode===1?.9:.8;if(hasSelection&&!selected){fillOpacity*=.16;opacity=.72}if(selected){fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));opacity=1}return {color:selected?'#000000':'#111315',weight:selected?Math.max(4.2,baseWeight+2.4):baseWeight,fillColor:shade(n,code),fillOpacity,opacity};}
+function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom();let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=mode===3?1.9:mode===2?1.55:mode===1?1.05:.8;if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));return {color:selected?'#000000':'#090B0D',weight:selected?Math.max(4.3,baseWeight+2.4):baseWeight,fillColor:shade(n,code),fillOpacity,opacity:1};}
 function updateBasemap(){if(map.getZoom()>=13){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
 function restyleAdminLayer(layer){if(layer.feature&&layer.setStyle)layer.setStyle(adminStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleAdminLayer)}
 function refreshAdminStyle(){admin.eachLayer(restyleAdminLayer)}
 function pointState(){const z=map.getZoom();return mode+':'+(selection?.key||'')+':'+(mode===0?(z<11?'agg':'pin'):selection?'pin':'none')}
 function maybeDrawPoints(){const key=pointState();if(key!==pointRenderKey)drawPoints()}
-function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true});l.on({mouseover:()=>{const selected=mode>=1&&selection&&String(selection.code)===code;l.setStyle(selected?adminStyle(f):{weight:2.2,color:'#050607',opacity:1});l.bringToFront()},mouseout:()=>l.setStyle(adminStyle(f)),click:()=>{if(mode<1)return;const g=groups().find(g=>String(g.code)===code);choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},l.getBounds());}})}}).addTo(target);}
+function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true});l.on({mouseover:()=>{const selected=mode>=1&&selection&&String(selection.code)===code;l.setStyle(selected?adminStyle(f):{weight:Math.max(2.25,adminStyle(f).weight+.45),color:'#000000',opacity:1});l.bringToFront()},mouseout:()=>l.setStyle(adminStyle(f)),click:()=>{if(mode<1)return;const g=groups().find(g=>String(g.code)===code);choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},l.getBounds());}})}}).addTo(target);}
 function drawContextAdmin(){
  contextAdmin.clearLayers();
- if(mode<=2&&regionGeo)L.geoJSON(regionGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:mode===1?'#050607':mode===2?'#111820':'#202a32',weight:mode===1?3.05:mode===2?2.8:2.45,opacity:mode===1?1:.97,fillOpacity:0}}).addTo(contextAdmin);
- if(mode<=1&&deptGeo)L.geoJSON(deptGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#17191B',weight:1.18,opacity:.92,fillOpacity:0}}).addTo(contextAdmin)
+ if(mode<=2&&regionGeo)L.geoJSON(regionGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:mode===1?'#000000':mode===2?'#050607':'#090B0D',weight:mode===1?3.15:mode===2?2.9:2.55,opacity:1,fillOpacity:0}}).addTo(contextAdmin);
+ if(mode<=1&&deptGeo)L.geoJSON(deptGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#0B0D0F',weight:1.25,opacity:1,fillOpacity:0}}).addTo(contextAdmin)
 }
 function drawAdmin(){
  contextAdmin.clearLayers();admin.clearLayers();
@@ -428,7 +428,7 @@ function updateLegend(){
  const legend=$('legend');
  if(mode>=1){
    const max=densityMaxCount(),label=mode===1?'Intercommunalités':mode===2?'Départements':'Régions';
-   legend.innerHTML='<span class="legend-title">'+label+' · nombre de fiches</span><span class="ramp" style="background:'+densityLegendGradient()+';opacity:'+densityLegendOpacity()+'"></span><span class="legend-scale"><b>0</b><span>clair → foncé</span><b>'+max+'</b></span>'
+   legend.innerHTML='<span class="legend-title">'+label+' · nombre de fiches</span><span class="ramp" style="background:'+densityLegendGradient()+';opacity:'+densityLegendOpacity()+'"></span><span class="legend-scale"><b>moins</b><span>clair → foncé</span><b>plus · '+max+'</b></span>'
  }else legend.innerHTML='Cercles : nombre de fiches · ◆ au siège · épingles au zoom'
 }
 function draw(){drawAdmin();drawPoints();updateInsets();updateLegend()}
@@ -735,21 +735,26 @@ function automaticPaletteColors(style,n){
  if(style==="surprise")style=families[paletteRandomIndex(families.length)];
  const rnd=(a,b)=>a+(b-a)*paletteRandomUnit(),base=paletteRandomUnit()*360,out=[];
  const sequenceLightness=i=>{
-   const t=n<=1?0:i/(n-1);
-   const light=n<=4?90-(60*t):90-(58*t);
-   return Math.max(28,Math.min(91,light))
+   const ramps={
+     3:[92,61,30],
+     4:[92,72,51,30],
+     6:[92,80,68,56,44,32],
+     8:[92,83,74,65,56,47,38,29]
+   };
+   const ramp=ramps[n]||Array.from({length:n},(_,j)=>92-(62*(j/Math.max(1,n-1))));
+   return ramp[Math.max(0,Math.min(ramp.length-1,i))]
  };
  const shuffledOffsets=(count,step,jitter=0)=>{const a=Array.from({length:count},(_,i)=>i*step+rnd(-jitter,jitter));for(let i=a.length-1;i>0;i--){const j=paletteRandomIndex(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
  if(style==="mono"){
-   const sat=rnd(62,78);
+   const sat=rnd(60,74);
    for(let i=0;i<n;i++){
-     const t=n<=1?0:i/(n-1),light=sequenceLightness(i),s=Math.min(88,sat+10*t);
+     const t=n<=1?0:i/(n-1),light=sequenceLightness(i),s=Math.min(92,sat+18*t);
      out.push(hex(hsl(base,s,light)))
    }
  }else if(style==="analogous"){
-   const drift=rnd(-20,20),sat=rnd(58,74);
+   const drift=rnd(-8,8),sat=rnd(58,72);
    for(let i=0;i<n;i++){
-     const t=n<=1?0:i/(n-1),h=paletteHue(base+drift*(t-.5)),light=sequenceLightness(i),s=Math.min(86,sat+8*t);
+     const t=n<=1?0:i/(n-1),h=paletteHue(base+drift*(t-.5)),light=sequenceLightness(i),s=Math.min(88,sat+14*t);
      out.push(hex(hsl(h,s,light)))
    }
  }else if(style==="vivid"){
