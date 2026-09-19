@@ -512,11 +512,12 @@ function drawPoints(){
 }
 function densityLegendGradient(){const ramp=densityPalette();if(!ramp.length)return'linear-gradient(90deg,#fff,'+accent+')';if(ramp.length===1)return ramp[0];return'linear-gradient(90deg,'+ramp.map((c,i)=>c+' '+Math.round(i/(ramp.length-1)*100)+'%').join(',')+')'}
 function densityLegendOpacity(){return temporaryPaletteActive?temporaryPaletteOpacity:1}
+function densityMinCount(){const counts=groups().map(g=>g.items.length).filter(n=>n>0);return counts.length?Math.min(...counts):0}
 function updateLegend(){
  const legend=$('legend');
  if(mode>=1){
-   const max=densityMaxCount(),label=mode===1?'Intercommunalités':mode===2?'Départements':'Régions';
-   legend.innerHTML='<span class="legend-title">'+label+' · nombre de fiches</span><span class="ramp" style="background:'+densityLegendGradient()+';opacity:'+densityLegendOpacity()+'"></span><span class="legend-scale"><b>moins</b><span>clair → foncé</span><b>plus · '+max+'</b></span>'
+   const min=densityMinCount(),max=densityMaxCount();
+   legend.innerHTML='<span class="ramp" style="background:'+densityLegendGradient()+';opacity:'+densityLegendOpacity()+'"></span><span class="legend-scale"><b>'+min+'</b><span></span><b>'+max+'</b></span>'
  }else legend.innerHTML='Cercles : nombre de fiches · ◆ au siège · épingles au zoom'
 }
 function draw(){drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer()}
