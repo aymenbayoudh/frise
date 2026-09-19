@@ -449,17 +449,18 @@ function shade(n,code=''){
  return mixHex('#ffffff',unitDisplayColor(code),n===1?.18:n===2?.34:n===3?.5:n<=5?.68:.88)
 }
 function countCode(code){return current().filter(d=>String(keyOf(d))===String(code)).length;}
-function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom();let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=mode===3?1.9:mode===2?1.55:mode===1?1.05:.8;if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));return {color:selected?'#000000':'#090B0D',weight:selected?Math.max(4.3,baseWeight+2.4):baseWeight,fillColor:shade(n,code),fillOpacity,opacity:1};}
+function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom();let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=mode===3?1.9:mode===2?1.55:mode===1?.525:.8;if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));const selectedWeight=mode===1?2.15:Math.max(4.3,baseWeight+2.4);return {color:selected?'#000000':'#090B0D',weight:selected?selectedWeight:baseWeight,fillColor:shade(n,code),fillOpacity,opacity:1};}
 function updateBasemap(){if(map.getZoom()>=13){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
 function restyleAdminLayer(layer){if(layer.feature&&layer.setStyle)layer.setStyle(adminStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleAdminLayer)}
 function refreshAdminStyle(){admin.eachLayer(restyleAdminLayer);mainOutline.eachLayer(restyleMainOutline)}
-function pointState(){const z=map.getZoom();return mode+':'+(selection?.key||'')+':'+(mode===0?(z<11?'agg':'pin'):selection?'pin':'none')}
+function pointState(){const z=map.getZoom();return mode+':'+(selection?.key||'')+':'+(mode===0?(z<11?'agg':'pin'):mode===1?'free-interco':selection?'pin':'none')}
 function maybeDrawPoints(){const key=pointState();if(key!==pointRenderKey)drawPoints()}
-function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on({mouseover:e=>{l.openTooltip(e.latlng);const selected=mode>=1&&selection&&String(selection.code)===code;l.setStyle(selected?adminStyle(f):{weight:Math.max(2.25,adminStyle(f).weight+.45),color:'#000000',opacity:1});l.bringToFront()},mouseout:()=>{l.closeTooltip();l.setStyle(adminStyle(f))},click:()=>{if(mode<1)return;const g=groups().find(g=>String(g.code)===code);choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},l.getBounds());}})}}).addTo(target);}
+function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on({mouseover:e=>{l.openTooltip(e.latlng);const selected=mode>=1&&selection&&String(selection.code)===code,base=adminStyle(f),hoverWeight=mode===1?Math.max(1.15,base.weight+.25):Math.max(2.25,base.weight+.45);l.setStyle(selected?base:{weight:hoverWeight,color:'#000000',opacity:1});l.bringToFront()},mouseout:()=>{l.closeTooltip();l.setStyle(adminStyle(f))},click:()=>{if(mode<1)return;const g=groups().find(g=>String(g.code)===code);choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},l.getBounds());}})}}).addTo(target);}
 function mainOutlineStyle(f){
  const code=featureAdminCode(f),selected=mode>=1&&selection&&String(selection.code)===code;
- const base=mode===3?1.95:mode===2?1.6:mode===1?1.08:.85;
- return {pane:'mainOutlinePane',color:'#000000',weight:selected?Math.max(4.35,base+2.45):base,opacity:1,fill:false,fillOpacity:0}
+ const base=mode===3?1.95:mode===2?1.6:mode===1?.54:.85;
+ const selectedWeight=mode===1?2.18:Math.max(4.35,base+2.45);
+ return {pane:'mainOutlinePane',color:'#000000',weight:selected?selectedWeight:base,opacity:1,fill:false,fillOpacity:0}
 }
 function restyleMainOutline(layer){if(layer.feature&&layer.setStyle)layer.setStyle(mainOutlineStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleMainOutline)}
 function drawMainOutline(){
@@ -469,8 +470,8 @@ function drawMainOutline(){
 }
 function drawContextAdmin(){
  contextAdmin.clearLayers();
- if(mode<=2&&regionGeo)L.geoJSON(regionGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:mode===1?'#000000':mode===2?'#050607':'#090B0D',weight:mode===1?3.15:mode===2?2.9:2.55,opacity:1,fillOpacity:0}}).addTo(contextAdmin);
- if(mode<=1&&deptGeo)L.geoJSON(deptGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#0B0D0F',weight:1.25,opacity:1,fillOpacity:0}}).addTo(contextAdmin)
+ if(mode<=2&&regionGeo)L.geoJSON(regionGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:mode===1?'#000000':mode===2?'#050607':'#090B0D',weight:mode===1?1.575:mode===2?2.9:2.55,opacity:1,fillOpacity:0}}).addTo(contextAdmin);
+ if(mode<=1&&deptGeo)L.geoJSON(deptGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#0B0D0F',weight:mode===1?.625:1.25,opacity:1,fillOpacity:0}}).addTo(contextAdmin)
 }
 function drawAdmin(){
  contextAdmin.clearLayers();admin.clearLayers();mainOutline.clearLayers();
@@ -493,7 +494,22 @@ function icon(items,label,pin=false){const n=items.length,global=items.every(x=>
 function addMarker(at,items,label,pin,fn,target=points){const marker=L.marker(at,{icon:icon(items,label,pin),title:label,alt:label,keyboard:true}).addTo(target);marker.bindTooltip(escape(label)+' · '+items.length+' exemple'+(items.length>1?'s':''));marker.on('click',fn);}
 function locationBuckets(items){const b=new Map();items.forEach(d=>{const k=d.at.join(',');if(!b.has(k))b.set(k,[]);b.get(k).push(d)});return [...b.values()];}
 function openBucket(items){if(items.length===1){showItem(items[0]);return;}activeItem=null;focus.clearLayers();$('heading').textContent='Au siège · '+units[items[0].unit].name;$('context').textContent=items.length+' initiatives à portée générale';$('back').hidden=false;renderCards(items);}
-function drawPoints(){pointRenderKey=pointState();points.clearLayers();if(mode>=1)return;const z=map.getZoom(),gs=groups();for(const g of gs){if(!g.items.length)continue;if(z<11){addMarker(g.at,g.items,g.name,false,()=>choose(g));continue}for(const bucket of locationBuckets(g.items)){const label=bucket.length>1?'Siège · '+g.name:bucket[0].title;addMarker(bucket[0].at,bucket,label,true,()=>{if(!selection||selection.key!==g.key){selection=g;renderSide()}openBucket(bucket)})}}}
+function drawPoints(){
+ pointRenderKey=pointState();points.clearLayers();
+ const gs=groups();
+ if(mode===1){
+   for(const g of gs){
+     if(!g.items.length||!isFreeIntercoGroup(g)||!Array.isArray(g.at))continue;
+     const selected=selection?.key===g.key,color=temporaryEventColor(g.items[0]),m=L.circleMarker(g.at,{radius:selected?7:5.5,color:'#0B0D0F',weight:selected?1.6:1,fillColor:color,fillOpacity:.82}).addTo(points);
+     m.bindTooltip(escape(g.name)+' · '+g.items.length+' exemple'+(g.items.length>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
+     m.on('click',()=>choose(g))
+   }
+   return
+ }
+ if(mode>=2)return;
+ const z=map.getZoom();
+ for(const g of gs){if(!g.items.length)continue;if(z<11){addMarker(g.at,g.items,g.name,false,()=>choose(g));continue}for(const bucket of locationBuckets(g.items)){const label=bucket.length>1?'Siège · '+g.name:bucket[0].title;addMarker(bucket[0].at,bucket,label,true,()=>{if(!selection||selection.key!==g.key){selection=g;renderSide()}openBucket(bucket)})}}
+}
 function densityLegendGradient(){const ramp=densityPalette();if(!ramp.length)return'linear-gradient(90deg,#fff,'+accent+')';if(ramp.length===1)return ramp[0];return'linear-gradient(90deg,'+ramp.map((c,i)=>c+' '+Math.round(i/(ramp.length-1)*100)+'%').join(',')+')'}
 function densityLegendOpacity(){return temporaryPaletteActive?temporaryPaletteOpacity:1}
 function updateLegend(){
@@ -506,7 +522,7 @@ function updateLegend(){
 function draw(){drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer()}
 function renderCards(items){$('list').innerHTML=items.length?items.map(d=>'<button class="entry" data-item="'+d.id+'"><strong>'+escape(d.title)+'</strong><small>'+escape(kindLabel(d))+' · '+escape((d.tags||[]).join(' · '))+'</small></button>').join(''):'<p class="empty">Aucune fiche pour ce territoire avec les filtres actuels.</p>';$('list').querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>showItem(data.find(d=>d.id===+b.dataset.item)));}
 function kindLabel(d){return {global:'Portée générale · siège',point:'Lieu précis',street:'Rue / axe',quarter:'Quartier',area:'Périmètre syndical'}[d.kind];}
-function renderSide(){activeItem=null;$('back').hidden=!selection;$('back').textContent='← Tous les territoires';$('heading').textContent=selection?selection.name:modes[mode];$('context').textContent=selection?selection.items.length+' exemple'+(selection.items.length>1?'s':'')+' · '+(selection.fiction?'syndicat fictif':'cliquer une fiche pour l’ouvrir'):current().length+' exemples · '+groups().length+' territoires';if(selection){renderCards(selection.items);return;}$('list').innerHTML=groups().map(g=>'<button class="entry" data-unit="'+g.key+'"><span class="num">'+g.items.length+'</span><strong>'+escape(g.name)+'</strong><small>'+escape(g.fiction?'Périmètre fictif':mode===0?'Commune':mode===1?'Intercommunalité':modes[mode].slice(0,-1))+'</small></button>').join('');$('list').querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>choose(groups().find(g=>g.key===b.dataset.unit)));}
+function renderSide(){activeItem=null;$('back').hidden=!selection;$('back').textContent='← Tous les territoires';$('heading').textContent=selection?selection.name:modes[mode];$('context').textContent=selection?selection.items.length+' exemple'+(selection.items.length>1?'s':'')+' · '+(selection.fiction?'syndicat fictif':'cliquer une fiche pour l’ouvrir'):current().length+' exemples · '+groups().length+' territoires';if(selection){renderCards(selection.items);return;}$('list').innerHTML=groups().map(g=>'<button class="entry" data-unit="'+g.key+'"><span class="num">'+g.items.length+'</span><strong>'+escape(g.name)+'</strong><small>'+escape(g.fiction?'Périmètre fictif':mode===0?'Commune':mode===1?(isFreeIntercoGroup(g)?'Syndicat':'Intercommunalité'):modes[mode].slice(0,-1))+'</small></button>').join('');$('list').querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>choose(groups().find(g=>g.key===b.dataset.unit)));}
 async function choose(g,bounds){
  selection=g;activeItem=null;focus.clearLayers();local.clearLayers();renderSide();refreshAdminStyle();
  if(!bounds&&mode>=1){const geo=mode===3?regionGeo:mode===2?deptGeo:epciGeo;const feature=geo?.features.find(f=>featureAdminCode(f)===String(g.code));const overseas=mode>=2?doms.find(d=>(mode===3?d.region:d.dept)===String(g.code)):null;if(feature)bounds=featureBounds(feature);else if(overseas?.geo)bounds=L.geoJSON(overseas.geo).getBounds()}
@@ -937,10 +953,14 @@ function makeCartCsv(){const lines=[cartCsvHeaders.join(',')];for(const d of dat
 function readCartCsv(text){text=String(text).replace(/^\ufeff/,'');const table=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++}else if(c==='"')quoted=false;else cell+=c}else if(c==='"')quoted=true;else if(c===','){row.push(cell);cell=''}else if(c==='\n'){row.push(cell.replace(/\r$/,''));table.push(row);row=[];cell=''}else cell+=c}if(quoted)throw Error('Guillemet non fermé');if(cell||row.length){row.push(cell.replace(/\r$/,''));table.push(row)}if(!table.length)throw Error('CSV vide');const h=table.shift().map(x=>x.trim()),p=Object.fromEntries(h.map((x,i)=>[x,i]));for(const k of ['id','title','mode','unit','unitName','unitCode','kind','lat','lng','tags','deck'])if(!(k in p))throw Error('Colonne manquante : '+k);const newUnits={},rows=[];for(const r of table.filter(r=>r.some(Boolean))){const raw=String(r[p.mode]||'').trim().toLocaleLowerCase('fr'),mi=modeKeys.includes(raw)?modeKeys.indexOf(raw):Number(raw);if(!Number.isInteger(mi)||mi<0||mi>3)throw Error('Mode invalide : '+raw);const unit=String(r[p.unit]||'').trim(),lat=Number(r[p.lat]),lng=Number(r[p.lng]);if(!unit||!Number.isFinite(lat)||!Number.isFinite(lng))throw Error('Unité ou coordonnées invalides');const parseArray=name=>{if(p[name]==null)return[];const raw=String(r[p[name]]||'');try{const x=JSON.parse(raw||'[]');return Array.isArray(x)?x.map(String):[]}catch{return raw.split('|').map(x=>x.trim()).filter(Boolean)}};const tags=parseArray('tags'),deck=parseArray('deck'),image=parseArray('image');newUnits[unit]={name:String(r[p.unitName]||unit),code:String(r[p.unitCode]||unit),at:[lat,lng],dept:p.departmentCode==null?'':String(r[p.departmentCode]||''),region:p.regionCode==null?'':String(r[p.regionCode]||'')};rows.push({id:Number(r[p.id])||rows.length+1,title:String(r[p.title]||'').trim(),subtitle:p.subtitle==null?'':String(r[p.subtitle]||''),mode:mi,unit,kind:String(r[p.kind]||'point'),at:[lat,lng],shape:null,theme:tags[0]||'Exemple',tags:unique(tags),color:p.color!=null&&/^#[0-9A-F]{6}$/i.test(r[p.color]||'')?String(r[p.color]).toUpperCase():'#315EB6',html:p.html==null?'':String(r[p.html]||''),deck:unique(deck.length?deck:['Sans deck']),image:unique(image)})}return{rows,units:newUnits}}
 function cartAdminCodeExists(level,code){
  code=String(code||'');if(level===0)return !!adminCatalog?.communeByCode.has(code);
- if(level===1)return !!epciGeo?.features?.some(f=>featureAdminCode(f)===code);
+ if(level===1)return !code||!!epciGeo?.features?.some(f=>featureAdminCode(f)===code);
  if(level===2)return !!adminCatalog?.departmentByCode.has(code)&&(!deptGeo||deptGeo.features.some(f=>featureAdminCode(f)===code)||doms.some(d=>String(d.dept)===code));
  if(level===3)return !!adminCatalog?.regionByCode.has(code)&&(!regionGeo||regionGeo.features.some(f=>featureAdminCode(f)===code)||doms.some(d=>String(d.region)===code));
  return false
+}
+function isFreeIntercoGroup(g){
+ const code=String(g?.code||'');
+ return mode===1&&(!code||!epciGeo?.features?.some(f=>featureAdminCode(f)===code))
 }
 async function validateCartAdminReferences(parsed){
  await adminCatalogPromise;const invalid=[];for(const d of parsed.rows){const code=String(parsed.units[d.unit]?.code||'');if(!cartAdminCodeExists(d.mode,code))invalid.push((parsed.units[d.unit]?.name||d.unit)+' ['+code+']')}
