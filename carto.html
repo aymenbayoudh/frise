@@ -447,8 +447,16 @@ function adminItemFor(level,code){return data.find(d=>d.mode===level&&String(key
 function adminLevelColor(level,code){const e=adminItemFor(level,code);return e?temporaryEventColor(e):accent}
 function hexRgb(c){const x=validColor(c).slice(1);return[parseInt(x.slice(0,2),16),parseInt(x.slice(2,4),16),parseInt(x.slice(4,6),16)]}
 function relativeLuminance(c){const rgb=hexRgb(c).map(v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]}
+function baseDensityColor(){
+ if(mode>=1&&defaultColors[mode])return validColor(defaultColors[mode]);
+ const first=groups()[0]?.items?.[0];
+ return first?validColor(first.color||accent):validColor(accent)
+}
 function densityPalette(){
- const source=temporaryPaletteActive?temporaryPalette.slice(0,temporaryPaletteCount):[mixHex('#FFFFFF',accent,.16),mixHex('#FFFFFF',accent,.34),mixHex('#FFFFFF',accent,.52),mixHex('#FFFFFF',accent,.70),accent,mixHex(accent,'#111827',.16)];
+ const base=baseDensityColor();
+ const source=temporaryPaletteActive
+   ?temporaryPalette.slice(0,temporaryPaletteCount)
+   :[mixHex('#FFFFFF',base,.18),mixHex('#FFFFFF',base,.34),mixHex('#FFFFFF',base,.50),mixHex('#FFFFFF',base,.68),mixHex('#FFFFFF',base,.88)];
  return [...new Set(source.map(validColor))].sort((a,b)=>relativeLuminance(b)-relativeLuminance(a))
 }
 function densityMaxCount(){return Math.max(1,...groups().map(g=>g.items.length))}
