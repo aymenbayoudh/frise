@@ -470,11 +470,18 @@ body.overlay-scroll-locked{
   }
 }
 
-.site-title{display:flex;align-items:baseline;gap:8px;min-width:0}
-.page-switch{color:var(--muted);font-size:.92rem;text-decoration:none;font-weight:600;white-space:nowrap}
-.page-switch:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
-.page-switch:focus-visible{outline:3px solid #7e9fe4;outline-offset:2px;border-radius:4px}
-@media(max-width:720px){.site-title{gap:5px}.page-switch{font-size:.72rem}}
+.site-title{display:flex;align-items:center;gap:22px;min-width:0;height:100%}
+.page-nav{display:flex;align-items:center;gap:22px;height:100%}
+.page-nav a{display:flex;align-items:center;height:100%;color:var(--muted);font-size:.88rem;text-decoration:none;font-weight:500;white-space:nowrap}
+.page-nav a[aria-current]{color:var(--ink);border-bottom:2px solid var(--ink)}
+.page-nav a:hover{color:var(--ink)}
+.page-nav a:focus-visible{outline:3px solid #7e9fe4;outline-offset:2px;border-radius:4px}
+@media(max-width:720px){
+ .site-title{gap:8px}
+ .site-title .brand{font-size:.62rem;letter-spacing:.065em;white-space:nowrap}
+ .page-nav{gap:9px}
+ .page-nav a{font-size:.7rem}
+}
 
 .preview-image-wrap{position:relative;display:block;width:fit-content;max-width:100%;margin:inherit}
 .preview-image-wrap>img{display:block!important;margin:0!important;max-width:100%!important}
@@ -488,11 +495,13 @@ body.overlay-scroll-locked{
 .detail-images .preview-image-wrap,.game-preview-images .preview-image-wrap,.game-summary-preview-images .preview-image-wrap,.game-history-preview-images .preview-image-wrap{width:100%;margin:0}
 .detail-images .preview-image-wrap>img,.game-preview-images .preview-image-wrap>img,.game-summary-preview-images .preview-image-wrap>img,.game-history-preview-images .preview-image-wrap>img{width:100%}
 @media(pointer:coarse) and (max-width:720px){.image-lightbox{padding:48px 10px 18px}.image-lightbox img{max-width:calc(100vw - 20px);max-height:calc(100dvh - 66px)}.image-lightbox-close{right:10px;top:8px}}
+
+@media(max-width:720px){header{gap:7px}.site-title .brand{font-size:.62rem!important;letter-spacing:.065em!important}.page-nav{gap:8px}.page-nav a{font-size:.69rem}}
 </style>
 </head>
 <body>
 <header>
-  <div class="site-title"><span class="brand">VUE D’ENSEMBLE</span> <a class="page-switch" href="carto.html" title="Ouvrir la cartographie">Frise chronologique</a></div>
+  <div class="site-title"><span class="brand">VUE D’ENSEMBLE</span><nav class="page-nav"><a href="./" aria-current="page">Frise</a><a href="./carto.html">Carte</a></nav></div>
   <div class="header-actions"><button id="randomEvent" type="button" aria-label="Tirer un événement au hasard" title="Tirer un événement au hasard">🎲</button><div class="palette-tool"><button id="paletteButton" type="button" aria-label="Tester une palette temporaire" title="Tester une palette temporaire" aria-expanded="false">🎨</button><div id="palettePanel" class="palette-panel" hidden><div class="palette-head"><strong>Palette temporaire</strong><label><select id="paletteCount" aria-label="Nombre de couleurs"><option value="3">3</option><option value="4">4</option><option value="6">6</option><option value="8" selected>8</option></select> couleurs</label></div><div id="paletteColors" class="palette-colors"></div><details class="color-library-details"><summary>Couleurs prédéfinies</summary><div id="paletteSwatches" class="preset-color-library"></div></details><div class="palette-auto"><select id="palettePreset" aria-label="Style de palette automatique"><option value="surprise">Surprise</option><option value="analogous">Nuancée</option><option value="vivid">Vive</option><option value="pastel">Pastel</option><option value="mono">Dégradé</option></select><button id="generatePalette" type="button">Générer</button></div><div class="palette-actions"><button id="applyPalette" type="button" class="primary">Appliquer</button><button id="resetPalette" type="button">Original</button></div></div></div><div class="game-tool"><button id="gameButton" type="button" aria-label="Mode jeu" title="Mode jeu" aria-expanded="false">🎮</button><div id="gameMenu" class="game-menu-pop" hidden><div class="game-menu-title"><strong>Mode jeu</strong><span>🎮</span></div><div class="game-menu-tabs"><button id="gameTabPlay" class="game-menu-tab active" type="button">Jeux</button><button id="gameTabHistory" class="game-menu-tab" type="button">Historique</button></div><div id="gamePlayPane"><button class="game-mode" type="button" data-game-mode="free"><strong>⌨️ Saisie libre</strong><small>Donne l’année, le siècle ou les bornes.</small></button><button class="game-mode" type="button" data-game-mode="choice"><strong>🔢 4 réponses</strong><small>Choisis parmi quatre dates très proches.</small></button><button class="game-mode" type="button" data-game-mode="reverse"><strong>↔️ Année → événement</strong><small>Retrouve l’événement parmi deux choix proches.</small></button><div class="game-records"><span>Record saisie libre</span><strong id="gameBestFree">0</strong><span>Record 4 réponses</span><strong id="gameBestChoice">0</strong><span>Record année → événement</span><strong id="gameBestReverse">0</strong></div></div><div id="gameHistoryPane" hidden><button id="reviewErrors" class="review-errors-button" type="button">↻ Réviser mes erreurs</button><div id="gameHistoryList" class="game-history-list"></div></div></div></div><div class="file-menu"><button id="fileMenuButton" type="button" aria-label="Importer, exporter ou régler l’affichage" aria-expanded="false">⋯</button><div id="fileMenu" class="file-menu-pop" hidden><button id="undoButton" type="button" disabled>↶ Annuler</button><button id="openImportHelp" type="button">Importer CSV…</button><input id="importCsv" type="file" accept=".csv,text/csv" hidden><button id="exportCsv" type="button">Exporter CSV</button><button id="toggleTableView" type="button">Vue tableau</button><button id="openSettings" type="button">Paramètres</button></div></div><button id="add" class="primary" aria-label="Nouvel événement" title="Nouvel événement">+</button></div>
 </header>
 <main>
