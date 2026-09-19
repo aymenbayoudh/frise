@@ -759,11 +759,11 @@ async function updateSubdivisions(force=false){
  subdivisionKey=key;subAdmin.clearLayers();communeHits.clearLayers();
  try{
    if(kind==='departements'&&deptGeo){
-     L.geoJSON(deptGeo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#20262B',weight:.72,opacity:.92,fillOpacity:0}}).addTo(subAdmin)
+     L.geoJSON(deptGeo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:.82,opacity:.96,fillOpacity:0}}).addTo(subAdmin)
    }else if(kind.startsWith('arrondissements:')){
      const geo=await ensureArrGeo();if(key!==subdivisionKey)return;
      const wanted=new Set(wantedCodes),filtered={type:'FeatureCollection',features:geo.features.filter(f=>wanted.has(arrondissementDepartmentCode(f)))};
-     L.geoJSON(filtered,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#30363B',weight:.66,opacity:.88,fillOpacity:0}}).addTo(subAdmin)
+     L.geoJSON(filtered,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#181B1E',weight:.76,opacity:.94,fillOpacity:0}}).addTo(subAdmin)
    }else if(kind.startsWith('epci-communes:')){
      const epci=kind.slice('epci-communes:'.length),geo=await epciCommuneGeo(epci);if(key!==subdivisionKey||!geo?.features||contextEpci()!==epci)return;
      L.geoJSON(geo,{pane:'subAdminPane',interactive:false,style:communeBoundaryStyle}).addTo(subAdmin);
