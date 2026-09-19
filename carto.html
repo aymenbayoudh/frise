@@ -237,6 +237,9 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 .admin-center-dot.rank-regionSecondary span{font-size:9.4px!important;font-weight:600!important;padding:1px 4px!important}
 .admin-center-dot.rank-subpref span{font-size:8.7px!important;font-weight:500!important;padding:1px 4px!important}
 .leaflet-commune-hit-pane path{cursor:pointer}
+
+#cartRegionLabel[hidden],#cartDepartmentLabel[hidden]{display:none!important}
+#cartRegion,#cartDepartment,#cartUnit{min-width:0}
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto.html" aria-current="page">Cartographie</a></nav><div class="header-actions">
 <button id="randomItem" type="button" aria-label="Exemple au hasard" title="Exemple au hasard">🎲</button>
@@ -270,7 +273,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 </div>
 </section>
 <main class="workspace"><section class="canvas" aria-label="Carte des exemples locaux"><div id="map"></div><div class="scale-panel"><input id="scale" type="range" min="0" max="3" value="0" step="1" aria-label="Échelle territoriale"><div class="scale-labels"><button data-mode="0" class="active">Communes</button><button data-mode="1">Interco / syndicat</button><button data-mode="2">Départements</button><button data-mode="3">Régions</button></div></div><button class="home" id="home">↖ France entière</button><div class="overseas" id="overseas" aria-label="Encarts outre-mer"></div><div id="status" class="status" role="status"></div><div class="legend" id="legend"></div><aside id="mapDetail" class="map-detail" hidden aria-label="Détail de la fiche"><div class="map-detail-head"><button id="mapDetailClose" class="close" type="button" aria-label="Fermer">×</button><div class="detail-actions"><button id="mapDetailEdit" type="button">Modifier</button></div></div><h2 id="mapDetailTitle"></h2><p id="mapDetailPlace"></p><p id="mapDetailSubtitle"></p><div id="mapDetailBody"></div></aside></section>
-<aside id="sidePanel"><div id="sideResize" class="side-resize" role="separator" aria-orientation="vertical" aria-label="Redimensionner le panneau"></div><div class="aside-head"><div class="aside-topline"><button id="back" class="back" hidden>← Tous les territoires</button><button id="sideAdd" class="side-add" type="button">＋ Ajouter</button></div><div class="eyebrow" id="eyebrow">Atlas des exemples</div><h1 id="heading">Communes</h1><p id="context"></p></div><div id="list" class="list"></div><div class="foot">Démonstration · aucune donnée Anki importée.<details><summary>Géométrie et sources</summary><p>Contours régions, départements et EPCI : données administratives Etalab. Communes : <a href="https://geo.api.gouv.fr/decoupage-administratif">API Découpage administratif</a>. Fond satellite au zoom fort : Esri World Imagery.</p><p>Rues et quartiers : point localisé uniquement, sans tracé. Les sièges sont des repères approximatifs. Encarts à des échelles différentes : DROM, Polynésie française et Nouvelle-Calédonie.</p></details></div></aside></main>
+<aside id="sidePanel"><div id="sideResize" class="side-resize" role="separator" aria-orientation="vertical" aria-label="Redimensionner le panneau"></div><div class="aside-head"><div class="aside-topline"><button id="back" class="back" hidden>← Tous les territoires</button><button id="sideAdd" class="side-add" type="button">＋ Ajouter</button></div><div class="eyebrow" id="eyebrow">Atlas des exemples</div><h1 id="heading">Communes</h1><p id="context"></p></div><div id="list" class="list"></div><div class="foot">Démonstration · aucune donnée Anki importée.<details><summary>Géométrie et sources</summary><p>Contours régions, départements et EPCI : données administratives Etalab. Sélecteur Région → Département → Commune : référentiel open data local <code>admin-locations.json</code>. Contours communaux : <a href="https://geo.api.gouv.fr/decoupage-administratif">API Découpage administratif</a>. Fond satellite au zoom fort : Esri World Imagery.</p><p>Rues et quartiers : point localisé uniquement, sans tracé. Les sièges sont des repères approximatifs. Encarts à des échelles différentes : DROM, Polynésie française et Nouvelle-Calédonie.</p></details></div></aside></main>
 <div id="gameScrim" class="game-scrim" hidden></div>
 <section id="gamePanel" class="game-panel" hidden aria-label="Mode jeu">
   <div class="game-panel-head"><div><h2 id="gameModeTitle">Mode jeu</h2><div class="game-stats"><span>Série <strong id="gameScore">0</strong></span><span>Record <strong id="gameBest">0</strong></span><span id="gameStrikes" class="game-strikes" aria-label="Erreurs : 0 sur 3"><i class="game-strike" aria-hidden="true"></i><i class="game-strike" aria-hidden="true"></i><i class="game-strike" aria-hidden="true"></i></span></div><div class="game-progress-row"><div id="gameProgress" class="game-progress-track" role="progressbar" aria-label="Bonnes réponses" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"><span id="gameProgressFill" class="game-progress-fill"></span></div><strong id="gameProgressText" class="game-progress-text">0/0</strong></div></div><div class="game-head-actions"><button id="gameStop" class="game-stop" type="button" aria-label="Terminer la partie" title="Terminer la partie">🏳️</button><button id="gameClose" class="game-close" type="button" aria-label="Fermer">×</button></div></div>
@@ -288,7 +291,9 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
     <div class="field rich-field"><span>Titre</span><div class="richbar mini-richbar"><button type="button" data-cart-command="bold" data-cart-target="cartTitle"><b>B</b></button><button type="button" data-cart-command="italic" data-cart-target="cartTitle"><i>I</i></button><button type="button" data-cart-command="underline" data-cart-target="cartTitle"><u>U</u></button></div><div id="cartTitle" class="inline-rich-editor" contenteditable="true" role="textbox" aria-label="Titre enrichi" data-placeholder="Titre de la fiche"></div></div>
     <div class="field rich-field"><span>Sous-titre</span><div class="richbar mini-richbar"><button type="button" data-cart-command="bold" data-cart-target="cartSubtitle"><b>B</b></button><button type="button" data-cart-command="italic" data-cart-target="cartSubtitle"><i>I</i></button><button type="button" data-cart-command="underline" data-cart-target="cartSubtitle"><u>U</u></button></div><div id="cartSubtitle" class="inline-rich-editor" contenteditable="true" role="textbox" aria-label="Sous-titre enrichi" data-placeholder="Sous-titre court"></div></div>
     <label>Niveau<select id="cartMode"><option value="0">Commune</option><option value="1">Interco / syndicat</option><option value="2">Département</option><option value="3">Région</option></select></label>
-    <label>Territoire<select id="cartUnit"></select></label>
+    <label id="cartRegionLabel">Région<select id="cartRegion"></select></label>
+    <label id="cartDepartmentLabel">Département<select id="cartDepartment"></select></label>
+    <label id="cartUnitLabel"><span id="cartUnitText">Commune</span><select id="cartUnit"></select></label>
     <label id="cartKindLabel">Localisation<select id="cartKind"><option value="global">Toute la commune / siège</option><option value="point">Lieu précis</option><option value="street">Rue / axe</option><option value="quarter">Quartier</option></select></label>
     <label>Étiquettes<input id="cartTags" placeholder="urbanisme, culture, patrimoine"></label>
     <div id="cartCoordinates" class="full coordinates-grid"><label>Latitude<input id="cartLat" inputmode="decimal" placeholder="48.8566"></label><label>Longitude<input id="cartLng" inputmode="decimal" placeholder="2.3522"></label></div>
@@ -317,6 +322,29 @@ bm:{name:'Bordeaux Métropole',code:'243300316',at:[44.8385,-.5885],dept:'33',re
 d40:{name:'Landes',code:'40',at:[43.894,-.499]},d33:{name:'Gironde',code:'33',at:[44.836,-.59]},d21:{name:'Côte-d’Or',code:'21',at:[47.323,5.044]},d971:{name:'Guadeloupe',code:'971',at:[15.992,-61.727]},d974:{name:'La Réunion',code:'974',at:[-20.879,55.452]},
 r27:{name:'Bourgogne-Franche-Comté',code:'27',at:[47.325,5.043]},r75:{name:'Nouvelle-Aquitaine',code:'75',at:[44.833,-.586]},r84:{name:'Auvergne-Rhône-Alpes',code:'84',at:[45.740,4.820]},r01:{name:'Guadeloupe',code:'01',at:[16.004,-61.722]},r04:{name:'La Réunion',code:'04',at:[-20.892,55.477]},rpf:{name:'Polynésie française',code:'987',at:[-17.55,-149.56],dept:'987',region:'987'},rnc:{name:'Nouvelle-Calédonie',code:'988',at:[-22.275,166.458],dept:'988',region:'988'}
 };
+const ADMIN_LOCATIONS_URL='./admin-locations.json';
+let adminCatalog=null;
+function parseAdminCatalog(raw){
+ const regions=(raw?.regions||[]).map(([code,name,zone])=>({code:String(code),name:String(name),zone:String(zone||'')})).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+ const departments=(raw?.departements||[]).map(([code,name,region])=>({code:String(code),name:String(name),region:String(region||'')})).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+ const communes=(raw?.communes||[]).map(([code,name,dept,region])=>({code:String(code),name:String(name),dept:String(dept||''),region:String(region||'')}));
+ const communeByCode=new Map(communes.map(x=>[x.code,x])),regionByCode=new Map(regions.map(x=>[x.code,x])),departmentByCode=new Map(departments.map(x=>[x.code,x]));
+ const departmentsByRegion=new Map,communesByDepartment=new Map;
+ for(const d of departments){if(!departmentsByRegion.has(d.region))departmentsByRegion.set(d.region,[]);departmentsByRegion.get(d.region).push(d)}
+ for(const c of communes){if(!communesByDepartment.has(c.dept))communesByDepartment.set(c.dept,[]);communesByDepartment.get(c.dept).push(c)}
+ for(const list of communesByDepartment.values())list.sort((a,b)=>a.name.localeCompare(b.name,'fr',{numeric:true,sensitivity:'base'}));
+ return{version:raw?.version||'',source:raw?.source||'',regions,departments,communes,communeByCode,regionByCode,departmentByCode,departmentsByRegion,communesByDepartment}
+}
+const adminCatalogPromise=fetch(ADMIN_LOCATIONS_URL,{cache:'force-cache'}).then(r=>{if(!r.ok)throw Error('Référentiel administratif local introuvable');return r.json()}).then(raw=>adminCatalog=parseAdminCatalog(raw)).catch(e=>{console.warn(e);return null});
+function hydrateCommuneUnitsFromCatalog(){
+ if(!adminCatalog)return;
+ for(const u of Object.values(units)){
+   const c=adminCatalog.communeByCode.get(String(u?.code||''));if(!c)continue;
+   u.name=c.name;u.dept=c.dept;u.region=c.region
+ }
+}
+adminCatalogPromise.then(cat=>{if(!cat)return;hydrateCommuneUnitsFromCatalog();if(mode===0){renderSide();pointRenderKey='';drawPoints()}})
+
 let data=[];function add(mode,unit,title,kind='global',at=null,shape=null,theme='Aménagement'){data.push({id:data.length+1,mode,unit,title,kind,at:at||units[unit].at,shape,theme});}
 add(0,'lyon','Des cours d’école ouvertes sur le quartier');add(0,'lyon','Un budget citoyen pour la renaturation');add(0,'lyon','Une tarification solidaire des équipements');add(0,'lyon','Rue Garibaldi : un axe rafraîchi','street',[45.7587,4.8526],[[45.7517,4.8509],[45.7587,4.8526],[45.7646,4.854]] ,'Mobilités');add(0,'lyon','Les Pentes : un quartier à hauteur d’enfant','quarter',[45.774,4.832],[[45.778,4.825],[45.779,4.837],[45.771,4.84],[45.769,4.828]]);add(0,'lyon','Une cour végétalisée à la Guillotière','point',[45.7526,4.8477],null,'Éducation');
 add(0,'bordeaux','Un plan municipal de canopée');add(0,'bordeaux','Sainte-Catherine : la rue des usages partagés','street',[44.839,-.573],[[44.847,-.5748],[44.842,-.5738],[44.836,-.572],[44.831,-.571]]);add(0,'bordeaux','Les Chartrons : une boucle de réemploi','quarter',[44.856,-.571],[[44.862,-.579],[44.861,-.565],[44.85,-.56],[44.85,-.578]],'Économie circulaire');add(0,'bordeaux','Un jardin de pluie sur les quais','point',[44.844,-.566]);
@@ -329,7 +357,7 @@ const doms=[{name:'Guadeloupe',dept:'971',region:'01',at:[16.2,-61.5],z:7},{name
 const CART_DATA_KEY='cartographie-v2:data',CART_FILTER_KEY='cartographie-v2:filters';
 const modeKeys=['commune','interco','departement','region'],defaultColors=['#21BCFF','#7C86FF','#FE9A37','#46ECD5'];
 for(const d of data){d.subtitle=String(d.subtitle||'');d.tags=Array.isArray(d.tags)&&d.tags.length?d.tags:[d.theme||'Aménagement',modes[d.mode]];d.deck=Array.isArray(d.deck)&&d.deck.length?d.deck:['Exemples fictifs::'+modes[d.mode]];d.color=/^#[0-9A-F]{6}$/i.test(d.color||'')?d.color.toUpperCase():defaultColors[d.mode]||'#315EB6';d.html=String(d.html||'<p>Exemple fictif utilisé pour tester la cartographie.</p>');d.image=Array.isArray(d.image)?d.image:[];d.shape=null}
-let hasImportedCartData=false;try{const saved=JSON.parse(localStorage.getItem(CART_DATA_KEY)||'null');if(saved?.rows?.length){data=saved.rows;Object.assign(units,saved.units||{});hasImportedCartData=true}}catch{}
+let hasImportedCartData=false;try{const saved=JSON.parse(localStorage.getItem(CART_DATA_KEY)||'null');if(saved?.rows?.length){data=saved.rows;Object.assign(units,saved.units||{});hasImportedCartData=true}}catch{};adminCatalogPromise.then(()=>hydrateCommuneUnitsFromCatalog())
 
 if(!window.L){$('status').textContent='Le moteur cartographique ne se charge pas. Vérifiez votre connexion et rechargez la page.';return;}
 const map=L.map('map',{zoomControl:true,minZoom:3,maxZoom:19,zoomSnap:.25,attributionControl:true,preferCanvas:true,fadeAnimation:false,markerZoomAnimation:false});
@@ -700,7 +728,65 @@ function renderCartDeckEditor(){const chips=$('cartDeckChips'),opts=$('cartDeckO
 function addCartDeck(){const input=$('cartDeckInput'),path=String(input.value||'').trim();if(!path)return;cartEditing.deck=unique([...cartEditing.deck,path]);input.value='';renderCartDeckEditor()}
 function renderCartImages(){const box=$('cartImageAttachments');box.innerHTML='';cartEditing.image.forEach((src,index)=>{const item=document.createElement('div');item.className='image-attachment';const img=document.createElement('img');img.src=src;img.alt='Image attachée '+(index+1);const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Retirer cette image');remove.onclick=()=>{cartEditing.image.splice(index,1);renderCartImages()};item.append(img,remove);box.append(item)})}
 function cartUnitsForMode(level){const used=new Map;for(const d of data.filter(d=>d.mode===level)){const u=units[d.unit];if(u)used.set(d.unit,u)}if(selection&&mode===level){if(!units[selection.key])units[selection.key]={name:selection.name||String(selection.code||selection.key),code:selection.code||selection.key,at:Array.isArray(selection.at)?selection.at:[map.getCenter().lat,map.getCenter().lng]};used.set(selection.key,units[selection.key])}return[...used].sort((a,b)=>String(a[1].name).localeCompare(String(b[1].name),'fr'))}
-function renderCartUnitOptions(preferred=''){const level=+$('cartMode').value,opts=cartUnitsForMode(level),select=$('cartUnit');select.innerHTML=opts.map(([key,u])=>'<option value="'+escape(key)+'">'+escape(u.name)+' · '+escape(u.code||key)+'</option>').join('');if(preferred&&opts.some(([k])=>k===preferred))select.value=preferred;else if(selection&&mode===level&&opts.some(([k])=>k===selection.key))select.value=selection.key;updateCartLocationFields()}
+function preferredCommuneCode(preferred=''){
+ const direct=adminCatalog?.communeByCode.get(String(preferred||''));if(direct)return direct.code;
+ const u=units[preferred];if(u?.code&&adminCatalog?.communeByCode.has(String(u.code)))return String(u.code);
+ if(selection?.code&&adminCatalog?.communeByCode.has(String(selection.code)))return String(selection.code);
+ return''
+}
+function fillCartRegions(preferredRegion=''){
+ const select=$('cartRegion'),list=adminCatalog?.regions||[];select.innerHTML=list.map(r=>'<option value="'+escape(r.code)+'">'+escape(r.name)+' · '+escape(r.code)+'</option>').join('');
+ if(preferredRegion&&list.some(r=>r.code===preferredRegion))select.value=preferredRegion
+}
+function fillCartDepartments(preferredDept=''){
+ const region=$('cartRegion').value,list=adminCatalog?.departmentsByRegion.get(region)||[],select=$('cartDepartment');
+ select.innerHTML=list.map(d=>'<option value="'+escape(d.code)+'">'+escape(d.name)+' · '+escape(d.code)+'</option>').join('');
+ if(preferredDept&&list.some(d=>d.code===preferredDept))select.value=preferredDept
+}
+function fillCartCommunes(preferredCode=''){
+ const dept=$('cartDepartment').value,list=adminCatalog?.communesByDepartment.get(dept)||[],select=$('cartUnit');
+ select.innerHTML=list.map(c=>'<option value="'+escape(c.code)+'">'+escape(c.name)+' · '+escape(c.code)+'</option>').join('');
+ if(preferredCode&&list.some(c=>c.code===preferredCode))select.value=preferredCode
+}
+async function renderCartUnitOptions(preferred='',preserveCoordinates=false){
+ const level=+$('cartMode').value,local=level===0;
+ $('cartRegionLabel').hidden=!local;$('cartDepartmentLabel').hidden=!local;$('cartUnitText').textContent=local?'Commune':'Territoire';
+ if(local){
+   await adminCatalogPromise;
+   if(adminCatalog){
+     hydrateCommuneUnitsFromCatalog();
+     const code=preferredCommuneCode(preferred),c=adminCatalog.communeByCode.get(code);
+     const fallbackRegion=c?.region||String(units[preferred]?.region||selection?.region||'84'),fallbackDept=c?.dept||String(units[preferred]?.dept||selection?.dept||'69');
+     fillCartRegions(fallbackRegion);fillCartDepartments(fallbackDept);fillCartCommunes(code);
+     if(!$('cartUnit').value){const first=adminCatalog.communesByDepartment.get($('cartDepartment').value)?.[0];if(first)$('cartUnit').value=first.code}
+     updateCartLocationFields();
+     if(!preserveCoordinates)await moveCartEditorToSelectedCommune();
+     return
+   }
+ }
+ const opts=cartUnitsForMode(level),select=$('cartUnit');select.innerHTML=opts.map(([key,u])=>'<option value="'+escape(key)+'">'+escape(u.name)+' · '+escape(u.code||key)+'</option>').join('');
+ if(preferred&&opts.some(([k])=>k===preferred))select.value=preferred;else if(selection&&mode===level&&opts.some(([k])=>k===selection.key))select.value=selection.key;
+ updateCartLocationFields()
+}
+function communeUnitKey(code,preferredUnit=''){
+ code=String(code||'');if(preferredUnit&&String(units[preferredUnit]?.code||'')===code)return preferredUnit;
+ const existing=Object.entries(units).find(([key,u])=>String(u?.code||'')===code&&data.some(d=>d.mode===0&&d.unit===key));
+ return existing?.[0]||'commune-'+code
+}
+function ensureCommuneUnit(code,preferredUnit=''){
+ const c=adminCatalog?.communeByCode.get(String(code||''));if(!c)return null;
+ const key=communeUnitKey(c.code,preferredUnit),u=units[key]||(units[key]={});
+ u.name=c.name;u.code=c.code;u.dept=c.dept;u.region=c.region;
+ return{key,u,c}
+}
+async function moveCartEditorToSelectedCommune(){
+ if(+$('cartMode').value!==0)return;
+ const code=$('cartUnit').value,c=adminCatalog?.communeByCode.get(code);if(!c)return;
+ const preferred=data.find(d=>d.id===cartEditedId)?.unit||'',entry=ensureCommuneUnit(code,preferred);if(!entry)return;
+ let at=Array.isArray(entry.u.at)?entry.u.at:null;
+ if(!at){const p=await communeCenter(code);if(p?.at){at=[...p.at];entry.u.at=at}}
+ if(at)setCartCoordinates(at[0],at[1],true)
+}
 let cartMiniMap=null,cartMiniMarker=null;
 function cartCoordinateValues(){const lat=Number(String($('cartLat').value).replace(',','.')),lng=Number(String($('cartLng').value).replace(',','.'));return Number.isFinite(lat)&&Number.isFinite(lng)?[lat,lng]:null}
 function cartEditPinIcon(){return L.divIcon({className:'cart-edit-pin',iconSize:[18,18],iconAnchor:[9,9],html:'<div class="cart-edit-pin-dot"></div>'})}
@@ -722,27 +808,34 @@ function ensureCartMiniMap(){
 }
 function syncCartMiniMapFromInputs(recenter=true){
  if(+$('cartMode').value!==0||$('cartEditor').hidden)return;
- const at=cartCoordinateValues()||units[$('cartUnit').value]?.at||[46.6,2.4],m=ensureCartMiniMap();
+ const localEntry=+$('cartMode').value===0?ensureCommuneUnit($('cartUnit').value,data.find(d=>d.id===cartEditedId)?.unit||''):null,at=cartCoordinateValues()||localEntry?.u?.at||units[$('cartUnit').value]?.at||[46.6,2.4],m=ensureCartMiniMap();
  cartMiniMarker.setLatLng(at);
  if(recenter)m.setView(at,Math.max(12,m.getZoom()||13),{animate:false});
  requestAnimationFrame(()=>m.invalidateSize({pan:false,animate:false}))
 }
-function updateCartLocationFields(){const level=+$('cartMode').value,local=level===0;$('cartKindLabel').hidden=!local;$('cartCoordinates').hidden=!local;$('cartMapField').hidden=!local;if(!local)$('cartKind').value='global';const u=units[$('cartUnit').value];if(u&&!cartEditedId&&local){$('cartLat').value=u.at?.[0]??'';$('cartLng').value=u.at?.[1]??''}if(local&&!$('cartEditor').hidden)requestAnimationFrame(()=>syncCartMiniMapFromInputs(true))}
+function updateCartLocationFields(){const level=+$('cartMode').value,local=level===0;$('cartKindLabel').hidden=!local;$('cartCoordinates').hidden=!local;$('cartMapField').hidden=!local;if(!local)$('cartKind').value='global';if(local&&!$('cartEditor').hidden)requestAnimationFrame(()=>syncCartMiniMapFromInputs(true))}
 function setCartEditorColor(c){c=validColor(c);$('cartEventColor').value=c;$('cartColorCode').value=c}
 function closeCartEditor(){$('cartEditor').hidden=true;$('editorScrim').hidden=true;cartEditedId=null}
-function openCartEditor(item=null){
+async function openCartEditor(item=null){
  closeTools();closeMapDetail();cartEditedId=item?.id??null;cartEditing={deck:[...(item?.deck||[])],image:[...(item?.image||[])]};
  $('cartFormTitle').textContent=item?'Modifier la fiche':'Nouvelle fiche';$('cartTitle').innerHTML=cleanCartInline(item?.title||'');$('cartSubtitle').innerHTML=cleanCartInline(item?.subtitle||'');
- $('cartMode').value=String(item?.mode??mode);renderCartUnitOptions(item?.unit||selection?.key||'');$('cartKind').value=item?.kind||'global';$('cartTags').value=(item?.tags||[]).join(', ');
+ $('cartMode').value=String(item?.mode??mode);$('cartKind').value=item?.kind||'global';$('cartTags').value=(item?.tags||[]).join(', ');
  $('cartDescription').innerHTML=cleanCartHtml(item?.html||'');setCartEditorColor(item?.color||'#21BCFF');renderCartDeckEditor();renderCartImages();$('cartDeckInput').value='';$('cartEditorError').textContent='';
- const u=units[item?.unit||$('cartUnit').value];$('cartLat').value=item?.at?.[0]??u?.at?.[0]??'';$('cartLng').value=item?.at?.[1]??u?.at?.[1]??'';
- $('cartDelete').hidden=!item;updateCartLocationFields();$('editorScrim').hidden=false;$('cartEditor').hidden=false;$('cartTitle').focus();requestAnimationFrame(()=>syncCartMiniMapFromInputs(true))
+ $('cartDelete').hidden=!item;$('editorScrim').hidden=false;$('cartEditor').hidden=false;
+ await renderCartUnitOptions(item?.unit||selection?.key||'',true);
+ const u=units[item?.unit||''];if(item?.at){$('cartLat').value=item.at[0];$('cartLng').value=item.at[1]}else if(+$('cartMode').value===0){await moveCartEditorToSelectedCommune()}else{$('cartLat').value=u?.at?.[0]??'';$('cartLng').value=u?.at?.[1]??''}
+ updateCartLocationFields();$('cartTitle').focus();requestAnimationFrame(()=>syncCartMiniMapFromInputs(true))
 }
 function refreshAfterCartEdit(preferredUnit=''){renderTags();renderDeckTree();temporaryPaletteAssignments.clear();pointRenderKey='';subdivisionKey='';communeLabelKey='';centerKey='';const gs=groups(),next=preferredUnit?gs.find(g=>g.key===preferredUnit):null;selection=next||null;renderSide();draw();updateSubdivisions(true);updateCenters(true);$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'')}
 function saveCartEditor(){
- const previous=data.find(d=>d.id===cartEditedId),level=+$('cartMode').value,unit=$('cartUnit').value,u=units[unit];
+ const previous=data.find(d=>d.id===cartEditedId),level=+$('cartMode').value,local=level===0;
+ let unit,u;
+ if(local){
+   const resolved=ensureCommuneUnit($('cartUnit').value,previous?.unit||'');if(!resolved)throw Error('Choisis une commune.');
+   unit=resolved.key;u=resolved.u
+ }else{unit=$('cartUnit').value;u=units[unit]}
  if(!u)throw Error('Choisis un territoire.');const title=cleanCartInline($('cartTitle').innerHTML);if(!cartInlineText(title))throw Error('Le titre est obligatoire.');
- const local=level===0,lat=local?Number(String($('cartLat').value).replace(',','.')):Number(u.at?.[0]),lng=local?Number(String($('cartLng').value).replace(',','.')):Number(u.at?.[1]);
+ const lat=local?Number(String($('cartLat').value).replace(',','.')):Number(u.at?.[0]),lng=local?Number(String($('cartLng').value).replace(',','.')):Number(u.at?.[1]);
  if(!Number.isFinite(lat)||!Number.isFinite(lng))throw Error('Latitude ou longitude invalide.');
  const tags=unique($('cartTags').value.split(',').map(x=>x.trim()).filter(Boolean)),item={...(previous||{}),id:cartEditedId||Math.max(0,...data.map(d=>Number(d.id)||0))+1,title,subtitle:cleanCartInline($('cartSubtitle').innerHTML),mode:level,unit,kind:local?$('cartKind').value:'global',at:[lat,lng],shape:null,theme:tags[0]||'Exemple',tags,color:validColor($('cartColorCode').value),html:cleanCartHtml($('cartDescription').innerHTML),deck:unique(cartEditing.deck.length?cartEditing.deck:['Sans deck']),image:unique(cartEditing.image),generatedDemo:false};
  const i=data.findIndex(d=>d.id===cartEditedId);i<0?data.push(item):data[i]=item;persistCartData();closeCartEditor();setMode(level);requestAnimationFrame(()=>{const g=groups().find(g=>g.key===unit);if(g)choose(g);showItem(item)});renderTags();renderDeckTree()
@@ -750,7 +843,11 @@ function saveCartEditor(){
 document.querySelectorAll('[data-cart-command]').forEach(b=>b.onclick=()=>{const target=$(b.dataset.cartTarget);target.focus();document.execCommand(b.dataset.cartCommand,false,null)});
 $('cartLink').onclick=()=>{const url=prompt('Adresse du lien :','https://');if(url&&/^https?:\/\//i.test(url)){const target=$('cartDescription');target.focus();document.execCommand('createLink',false,url)}};
 $('cartEventColor').oninput=()=>{$('cartColorCode').value=$('cartEventColor').value.toUpperCase()};$('cartColorCode').oninput=()=>{if(/^#[0-9a-f]{6}$/i.test($('cartColorCode').value))$('cartEventColor').value=$('cartColorCode').value};
-$('cartMode').onchange=()=>renderCartUnitOptions();$('cartUnit').onchange=updateCartLocationFields;for(const id of ['cartLat','cartLng'])$(id).addEventListener('input',()=>syncCartMiniMapFromInputs(false));$('cartDeckAdd').onclick=addCartDeck;$('cartDeckInput').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addCartDeck()}};
+$('cartMode').onchange=()=>renderCartUnitOptions('',false);
+$('cartRegion').onchange=async()=>{fillCartDepartments();fillCartCommunes();await moveCartEditorToSelectedCommune();updateCartLocationFields()};
+$('cartDepartment').onchange=async()=>{fillCartCommunes();await moveCartEditorToSelectedCommune();updateCartLocationFields()};
+$('cartUnit').onchange=async()=>{if(+$('cartMode').value===0)await moveCartEditorToSelectedCommune();updateCartLocationFields()};
+for(const id of ['cartLat','cartLng'])$(id).addEventListener('input',()=>syncCartMiniMapFromInputs(false));$('cartDeckAdd').onclick=addCartDeck;$('cartDeckInput').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addCartDeck()}};
 $('cartImage').onchange=()=>{const file=$('cartImage').files[0];if(!file)return;const reader=new FileReader;reader.onload=()=>{if(typeof reader.result==='string'){cartEditing.image.push(reader.result);renderCartImages()}};reader.readAsDataURL(file);$('cartImage').value=''};
 $('cartEditor').onsubmit=e=>{e.preventDefault();try{saveCartEditor()}catch(err){$('cartEditorError').textContent=err.message}};
 $('cartDelete').onclick=()=>{if(!cartEditedId||!confirm('Supprimer définitivement cette fiche ?'))return;const old=data.find(d=>d.id===cartEditedId),unit=old?.unit;data=data.filter(d=>d.id!==cartEditedId);persistCartData();closeCartEditor();refreshAfterCartEdit(unit)};
