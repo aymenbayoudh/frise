@@ -217,12 +217,17 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
  .map-detail{right:8px!important;top:92px!important;width:calc(100% - 16px)!important;max-height:42dvh!important}
  #cartEditor{width:100vw!important;padding:16px!important;border-radius:0!important}
 }
+
+.palette-opacity{display:grid;grid-template-columns:auto minmax(90px,1fr) 42px;align-items:center;gap:8px;margin:2px 0 9px;color:var(--muted);font-size:11px;font-weight:650}
+.palette-opacity input[type="range"]{width:100%;min-width:0;height:18px;accent-color:var(--ink)}
+.palette-opacity output{color:var(--ink);font-variant-numeric:tabular-nums;text-align:right}
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto.html" aria-current="page">Cartographie</a></nav><div class="header-actions">
 <button id="randomItem" type="button" aria-label="Exemple au hasard" title="Exemple au hasard">🎲</button>
 <div class="header-tool"><button id="paletteButton" type="button" aria-label="Couleurs" title="Couleurs" aria-expanded="false">🎨</button><div id="paletteMenu" class="header-pop palette-panel" hidden>
   <div class="palette-head"><strong>Palette temporaire</strong><label><select id="paletteCount" aria-label="Nombre de couleurs"><option value="3">3</option><option value="4">4</option><option value="6">6</option><option value="8" selected>8</option></select> couleurs</label></div>
   <div id="paletteColors" class="palette-colors"></div>
+  <label class="palette-opacity">Opacité des unités <input id="paletteOpacity" type="range" min="25" max="100" step="1" value="68"><output id="paletteOpacityValue" for="paletteOpacity">68 %</output></label>
   <details class="color-library-details"><summary>Couleurs prédéfinies</summary><div id="paletteSwatches" class="preset-color-library"></div></details>
   <div class="palette-auto"><select id="palettePreset" aria-label="Style automatique"><option value="surprise">Surprise</option><option value="analogous">Nuancée</option><option value="vivid">Vive</option><option value="pastel">Pastel</option><option value="mono">Dégradé</option></select><button id="generatePalette" type="button">Générer</button></div>
   <div class="palette-actions"><button id="applyPalette" class="primary" type="button">Appliquer</button><button id="resetPalette" type="button">Original</button></div>
@@ -355,9 +360,7 @@ function hexRgb(c){const x=validColor(c).slice(1);return[parseInt(x.slice(0,2),1
 function relativeLuminance(c){const rgb=hexRgb(c).map(v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]}
 function densityPalette(){
  const source=temporaryPaletteActive?temporaryPalette.slice(0,temporaryPaletteCount):[mixHex('#FFFFFF',accent,.16),mixHex('#FFFFFF',accent,.34),mixHex('#FFFFFF',accent,.52),mixHex('#FFFFFF',accent,.70),accent,mixHex(accent,'#111827',.16)];
- const ordered=[...new Set(source.map(validColor))].sort((a,b)=>relativeLuminance(b)-relativeLuminance(a));
- if(!temporaryPaletteActive)return ordered;
- return ordered.map((c,i)=>{const lum=relativeLuminance(c),pos=ordered.length<=1?1:i/(ordered.length-1),strength=Math.min(.86,.62+.22*lum+.05*pos);return mixHex('#FFFFFF',c,strength)})
+ return [...new Set(source.map(validColor))].sort((a,b)=>relativeLuminance(b)-relativeLuminance(a))
 }
 function densityMaxCount(){return Math.max(1,...groups().map(g=>g.items.length))}
 function densityColor(n){
@@ -385,7 +388,7 @@ function shade(n,code=''){
  return mixHex('#ffffff',unitDisplayColor(code),n===1?.18:n===2?.34:n===3?.5:n<=5?.68:.88)
 }
 function countCode(code){return current().filter(d=>String(keyOf(d))===String(code)).length;}
-function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom();let fillOpacity=mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0,opacity=.96;const baseWeight=mode===3?1.8:mode===2?1.45:mode===1?.9:.8;if(hasSelection&&!selected){fillOpacity*=.16;opacity=.22}if(selected){fillOpacity=Math.max(fillOpacity,.78);opacity=1}return {color:selected?'#102536':'#5f7483',weight:selected?Math.max(4.2,baseWeight+2.4):baseWeight,fillColor:shade(n,code),fillOpacity,opacity};}
+function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom();let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0,opacity=.96;const baseWeight=mode===3?1.8:mode===2?1.45:mode===1?.9:.8;if(hasSelection&&!selected){fillOpacity*=.16;opacity=.22}if(selected){fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));opacity=1}return {color:selected?'#102536':'#5f7483',weight:selected?Math.max(4.2,baseWeight+2.4):baseWeight,fillColor:shade(n,code),fillOpacity,opacity};}
 function updateBasemap(){if(map.getZoom()>=13){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
 function restyleAdminLayer(layer){if(layer.feature&&layer.setStyle)layer.setStyle(adminStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleAdminLayer)}
 function refreshAdminStyle(){admin.eachLayer(restyleAdminLayer)}
@@ -420,11 +423,12 @@ function locationBuckets(items){const b=new Map();items.forEach(d=>{const k=d.at
 function openBucket(items){if(items.length===1){showItem(items[0]);return;}activeItem=null;focus.clearLayers();$('heading').textContent='Au siège · '+units[items[0].unit].name;$('context').textContent=items.length+' initiatives à portée générale';$('back').hidden=false;renderCards(items);}
 function drawPoints(){pointRenderKey=pointState();points.clearLayers();if(mode>=1)return;const z=map.getZoom(),gs=groups();for(const g of gs){if(!g.items.length)continue;if(z<11){addMarker(g.at,g.items,g.name,false,()=>choose(g));continue}for(const bucket of locationBuckets(g.items)){const label=bucket.length>1?'Siège · '+g.name:bucket[0].title;addMarker(bucket[0].at,bucket,label,true,()=>{if(!selection||selection.key!==g.key){selection=g;renderSide()}openBucket(bucket)})}}}
 function densityLegendGradient(){const ramp=densityPalette();if(!ramp.length)return'linear-gradient(90deg,#fff,'+accent+')';if(ramp.length===1)return ramp[0];return'linear-gradient(90deg,'+ramp.map((c,i)=>c+' '+Math.round(i/(ramp.length-1)*100)+'%').join(',')+')'}
+function densityLegendOpacity(){return temporaryPaletteActive?temporaryPaletteOpacity:1}
 function updateLegend(){
  const legend=$('legend');
  if(mode>=1){
    const max=densityMaxCount(),label=mode===1?'Intercommunalités':mode===2?'Départements':'Régions';
-   legend.innerHTML='<span class="legend-title">'+label+' · nombre de fiches</span><span class="ramp" style="background:'+densityLegendGradient()+'"></span><span class="legend-scale"><b>0</b><span>clair → foncé</span><b>'+max+'</b></span>'
+   legend.innerHTML='<span class="legend-title">'+label+' · nombre de fiches</span><span class="ramp" style="background:'+densityLegendGradient()+';opacity:'+densityLegendOpacity()+'"></span><span class="legend-scale"><b>0</b><span>clair → foncé</span><b>'+max+'</b></span>'
  }else legend.innerHTML='Cercles : nombre de fiches · ◆ au siège · épingles au zoom'
 }
 function draw(){drawAdmin();drawPoints();updateInsets();updateLegend()}
@@ -635,7 +639,7 @@ function seedEpciDemoCoverage(){
 }
 
 function domItems(d){return current().filter(x=>mode<2?units[x.unit].dept===d.dept:mode===2?keyOf(x)===d.dept:keyOf(x)===d.region);}
-function updateInsets(){for(const d of doms){d.layer.clearLayers();const items=domItems(d);d.count.textContent=items.length;if(d.geo)L.geoJSON(d.geo,{interactive:false,style:{color:'#738797',weight:.6,fillColor:mode>=2?shade(items.length,mode===3?d.region:d.dept):'#e2eaf0',fillOpacity:1}}).addTo(d.layer);if(d.regionOnly)L.circleMarker(d.at,{radius:15,color:'#fff',weight:2,fillColor:items.length?temporaryEventColor(items[0]):'#aeb8c0',fillOpacity:1,interactive:false}).addTo(d.layer);else if(mode<2&&items.length)L.circleMarker(d.at,{radius:7,color:'#fff',weight:1,fillColor:temporaryEventColor(items[0]),fillOpacity:1,interactive:false}).addTo(d.layer);}}
+function updateInsets(){for(const d of doms){d.layer.clearLayers();const items=domItems(d),adminOpacity=temporaryPaletteActive&&mode>=2?temporaryPaletteOpacity:1;if(d.count)d.count.textContent=items.length;if(d.geo)L.geoJSON(d.geo,{interactive:false,style:{color:'#738797',weight:.6,fillColor:mode>=2?shade(items.length,mode===3?d.region:d.dept):'#e2eaf0',fillOpacity:adminOpacity}}).addTo(d.layer);if(d.regionOnly)L.circleMarker(d.at,{radius:15,color:'#fff',weight:2,fillColor:mode>=2?shade(items.length,d.region):(items.length?temporaryEventColor(items[0]):'#aeb8c0'),fillOpacity:adminOpacity,interactive:false}).addTo(d.layer);else if(mode<2&&items.length)L.circleMarker(d.at,{radius:7,color:'#fff',weight:1,fillColor:temporaryEventColor(items[0]),fillOpacity:1,interactive:false}).addTo(d.layer);}}
 for(const [i,d] of doms.entries()){const el=document.createElement('div');el.className='inset';el.innerHTML='<div class="mini" id="mini'+i+'"></div><button aria-label="Afficher '+d.name+'"><span>'+d.name+' <b>0</b></span></button>';$('overseas').append(el);d.count=el.querySelector('b');d.map=L.map('mini'+i,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false,preferCanvas:true,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false}).setView(d.at,d.z);d.layer=L.layerGroup().addTo(d.map);el.querySelector('button').onclick=()=>{selection=null;activeItem=null;focus.clearLayers();local.clearLayers();map.setView(d.at,d.regionOnly?8:(d.dept==='973'?6:10));renderSide();drawPoints();};}
 
 
@@ -714,14 +718,14 @@ const colorPresetGroups=[
 function validColor(c){return /^#[0-9A-F]{6}$/i.test(c)?c.toUpperCase():"#3D7BE0"}
 function renderColorPresetLibrary(container,onPick){if(!container)return;container.innerHTML="";for(const group of colorPresetGroups){const row=document.createElement("div");row.className="swatch-group";const label=document.createElement("span");label.className="swatch-group-label";label.textContent=group.label;const grid=document.createElement("div");grid.className="swatch-grid";for(const color of group.colors){const b=document.createElement("button");b.type="button";b.style.setProperty("--swatch",color);b.title=group.label+" · "+color;b.setAttribute("aria-label","Choisir "+color+" · "+group.label);b.onclick=()=>onPick(color);grid.append(b)}row.append(label,grid);container.append(row)}}
 const temporaryPaletteDefaults=[vividPalette.green,vividPalette.blue,vividPalette.pink,vividPalette.orange,vividPalette.brown,vividPalette.red,vividPalette.violet,vividPalette.turquoise];
-let temporaryPalette=[...temporaryPaletteDefaults],temporaryPaletteCount=8,temporaryPaletteActive=false,temporaryPaletteEditIndex=0,temporaryPalettePickerOpenIndex=null;
+let temporaryPalette=[...temporaryPaletteDefaults],temporaryPaletteCount=8,temporaryPaletteActive=false,temporaryPaletteOpacity=.68,temporaryPaletteEditIndex=0,temporaryPalettePickerOpenIndex=null;
 const temporaryPaletteAssignments=new Map;
 function paletteRandomUnit(){const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]/4294967295}
 function paletteRandomIndex(n){return Math.floor(paletteRandomUnit()*Math.max(1,n))%Math.max(1,n)}
 function temporaryEventColor(e){if(!e)return accent;if(!temporaryPaletteActive)return validColor(e.color||accent);if(!temporaryPaletteAssignments.has(e.id))temporaryPaletteAssignments.set(e.id,paletteRandomIndex(temporaryPaletteCount));return temporaryPalette[temporaryPaletteAssignments.get(e.id)%temporaryPaletteCount]||validColor(e.color||accent)}
 function renderTemporaryPaletteInputs(){const box=$("paletteColors");if(!box)return;temporaryPaletteEditIndex=Math.max(0,Math.min(temporaryPaletteCount-1,temporaryPaletteEditIndex));box.innerHTML="";const refreshActive=()=>{[...box.querySelectorAll('input[type="color"]')].forEach((el,j)=>el.classList.toggle("active-slot",j===temporaryPalettePickerOpenIndex))};temporaryPalette.slice(0,temporaryPaletteCount).forEach((c,i)=>{const input=document.createElement("input");input.type="color";input.value=c;input.setAttribute("aria-label","Couleur "+(i+1));input.onclick=e=>{e.preventDefault();if(temporaryPalettePickerOpenIndex===i){temporaryPalettePickerOpenIndex=null;input.blur();input.disabled=true;requestAnimationFrame(()=>{input.disabled=false;refreshActive()});refreshActive();return}temporaryPaletteEditIndex=i;temporaryPalettePickerOpenIndex=i;refreshActive();try{input.showPicker()}catch{input.focus()}};input.oninput=()=>{temporaryPalette[i]=validColor(input.value);if(temporaryPaletteActive)refreshPaletteMap()};box.append(input)});refreshActive();renderColorPresetLibrary($("paletteSwatches"),c=>{temporaryPalette[temporaryPaletteEditIndex]=validColor(c);const input=box.querySelectorAll('input[type="color"]')[temporaryPaletteEditIndex];if(input)input.value=temporaryPalette[temporaryPaletteEditIndex];if(temporaryPaletteActive)refreshPaletteMap()})}
 function applyTemporaryPalette(){temporaryPaletteActive=true;temporaryPaletteAssignments.clear();refreshPaletteMap()}
-function resetTemporaryPalette(){temporaryPaletteActive=false;temporaryPaletteAssignments.clear();refreshPaletteMap()}
+function resetTemporaryPalette(){temporaryPaletteActive=false;temporaryPaletteOpacity=.68;temporaryPaletteAssignments.clear();if($('paletteOpacity')){$('paletteOpacity').value='68';$('paletteOpacityValue').value='68 %'}refreshPaletteMap()}
 function paletteHue(h){return(h%360+360)%360}
 function hsl(h,sat,light){sat/=100;light/=100;const k=n=>(n+h/30)%12,a=sat*Math.min(light,1-light),f=n=>light-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));return[f(0),f(8),f(4)].map(x=>Math.round(255*x))}
 function hex(rgb){return"#"+rgb.map(x=>x.toString(16).padStart(2,"0")).join("").toUpperCase()}
@@ -761,7 +765,7 @@ function automaticPaletteColors(style,n){
 function generateAutomaticPalette(style=$("palettePreset")?.value||"surprise"){const n=temporaryPaletteCount,colors=automaticPaletteColors(style,n);temporaryPalette=[...colors,...temporaryPalette.slice(n)];renderTemporaryPaletteInputs();temporaryPaletteActive=true;temporaryPaletteAssignments.clear();refreshPaletteMap()}
 function refreshPaletteMap(){drawAdmin();drawPoints();updateInsets();updateLegend();centerKey='';updateCenters(true);if(activeItem){$("mapDetail")?.style.setProperty("--event-color",temporaryEventColor(activeItem));focus.eachLayer(l=>{if(l.setStyle)l.setStyle({color:temporaryEventColor(activeItem),fillColor:temporaryEventColor(activeItem)})})}}
 renderTemporaryPaletteInputs();renderColorPresetLibrary($('cartSwatches'),setCartEditorColor);$('paletteButton').onclick=e=>{e.stopPropagation();const panel=$('paletteMenu'),open=panel.hidden;closeTools(panel);panel.hidden=!open;$('paletteButton').setAttribute('aria-expanded',String(open));if(open)renderTemporaryPaletteInputs()};
-$('paletteCount').onchange=()=>{temporaryPaletteCount=Number($('paletteCount').value);temporaryPalettePickerOpenIndex=null;temporaryPaletteAssignments.clear();renderTemporaryPaletteInputs();if(temporaryPaletteActive)refreshPaletteMap()};$('generatePalette').onclick=()=>generateAutomaticPalette();$('applyPalette').onclick=applyTemporaryPalette;$('resetPalette').onclick=resetTemporaryPalette;
+$('paletteCount').onchange=()=>{temporaryPaletteCount=Number($('paletteCount').value);temporaryPalettePickerOpenIndex=null;temporaryPaletteAssignments.clear();renderTemporaryPaletteInputs();if(temporaryPaletteActive)refreshPaletteMap()};$('paletteOpacity').oninput=()=>{temporaryPaletteOpacity=Math.max(.25,Math.min(1,Number($('paletteOpacity').value)/100));$('paletteOpacityValue').value=Math.round(temporaryPaletteOpacity*100)+' %';if(temporaryPaletteActive)refreshPaletteMap()};$('generatePalette').onclick=()=>generateAutomaticPalette();$('applyPalette').onclick=applyTemporaryPalette;$('resetPalette').onclick=resetTemporaryPalette;
 $('gameButton').onclick=e=>{e.stopPropagation();const open=$('gameMenu').hidden;closeTools($('gameMenu'));$('gameMenu').hidden=!open;$('gameButton').setAttribute('aria-expanded',String(open));if(open){updateGameRecords();if(!$('gameHistoryPane').hidden)renderGameHistory()}};
 $('moreButton').onclick=e=>{e.stopPropagation();toggleTool($('moreMenu'))};$('toggleFilters').onclick=e=>{e.stopPropagation();const pop=$('tagFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleFilters').setAttribute('aria-expanded',String(open))};$('toggleDecks').onclick=e=>{e.stopPropagation();toggleTool($('deckMenu'))};$('tagFilters').onclick=e=>e.stopPropagation();$('deckMenu').onclick=e=>e.stopPropagation();$('searchResults').onclick=e=>e.stopPropagation();
 function randomCurrentItem(){const pool=current();if(!pool.length)return;const a=new Uint32Array(1);crypto.getRandomValues(a);showItem(pool[a[0]%pool.length])}
