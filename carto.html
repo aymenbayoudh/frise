@@ -262,6 +262,14 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 .leaflet-adminHitPane-pane{pointer-events:auto!important}
 .leaflet-adminHitPane-pane .leaflet-interactive{pointer-events:auto!important;cursor:pointer}
 .leaflet-mainOutlinePane-pane,.leaflet-contextAdminPane-pane,.leaflet-subAdminPane-pane{pointer-events:none!important}
+
+.admin-search-box{min-width:190px}
+.admin-search-box input{width:190px}
+.admin-search-results{width:min(340px,calc(100vw - 20px));max-height:360px;overflow:auto}
+.admin-search-results button strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-search-results button small{display:block;margin-top:2px;color:var(--muted);font-size:10px;font-weight:550;white-space:normal;line-height:1.25}
+@media(max-width:900px){.admin-search-box{min-width:160px}.admin-search-box input{width:160px}}
+@media(max-width:720px){.cart-toolbar{flex-wrap:wrap}.admin-search-box,.admin-search-box input{width:100%;min-width:0}}
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto.html" aria-current="page">Cartographie</a></nav><div class="header-actions">
 <button id="randomItem" type="button" aria-label="Exemple au hasard" title="Exemple au hasard">🎲</button>
@@ -290,7 +298,8 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 <div class="cart-toolbar">
   <div class="tag-filter-menu"><button id="toggleFilters" class="compact-control" type="button" aria-expanded="false">Étiquettes <span class="chevron">⌄</span></button><div id="tagFilters" class="tag-filter-pop" hidden></div></div>
   <div class="deck-filter-menu"><button id="toggleDecks" class="compact-control" type="button" aria-expanded="false">Decks <span class="chevron">⌄</span></button><div id="deckMenu" class="deck-menu-pop" hidden><div class="deck-menu-actions"><button id="checkAllDecks" type="button">Tout cocher</button><button id="uncheckAllDecks" type="button">Tout décocher</button></div><div id="deckTree"></div></div></div>
-  <div class="search-box"><input id="search" type="search" placeholder="Rechercher…" autocomplete="off" aria-label="Rechercher"><div id="searchResults" class="search-results" hidden></div></div>
+  <div class="search-box"><input id="search" type="search" placeholder="Rechercher un événement…" autocomplete="off" aria-label="Rechercher un événement"><div id="searchResults" class="search-results" hidden></div></div>
+  <div class="search-box admin-search-box"><input id="adminSearch" type="search" placeholder="Collectivité…" autocomplete="off" aria-label="Rechercher une collectivité"><div id="adminSearchResults" class="search-results admin-search-results" hidden></div></div>
   <span id="visibleCount" class="visible-count"></span>
 </div>
 </section>
@@ -1067,6 +1076,78 @@ function matchesSearch(d,q){const hay=searchable(d);return searchTokens(q).every
 function updateSearch(){const q=$('search').value.trim(),box=$('searchResults');if(!q){box.hidden=true;box.innerHTML='';return}const found=data.filter(d=>matchesSearch(d,q)).slice(0,15);box.innerHTML=found.length?found.map(d=>'<button type="button" data-search-id="'+d.id+'"><strong>'+escape(d.title)+'</strong><small>'+escape(units[d.unit]?.name||d.unit)+' · '+escape(modes[d.mode])+'</small></button>').join(''):'<span class="empty">Aucun résultat</span>';box.hidden=false;box.querySelectorAll('[data-search-id]').forEach(b=>b.onclick=()=>{const d=data.find(x=>x.id===+b.dataset.searchId);selectedTags.clear();selectedDeckPaths=new Set(allDeckPaths);saveFilters();renderTags();renderDeckTree();box.hidden=true;setMode(d.mode);requestAnimationFrame(()=>showItem(d))})}
 $('search').oninput=updateSearch;
 
+function adminSearchText(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('fr').replace(/[’']/g,"'").trim()}
+function adminSearchEntries(){
+ const out=[];
+ if(adminCatalog){
+   for(const r of adminCatalog.regions)out.push({mode:3,type:'Région',code:r.code,name:r.name,region:r.code});
+   for(const d of adminCatalog.departments)out.push({mode:2,type:'Département',code:d.code,name:d.name,region:d.region});
+   for(const c of adminCatalog.communes)out.push({mode:0,type:'Commune',code:c.code,name:c.name,dept:c.dept,region:c.region})
+ }
+ if(epciGeo?.features?.length){
+   for(const f of epciGeo.features){const code=featureAdminCode(f),name=featureAdminName(f);if(code&&name)out.push({mode:1,type:'Intercommunalité',code,name,feature:f})}
+ }
+ return out
+}
+function scoreAdminSearch(entry,raw){
+ const q=adminSearchText(raw),name=adminSearchText(entry.name),code=adminSearchText(entry.code);
+ if(!q)return-1;
+ if(code===q)return 1200;
+ if(name===q)return 1100;
+ if(name.startsWith(q))return 950-Math.min(100,name.length-q.length);
+ if(code.startsWith(q))return 900;
+ const words=name.split(/[\s\-()]+/);
+ if(words.some(w=>w.startsWith(q)))return 780;
+ const pos=name.indexOf(q);if(pos>=0)return 650-pos;
+ return-1
+}
+function collectivityMeta(entry){
+ if(entry.mode===0){
+   const dep=adminCatalog?.departmentByCode.get(String(entry.dept));
+   return 'Commune · '+entry.code+(dep?' · '+dep.name+' ('+dep.code+')':'')
+ }
+ if(entry.mode===1)return 'Intercommunalité · '+entry.code;
+ if(entry.mode===2)return 'Département · '+entry.code;
+ return 'Région · '+entry.code
+}
+async function navigateToCollectivity(entry){
+ if(!entry)return;
+ $('adminSearchResults').hidden=true;$('adminSearch').value=entry.name;
+ closeMapDetail();setMode(entry.mode);
+ await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+ if(entry.mode===0){
+   const feature=await communeOutlineGeo(entry.code),bounds=feature?featureBounds(feature):null;
+   const g={key:'search-commune-'+entry.code,name:entry.name,code:entry.code,dept:entry.dept,region:entry.region,items:data.filter(d=>d.mode===0&&String(keyOf(d))===String(entry.code))};
+   if(feature){const c=featureBounds(feature).getCenter();g.at=[c.lat,c.lng]}
+   choose(g,bounds||undefined);
+   return
+ }
+ const geo=entry.mode===3?regionGeo:entry.mode===2?deptGeo:epciGeo;
+ const feature=entry.feature||geo?.features?.find(f=>featureAdminCode(f)===String(entry.code));
+ const bounds=feature?featureBounds(feature):null;
+ const existing=groups().find(g=>String(g.code)===String(entry.code));
+ const at=bounds?bounds.getCenter():map.getCenter();
+ const g=existing||{key:'search-admin-'+entry.mode+'-'+entry.code,name:entry.name,code:entry.code,items:[],at:[at.lat,at.lng]};
+ choose(g,bounds||undefined)
+}
+let adminSearchTimer=null,adminSearchSerial=0;
+function updateAdminSearch(){
+ clearTimeout(adminSearchTimer);const raw=$('adminSearch').value.trim(),box=$('adminSearchResults'),serial=++adminSearchSerial;
+ if(!raw){box.hidden=true;box.innerHTML='';return}
+ if(raw.length<2&&!/^\d{2,}$/.test(raw)){box.innerHTML='<span class="empty">Tape au moins 2 caractères.</span>';box.hidden=false;return}
+ box.innerHTML='<span class="empty">Recherche…</span>';box.hidden=false;
+ adminSearchTimer=setTimeout(async()=>{
+   await adminCatalogPromise;if(serial!==adminSearchSerial)return;
+   const found=adminSearchEntries().map(e=>({e,score:scoreAdminSearch(e,raw)})).filter(x=>x.score>=0).sort((a,b)=>b.score-a.score||a.e.name.localeCompare(b.e.name,'fr')).slice(0,12).map(x=>x.e);
+   if(serial!==adminSearchSerial)return;
+   box.innerHTML=found.length?found.map((e,i)=>'<button type="button" data-admin-search="'+i+'"><strong>'+escape(e.name)+'</strong><small>'+escape(collectivityMeta(e))+'</small></button>').join(''):'<span class="empty">Aucune collectivité</span>';
+   box.hidden=false;box.querySelectorAll('[data-admin-search]').forEach(b=>b.onclick=()=>navigateToCollectivity(found[+b.dataset.adminSearch]))
+ },80)
+}
+$('adminSearch').oninput=updateAdminSearch;
+$('adminSearch').onkeydown=e=>{if(e.key==='Enter'){const first=$('adminSearchResults').querySelector('[data-admin-search]');if(first){e.preventDefault();first.click()}}};
+
+
 const cartCsvHeaders=['id','title','subtitle','mode','unit','unitName','unitCode','kind','lat','lng','departmentCode','regionCode','tags','color','html','deck','image'];
 function csvCell(v){const x=String(v??'');return/[",\r\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x}
 function makeCartCsv(){const lines=[cartCsvHeaders.join(',')];for(const d of data){const u=units[d.unit]||{},v={id:d.id,title:d.title,subtitle:d.subtitle||'',mode:modeKeys[d.mode],unit:d.unit,unitName:u.name||d.unit,unitCode:u.code||'',kind:d.kind,lat:d.at?.[0]??'',lng:d.at?.[1]??'',departmentCode:u.dept||'',regionCode:u.region||'',tags:JSON.stringify(d.tags||[]),color:d.color||'#315EB6',html:d.html||'',deck:JSON.stringify(d.deck||[]),image:JSON.stringify(d.image||[])};lines.push(cartCsvHeaders.map(k=>csvCell(v[k])).join(','))}return'\ufeff'+lines.join('\r\n')}
@@ -1214,7 +1295,7 @@ function forgetCartGithub(){
  for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i)||'';if(k.endsWith(':github-owner'))localStorage.removeItem(k)}
  cartGithubMode=false;cartGithubConfig=null;cartPrivateDataSha=null;updateCartOwnerUi();closeCartGithubPanel()
 }
-const toolMenus=[$('paletteMenu'),$('gameMenu'),$('moreMenu'),$('tagFilters'),$('deckMenu'),$('searchResults')];
+const toolMenus=[$('paletteMenu'),$('gameMenu'),$('moreMenu'),$('tagFilters'),$('deckMenu'),$('searchResults'),$('adminSearchResults')];
 function closeTools(except=null){for(const m of toolMenus)if(m!==except)m.hidden=true;$('paletteButton').setAttribute('aria-expanded',String(!$('paletteMenu').hidden));$('gameButton').setAttribute('aria-expanded',String(!$('gameMenu').hidden));$('moreButton').setAttribute('aria-expanded',String(!$('moreMenu').hidden));$('toggleFilters').setAttribute('aria-expanded',String(!$('tagFilters').hidden));$('toggleDecks').setAttribute('aria-expanded',String(!$('deckMenu').hidden))}
 function toggleTool(menu){const open=menu.hidden;closeTools(menu);menu.hidden=!open;closeTools(menu)}
 const vividPalette={green:"#B2F23A",blue:"#21BCFF",orange:"#FE9A37",red:"#FF2056",pink:"#ED6AFF",violet:"#7C86FF",brown:"#FFDF20",turquoise:"#46ECD5"};
@@ -1296,7 +1377,7 @@ function refreshPaletteMap(){updateScalePaletteColor();drawAdmin();drawPoints();
 renderTemporaryPaletteInputs();renderColorPresetLibrary($('cartSwatches'),setCartEditorColor);updateScalePaletteColor();$('paletteButton').onclick=e=>{e.stopPropagation();const panel=$('paletteMenu'),open=panel.hidden;closeTools(panel);panel.hidden=!open;$('paletteButton').setAttribute('aria-expanded',String(open));if(open)renderTemporaryPaletteInputs()};
 $('paletteCount').onchange=()=>{temporaryPaletteCount=Number($('paletteCount').value);temporaryPalettePickerOpenIndex=null;temporaryPaletteAssignments.clear();const style=$('palettePreset').value;if(style==='mono'||style==='analogous'){const colors=automaticPaletteColors(style,temporaryPaletteCount);temporaryPalette=[...colors,...temporaryPalette.slice(temporaryPaletteCount)]}else{while(temporaryPalette.length<temporaryPaletteCount)temporaryPalette.push(temporaryPaletteDefaults[temporaryPalette.length%temporaryPaletteDefaults.length]);normalizeTemporaryPaletteOrder()}renderTemporaryPaletteInputs();if(temporaryPaletteActive)refreshPaletteMap()};$('paletteOpacity').oninput=()=>{temporaryPaletteOpacity=Math.max(.25,Math.min(1,Number($('paletteOpacity').value)/100));$('paletteOpacityValue').value=Math.round(temporaryPaletteOpacity*100)+' %';if(temporaryPaletteActive)refreshPaletteMap()};$('generatePalette').onclick=()=>generateAutomaticPalette();$('applyPalette').onclick=applyTemporaryPalette;$('resetPalette').onclick=resetTemporaryPalette;
 $('gameButton').onclick=e=>{e.stopPropagation();const open=$('gameMenu').hidden;closeTools($('gameMenu'));$('gameMenu').hidden=!open;$('gameButton').setAttribute('aria-expanded',String(open));if(open){updateGameRecords();if(!$('gameHistoryPane').hidden)renderGameHistory()}};
-$('moreButton').onclick=e=>{e.stopPropagation();toggleTool($('moreMenu'))};$('toggleFilters').onclick=e=>{e.stopPropagation();const pop=$('tagFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleFilters').setAttribute('aria-expanded',String(open))};$('toggleDecks').onclick=e=>{e.stopPropagation();toggleTool($('deckMenu'))};$('tagFilters').onclick=e=>e.stopPropagation();$('deckMenu').onclick=e=>e.stopPropagation();$('searchResults').onclick=e=>e.stopPropagation();
+$('moreButton').onclick=e=>{e.stopPropagation();toggleTool($('moreMenu'))};$('toggleFilters').onclick=e=>{e.stopPropagation();const pop=$('tagFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleFilters').setAttribute('aria-expanded',String(open))};$('toggleDecks').onclick=e=>{e.stopPropagation();toggleTool($('deckMenu'))};$('tagFilters').onclick=e=>e.stopPropagation();$('deckMenu').onclick=e=>e.stopPropagation();$('searchResults').onclick=e=>e.stopPropagation();$('adminSearchResults').onclick=e=>e.stopPropagation();$('adminSearch').onclick=e=>e.stopPropagation();
 function randomCurrentItem(){const pool=current();if(!pool.length)return;const a=new Uint32Array(1);crypto.getRandomValues(a);showItem(pool[a[0]%pool.length])}
 const sideResize=$('sideResize');let sideResizeActive=false;
 sideResize.onpointerdown=e=>{if(innerWidth<=640)return;sideResizeActive=true;sideResize.classList.add('dragging');document.body.classList.add('side-resizing');sideResize.setPointerCapture?.(e.pointerId);e.preventDefault()};
