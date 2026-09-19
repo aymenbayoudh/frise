@@ -221,6 +221,16 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 .palette-opacity{display:grid;grid-template-columns:auto minmax(90px,1fr) 42px;align-items:center;gap:8px;margin:2px 0 9px;color:var(--muted);font-size:11px;font-weight:650}
 .palette-opacity input[type="range"]{width:100%;min-width:0;height:18px;accent-color:var(--ink)}
 .palette-opacity output{color:var(--ink);font-variant-numeric:tabular-nums;text-align:right}
+
+.cart-map-field small{color:var(--muted);font-size:.72rem;font-weight:500}
+.cart-mini-map{height:245px;width:100%;overflow:hidden;border:1px solid var(--line);border-radius:11px;background:#e8edf1}
+.cart-mini-map .leaflet-control-zoom a{font-size:18px!important;font-weight:500!important}
+.cart-mini-map .leaflet-marker-icon{cursor:grab}.cart-mini-map .leaflet-marker-dragging{cursor:grabbing}
+.cart-edit-pin{background:transparent!important;border:0!important}
+.cart-edit-pin-dot{width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#21BCFF;box-shadow:0 1px 8px #0008,0 0 0 1px #17354c}
+.admin-center-dot.rank-region span,.admin-center-dot.rank-department span{font-size:10.8px!important;font-weight:750!important;padding:2px 5px!important;border-radius:5px!important}
+.admin-center-dot.rank-subpref span{font-size:9px!important;font-weight:500!important;padding:1px 4px!important}
+@media(pointer:coarse) and (max-width:760px){.cart-mini-map{height:220px}}
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto.html" aria-current="page">Cartographie</a></nav><div class="header-actions">
 <button id="randomItem" type="button" aria-label="Exemple au hasard" title="Exemple au hasard">🎲</button>
@@ -276,6 +286,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
     <label id="cartKindLabel">Localisation<select id="cartKind"><option value="global">Toute la commune / siège</option><option value="point">Lieu précis</option><option value="street">Rue / axe</option><option value="quarter">Quartier</option></select></label>
     <label>Étiquettes<input id="cartTags" placeholder="urbanisme, culture, patrimoine"></label>
     <div id="cartCoordinates" class="full coordinates-grid"><label>Latitude<input id="cartLat" inputmode="decimal" placeholder="48.8566"></label><label>Longitude<input id="cartLng" inputmode="decimal" placeholder="2.3522"></label></div>
+    <div id="cartMapField" class="full field cart-map-field"><span>Placement sur la carte</span><div id="cartMiniMap" class="cart-mini-map" aria-label="Choisir la position de la fiche sur une mini-carte"></div><small>Clique sur la carte ou déplace l’épingle. Les coordonnées se mettent à jour automatiquement.</small></div>
     <div class="full field"><span>Deck(s)</span><div class="deck-editor"><div id="cartDeckChips" class="deck-editor-chips"></div><div class="deck-editor-row"><input id="cartDeckInput" list="cartDeckOptions" placeholder="ICT::Thème::Chapitre" autocomplete="off"><datalist id="cartDeckOptions"></datalist><button id="cartDeckAdd" type="button">Ajouter</button></div></div></div>
     <div class="full field">Couleur
       <div class="color-line event-color-line"><input id="cartEventColor" type="color" value="#21BCFF" aria-label="Choisir la couleur"><input id="cartColorCode" value="#21BCFF" maxlength="7" aria-label="Code couleur hexadécimal"></div>
@@ -666,7 +677,33 @@ function addCartDeck(){const input=$('cartDeckInput'),path=String(input.value||'
 function renderCartImages(){const box=$('cartImageAttachments');box.innerHTML='';cartEditing.image.forEach((src,index)=>{const item=document.createElement('div');item.className='image-attachment';const img=document.createElement('img');img.src=src;img.alt='Image attachée '+(index+1);const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label','Retirer cette image');remove.onclick=()=>{cartEditing.image.splice(index,1);renderCartImages()};item.append(img,remove);box.append(item)})}
 function cartUnitsForMode(level){const used=new Map;for(const d of data.filter(d=>d.mode===level)){const u=units[d.unit];if(u)used.set(d.unit,u)}if(selection&&mode===level){if(!units[selection.key])units[selection.key]={name:selection.name||String(selection.code||selection.key),code:selection.code||selection.key,at:Array.isArray(selection.at)?selection.at:[map.getCenter().lat,map.getCenter().lng]};used.set(selection.key,units[selection.key])}return[...used].sort((a,b)=>String(a[1].name).localeCompare(String(b[1].name),'fr'))}
 function renderCartUnitOptions(preferred=''){const level=+$('cartMode').value,opts=cartUnitsForMode(level),select=$('cartUnit');select.innerHTML=opts.map(([key,u])=>'<option value="'+escape(key)+'">'+escape(u.name)+' · '+escape(u.code||key)+'</option>').join('');if(preferred&&opts.some(([k])=>k===preferred))select.value=preferred;else if(selection&&mode===level&&opts.some(([k])=>k===selection.key))select.value=selection.key;updateCartLocationFields()}
-function updateCartLocationFields(){const level=+$('cartMode').value,local=level===0;$('cartKindLabel').hidden=!local;$('cartCoordinates').hidden=!local;if(!local)$('cartKind').value='global';const u=units[$('cartUnit').value];if(u&&!cartEditedId&&local){$('cartLat').value=u.at?.[0]??'';$('cartLng').value=u.at?.[1]??''}}
+let cartMiniMap=null,cartMiniMarker=null;
+function cartCoordinateValues(){const lat=Number(String($('cartLat').value).replace(',','.')),lng=Number(String($('cartLng').value).replace(',','.'));return Number.isFinite(lat)&&Number.isFinite(lng)?[lat,lng]:null}
+function cartEditPinIcon(){return L.divIcon({className:'cart-edit-pin',iconSize:[18,18],iconAnchor:[9,9],html:'<div class="cart-edit-pin-dot"></div>'})}
+function setCartCoordinates(lat,lng,moveMap=false){
+ if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
+ $('cartLat').value=Number(lat).toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+ $('cartLng').value=Number(lng).toFixed(6).replace(/0+$/,'').replace(/\.$/,'');
+ if(cartMiniMarker)cartMiniMarker.setLatLng([lat,lng]);
+ if(moveMap&&cartMiniMap)cartMiniMap.panTo([lat,lng],{animate:false})
+}
+function ensureCartMiniMap(){
+ if(cartMiniMap)return cartMiniMap;
+ cartMiniMap=L.map('cartMiniMap',{zoomControl:true,minZoom:3,maxZoom:19,zoomSnap:.25,attributionControl:false,preferCanvas:true,fadeAnimation:false});
+ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,keepBuffer:1,updateWhenZooming:false}).addTo(cartMiniMap);
+ cartMiniMarker=L.marker([46.6,2.4],{icon:cartEditPinIcon(),draggable:true,keyboard:true,title:'Position de la fiche'}).addTo(cartMiniMap);
+ cartMiniMarker.on('dragend',()=>{const p=cartMiniMarker.getLatLng();setCartCoordinates(p.lat,p.lng,false)});
+ cartMiniMap.on('click',e=>setCartCoordinates(e.latlng.lat,e.latlng.lng,true));
+ return cartMiniMap
+}
+function syncCartMiniMapFromInputs(recenter=true){
+ if(+$('cartMode').value!==0||$('cartEditor').hidden)return;
+ const at=cartCoordinateValues()||units[$('cartUnit').value]?.at||[46.6,2.4],m=ensureCartMiniMap();
+ cartMiniMarker.setLatLng(at);
+ if(recenter)m.setView(at,Math.max(12,m.getZoom()||13),{animate:false});
+ requestAnimationFrame(()=>m.invalidateSize({pan:false,animate:false}))
+}
+function updateCartLocationFields(){const level=+$('cartMode').value,local=level===0;$('cartKindLabel').hidden=!local;$('cartCoordinates').hidden=!local;$('cartMapField').hidden=!local;if(!local)$('cartKind').value='global';const u=units[$('cartUnit').value];if(u&&!cartEditedId&&local){$('cartLat').value=u.at?.[0]??'';$('cartLng').value=u.at?.[1]??''}if(local&&!$('cartEditor').hidden)requestAnimationFrame(()=>syncCartMiniMapFromInputs(true))}
 function setCartEditorColor(c){c=validColor(c);$('cartEventColor').value=c;$('cartColorCode').value=c}
 function closeCartEditor(){$('cartEditor').hidden=true;$('editorScrim').hidden=true;cartEditedId=null}
 function openCartEditor(item=null){
@@ -675,7 +712,7 @@ function openCartEditor(item=null){
  $('cartMode').value=String(item?.mode??mode);renderCartUnitOptions(item?.unit||selection?.key||'');$('cartKind').value=item?.kind||'global';$('cartTags').value=(item?.tags||[]).join(', ');
  $('cartDescription').innerHTML=cleanCartHtml(item?.html||'');setCartEditorColor(item?.color||'#21BCFF');renderCartDeckEditor();renderCartImages();$('cartDeckInput').value='';$('cartEditorError').textContent='';
  const u=units[item?.unit||$('cartUnit').value];$('cartLat').value=item?.at?.[0]??u?.at?.[0]??'';$('cartLng').value=item?.at?.[1]??u?.at?.[1]??'';
- $('cartDelete').hidden=!item;updateCartLocationFields();$('editorScrim').hidden=false;$('cartEditor').hidden=false;$('cartTitle').focus()
+ $('cartDelete').hidden=!item;updateCartLocationFields();$('editorScrim').hidden=false;$('cartEditor').hidden=false;$('cartTitle').focus();requestAnimationFrame(()=>syncCartMiniMapFromInputs(true))
 }
 function refreshAfterCartEdit(preferredUnit=''){renderTags();renderDeckTree();temporaryPaletteAssignments.clear();pointRenderKey='';subdivisionKey='';communeLabelKey='';centerKey='';const gs=groups(),next=preferredUnit?gs.find(g=>g.key===preferredUnit):null;selection=next||null;renderSide();draw();updateSubdivisions(true);updateCenters(true);$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'')}
 function saveCartEditor(){
@@ -689,7 +726,7 @@ function saveCartEditor(){
 document.querySelectorAll('[data-cart-command]').forEach(b=>b.onclick=()=>{const target=$(b.dataset.cartTarget);target.focus();document.execCommand(b.dataset.cartCommand,false,null)});
 $('cartLink').onclick=()=>{const url=prompt('Adresse du lien :','https://');if(url&&/^https?:\/\//i.test(url)){const target=$('cartDescription');target.focus();document.execCommand('createLink',false,url)}};
 $('cartEventColor').oninput=()=>{$('cartColorCode').value=$('cartEventColor').value.toUpperCase()};$('cartColorCode').oninput=()=>{if(/^#[0-9a-f]{6}$/i.test($('cartColorCode').value))$('cartEventColor').value=$('cartColorCode').value};
-$('cartMode').onchange=()=>renderCartUnitOptions();$('cartUnit').onchange=updateCartLocationFields;$('cartDeckAdd').onclick=addCartDeck;$('cartDeckInput').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addCartDeck()}};
+$('cartMode').onchange=()=>renderCartUnitOptions();$('cartUnit').onchange=updateCartLocationFields;for(const id of ['cartLat','cartLng'])$(id).addEventListener('input',()=>syncCartMiniMapFromInputs(false));$('cartDeckAdd').onclick=addCartDeck;$('cartDeckInput').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addCartDeck()}};
 $('cartImage').onchange=()=>{const file=$('cartImage').files[0];if(!file)return;const reader=new FileReader;reader.onload=()=>{if(typeof reader.result==='string'){cartEditing.image.push(reader.result);renderCartImages()}};reader.readAsDataURL(file);$('cartImage').value=''};
 $('cartEditor').onsubmit=e=>{e.preventDefault();try{saveCartEditor()}catch(err){$('cartEditorError').textContent=err.message}};
 $('cartDelete').onclick=()=>{if(!cartEditedId||!confirm('Supprimer définitivement cette fiche ?'))return;const old=data.find(d=>d.id===cartEditedId),unit=old?.unit;data=data.filter(d=>d.id!==cartEditedId);persistCartData();closeCartEditor();refreshAfterCartEdit(unit)};
