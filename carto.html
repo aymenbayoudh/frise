@@ -369,7 +369,7 @@ add(2,'d40','Un observatoire des centres-bourgs');add(2,'d40','Un guichet dépar
 add(3,'r27','Un fonds régional des petites lignes');add(3,'r27','Un contrat régional des centralités');add(3,'r27','Un lycée pilote à Besançon','point',[47.239,6.026],null,'Éducation');add(3,'r75','Une filière régionale de réemploi');add(3,'r84','Un programme régional de sobriété foncière');add(3,'r01','Un programme insulaire de résilience');add(3,'r04','Une expérimentation dans les Hauts','point',[-21.15,55.48]);add(3,'rpf','Un programme territorial des mobilités insulaires');add(3,'rnc','Une stratégie territoriale de réemploi');
 const doms=[{name:'Guadeloupe',dept:'971',region:'01',at:[16.2,-61.5],z:7},{name:'Martinique',dept:'972',region:'02',at:[14.65,-61.02],z:8},{name:'Guyane',dept:'973',region:'03',at:[4,-53.2],z:5},{name:'La Réunion',dept:'974',region:'04',at:[-21.12,55.53],z:8},{name:'Mayotte',dept:'976',region:'06',at:[-12.83,45.15],z:9},{name:'Polynésie française',dept:'987',region:'987',at:[-17.55,-149.56],z:7,regionOnly:true,radius:170000},{name:'Nouvelle-Calédonie',dept:'988',region:'988',at:[-22.275,166.458],z:7,regionOnly:true,radius:120000}];
 const CART_DATA_KEY='cartographie-v2:data',CART_FILTER_KEY='cartographie-v2:filters',SHARED_GITHUB_KEY='frise-private-github-v1',CART_CLOUD_UPDATED_KEY='cartographie-v3:cloud-state-updated',CART_GITHUB_OWNER='aymenbayoudh',CART_GITHUB_REPO='frise-data',CART_GITHUB_BRANCH='main',CART_GITHUB_FILE='carto.csv',CART_GITHUB_STATE_FILE='carto-user-state.json';
-let cartGithubMode=false,cartGithubConfig=null,cartPrivateDataSha=null,cartGithubSyncChain=Promise.resolve(),cartCloudTimer=null,applyingCartCloudState=false;
+let cartGithubMode=false,cartGithubConfig=null,cartPrivateDataSha=null,cartGithubSyncChain=Promise.resolve(),cartCloudTimer=null,applyingCartCloudState=false,cartDataDirty=false;
 const modeKeys=['commune','interco','departement','region'],defaultColors=['#21BCFF','#7C86FF','#FE9A37','#46ECD5'];
 for(const d of data){d.subtitle=String(d.subtitle||'');d.tags=Array.isArray(d.tags)&&d.tags.length?d.tags:[d.theme||'Aménagement',modes[d.mode]];d.deck=Array.isArray(d.deck)&&d.deck.length?d.deck:['Exemples fictifs::'+modes[d.mode]];d.color=/^#[0-9A-F]{6}$/i.test(d.color||'')?d.color.toUpperCase():defaultColors[d.mode]||'#315EB6';d.html=String(d.html||'<p>Exemple fictif utilisé pour tester la cartographie.</p>');d.image=Array.isArray(d.image)?d.image:[];d.shape=null}
 let hasImportedCartData=false;try{const saved=JSON.parse(localStorage.getItem(CART_DATA_KEY)||'null');if(saved?.rows?.length){data=saved.rows;Object.assign(units,saved.units||{});hasImportedCartData=true}}catch{};adminCatalogPromise.then(()=>hydrateCommuneUnitsFromCatalog())
@@ -755,7 +755,7 @@ for(const [i,d] of doms.entries()){const el=document.createElement('div');el.cla
 
 
 let cartEditedId=null,cartEditing={deck:[],image:[]};
-function persistCartData(){const savedUnits={};for(const [k,u] of Object.entries(units))if(data.some(d=>d.unit===k))savedUnits[k]=u;localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:savedUnits}));hasImportedCartData=true;if(cartGithubMode)queueCartDataSync()}
+function persistCartData(){const savedUnits={};for(const [k,u] of Object.entries(units))if(data.some(d=>d.unit===k))savedUnits[k]=u;localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:savedUnits}));hasImportedCartData=true;cartDataDirty=true;if(cartGithubMode)queueCartDataSync()}
 function safeCartImage(value){const src=String(value??'').trim();if(/^data:image\/(png|jpeg|webp);base64,/i.test(src)||/^https?:\/\/[^\s<>"']+$/i.test(src)||/^(?:\.\/)?(?:[\w .-]+\/)*[\w .-]+\.(?:png|jpe?g|webp)$/i.test(src)&&!src.includes('..'))return src;return''}
 function cleanCartHtml(html){const t=document.createElement('template');t.innerHTML=String(html||'');const ok=new Set(['P','BR','DIV','B','STRONG','I','EM','U','HR','UL','OL','LI','A','IMG']);function walk(p){for(const el of [...p.children]){if(!ok.has(el.tagName)){el.replaceWith(document.createTextNode(el.textContent));continue}const href=el.getAttribute('href'),src=safeCartImage(el.getAttribute('src')),alt=el.getAttribute('alt');for(const a of [...el.attributes])el.removeAttribute(a.name);if(el.tagName==='A'&&href&&/^https?:\/\//i.test(href)){el.href=href;el.target='_blank';el.rel='noopener noreferrer'}if(el.tagName==='IMG'){if(src){el.src=src;el.alt=alt||'Illustration'}else{el.remove();continue}}walk(el)}}walk(t.content);return t.innerHTML}
 function cleanCartInline(html){const t=document.createElement('template');t.innerHTML=String(html||'');const ok=new Set(['B','STRONG','I','EM','U','BR']);function walk(p){for(const el of [...p.children]){if(!ok.has(el.tagName)){el.replaceWith(document.createTextNode(el.textContent));continue}for(const a of [...el.attributes])el.removeAttribute(a.name);walk(el)}}walk(t.content);return t.innerHTML}
@@ -976,15 +976,16 @@ async function putPrivateCartData(){
  if(remote?.sha)body.sha=remote.sha;
  const r=await fetch(cartGithubUrl(CART_GITHUB_FILE,false),{method:'PUT',headers:{...cartGithubHeaders(),'Content-Type':'application/json'},body:JSON.stringify(body)});
  if(!r.ok)throw Error('Écriture carto.csv impossible (HTTP '+r.status+')');
- const x=await r.json();cartPrivateDataSha=x.content?.sha||cartPrivateDataSha
+ const x=await r.json();cartPrivateDataSha=x.content?.sha||cartPrivateDataSha;cartDataDirty=false
 }
-function queueCartDataSync(){
- if(!cartGithubMode)return Promise.resolve();
+function queueCartDataSync(force=false){
+ if(!cartGithubMode||(!force&&!cartDataDirty))return Promise.resolve();
  updateCartOwnerUi('GitHub · synchro…');
  cartGithubSyncChain=cartGithubSyncChain.then(putPrivateCartData).then(()=>updateCartOwnerUi('Privé · synchronisé')).catch(e=>{updateCartOwnerUi('Privé · erreur');$('status').textContent=e.message});
  return cartGithubSyncChain
 }
 function localCartCloudUpdated(){return Math.max(0,Number(localStorage.getItem(CART_CLOUD_UPDATED_KEY))||0)}
+function hasLocalCartCloudState(){return !!(localStorage.getItem(CART_FILTER_KEY)||localStorage.getItem(CART_GAME_ERROR_KEY)||localStorage.getItem(CART_GAME_RECENT_KEY)||localStorage.getItem(CART_GAME_KEY)||localStorage.getItem(SIDE_WIDTH_KEY))}
 function markCartCloudStateDirty(){
  if(applyingCartCloudState)return;
  try{localStorage.setItem(CART_CLOUD_UPDATED_KEY,String(Date.now()))}catch{}
@@ -1015,7 +1016,9 @@ async function loadCartCloudStateFromGitHub(){
  if(!remote){if(localUpdated)scheduleCartCloudSync(800);return}
  let state;try{state=JSON.parse(remote.text)}catch{return}
  const remoteUpdated=Math.max(0,Number(state?.updatedAt)||0);
- if(remoteUpdated>localUpdated)applyCartCloudState(state);else if(localUpdated>remoteUpdated)scheduleCartCloudSync(800)
+ if(remoteUpdated>localUpdated)applyCartCloudState(state);
+ else if(localUpdated>remoteUpdated)scheduleCartCloudSync(800);
+ else if(!remoteUpdated&&hasLocalCartCloudState()){try{localStorage.setItem(CART_CLOUD_UPDATED_KEY,String(Date.now()))}catch{}scheduleCartCloudSync(800)}
 }
 async function syncCartCloudStateToGitHub(){
  if(!cartGithubMode||!cartGithubConfig)return;
@@ -1147,12 +1150,12 @@ addEventListener('resize',()=>{if(innerWidth>640){const raw=getComputedStyle(doc
 $('mapDetailClose').onclick=closeMapDetail;$('mapDetailEdit').onclick=()=>{const d=data.find(x=>x.id===activeItem?.id);if(d)openCartEditor(d)};$('addItem').onclick=()=>openCartEditor();$('sideAdd').onclick=()=>openCartEditor();$('mapDetail').onclick=e=>e.stopPropagation();$('randomItem').onclick=randomCurrentItem;
 $('menuHome').onclick=()=>{closeTools();home()};
 $('privateAccessButton').onclick=openCartGithubPanel;
-$('privateSyncButton').onclick=()=>{closeTools();queueCartDataSync();scheduleCartCloudSync(0)};
+$('privateSyncButton').onclick=()=>{closeTools();queueCartDataSync(true);scheduleCartCloudSync(0)};
 $('cartGhCancel').onclick=closeCartGithubPanel;
 $('privateScrim').onclick=closeCartGithubPanel;
 $('cartGhConnect').onclick=async()=>{if(await connectCartGithub($('cartGhToken').value.trim())){closeCartGithubPanel();renderTags();renderDeckTree();filterChanged();home()}};
 $('cartGhForget').onclick=forgetCartGithub;
-$('importButton').onclick=()=>{$('importCsv').click();closeTools()};$('exportButton').onclick=()=>{exportCartCsv();closeTools()};$('importCsv').onchange=async()=>{const file=$('importCsv').files[0];if(!file)return;try{const parsed=await validateCartAdminReferences(readCartCsv(await file.text()));if(!parsed.rows.length)throw Error('Aucune fiche');if(!confirm('Remplacer la cartographie actuelle par les '+parsed.rows.length+' fiches de ce CSV ?'))return;data=parsed.rows;Object.assign(units,parsed.units);localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:parsed.units}));hasImportedCartData=true;if(cartGithubMode)queueCartDataSync();selectedTags.clear();selectedDeckPaths.clear();deckStateLoaded=false;renderTags();renderDeckTree();saveFilters();filterChanged()}catch(e){$('status').textContent='Import impossible : '+e.message}finally{$('importCsv').value=''}};
+$('importButton').onclick=()=>{$('importCsv').click();closeTools()};$('exportButton').onclick=()=>{exportCartCsv();closeTools()};$('importCsv').onchange=async()=>{const file=$('importCsv').files[0];if(!file)return;try{const parsed=await validateCartAdminReferences(readCartCsv(await file.text()));if(!parsed.rows.length)throw Error('Aucune fiche');if(!confirm('Remplacer la cartographie actuelle par les '+parsed.rows.length+' fiches de ce CSV ?'))return;data=parsed.rows;Object.assign(units,parsed.units);localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:parsed.units}));hasImportedCartData=true;cartDataDirty=true;if(cartGithubMode)queueCartDataSync();selectedTags.clear();selectedDeckPaths.clear();deckStateLoaded=false;renderTags();renderDeckTree();saveFilters();filterChanged()}catch(e){$('status').textContent='Import impossible : '+e.message}finally{$('importCsv').value=''}};
 const CART_GAME_KEY='cartographie-v3:game-bests',CART_GAME_ERROR_KEY='cartographie-v3:game-errors',CART_GAME_RECENT_KEY='cartographie-v3:game-recent';
 let gameState={mode:null,active:false,streak:0,mistakes:0,total:0,current:null,pool:[],bag:[],locked:false,answers:[],reviewOnly:false},gameNextTimer=null;
 function readGameBests(){try{const x=JSON.parse(localStorage.getItem(CART_GAME_KEY)||'{}');return{where:Math.max(0,Number(x.where)||0),example:Math.max(0,Number(x.example)||0)}}catch{return{where:0,example:0}}}
