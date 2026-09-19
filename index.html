@@ -358,6 +358,103 @@ body.overlay-scroll-locked{
 #tableReadSubtitle{margin:0 0 10px;color:var(--muted)}
 #tableReadBody p{margin:7px 0}
 #tableReadBody img,.table-read-images img{display:block;max-width:100%;height:auto;max-height:300px;margin:8px 0;border-radius:7px}
+
+/* Barre d’outils téléphone portrait : tout sur une seule ligne. */
+@media(pointer:coarse) and (max-width:520px){
+  .toolbar-shell{
+    padding:5px 5px!important;
+    margin:-8px -8px 7px!important;
+  }
+  .toolbar{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    gap:3px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+  .date-jump{display:none!important}
+
+  .toolbar>label:first-child{
+    flex:0 0 74px!important;
+    width:74px!important;
+    min-width:74px!important;
+  }
+  #direction{
+    width:74px!important;
+    max-width:74px!important;
+    min-width:0!important;
+    height:26px!important;
+    min-height:26px!important;
+    padding:1px 15px 1px 4px!important;
+    font-size:.56rem!important;
+    border-radius:6px!important;
+  }
+
+  .toolbar label.compact-control{
+    flex:0 0 68px!important;
+    width:68px!important;
+    min-width:68px!important;
+    min-height:26px!important;
+    padding:2px 3px!important;
+    gap:2px!important;
+    font-size:.56rem!important;
+    white-space:nowrap!important;
+    border-radius:6px!important;
+  }
+  #overlap{
+    width:11px!important;
+    height:11px!important;
+    flex:0 0 11px!important;
+    margin:0!important;
+  }
+
+  #toggleFilters{
+    flex:0 0 55px!important;
+    width:55px!important;
+    min-width:55px!important;
+  }
+  .deck-filter-menu{
+    flex:0 0 42px!important;
+    width:42px!important;
+    min-width:42px!important;
+  }
+  #toggleDecks{
+    width:42px!important;
+    min-width:42px!important;
+  }
+  #toggleFilters,#toggleDecks,#batchToggle{
+    min-height:26px!important;
+    padding:2px 3px!important;
+    font-size:.56rem!important;
+    border-radius:6px!important;
+    white-space:nowrap!important;
+  }
+  #batchToggle{
+    flex:0 0 52px!important;
+    width:52px!important;
+    min-width:52px!important;
+  }
+  .toolbar .chevron{display:none!important}
+
+  .search-box{
+    flex:1 1 48px!important;
+    min-width:38px!important;
+    width:auto!important;
+  }
+  .search-box input{
+    width:100%!important;
+    min-width:0!important;
+    height:26px!important;
+    min-height:26px!important;
+    padding:2px 5px!important;
+    font-size:.56rem!important;
+    border-radius:6px!important;
+  }
+  .search-results{
+    width:min(330px,calc(100vw - 12px))!important;
+  }
+}
 </style>
 </head>
 <body>
