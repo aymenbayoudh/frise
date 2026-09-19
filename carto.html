@@ -246,6 +246,11 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 .sync-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 7px;border-radius:999px;background:#eef2f7;color:var(--muted);font-size:.7rem;font-weight:700}.sync-pill.connected{background:#e9f8ef;color:#17643a}
 .cart-private-panel{position:fixed;z-index:1901;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:min(470px,calc(100vw - 24px));padding:18px;background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow)}
 .cart-private-panel h2{margin:0 0 14px;font-size:1rem}.cart-private-panel .field{display:flex;flex-direction:column;gap:6px;font-size:.9rem;font-weight:650}.cart-private-panel input{min-height:42px;padding:9px;border:1px solid var(--line);border-radius:9px}.owner-status{padding:9px 11px;border-radius:8px;background:#f1f5fa;color:var(--muted);font-size:.8rem}.owner-status.ok{background:#e9f8ef;color:#17643a}.owner-status.bad{background:#fff0f2;color:#9b2438}.private-hint{color:var(--muted);font-size:.72rem}.private-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.private-actions button{min-height:38px;padding:7px 12px}.private-actions .primary{color:#fff;background:var(--ink);border-color:var(--ink)}.private-actions .danger{margin-right:auto;color:#a2293e}
+
+.legend .legend-scale{display:grid!important;grid-template-columns:auto 118px auto;align-items:center;gap:6px}
+.legend .legend-scale .ramp{width:118px!important;margin:0!important}
+.legend .legend-scale b:first-child{text-align:right;min-width:1.4em}
+.legend .legend-scale b:last-child{text-align:left;min-width:1.4em}
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto.html" aria-current="page">Cartographie</a></nav><div class="header-actions">
 <button id="randomItem" type="button" aria-label="Exemple au hasard" title="Exemple au hasard">🎲</button>
@@ -408,6 +413,19 @@ let adminDrawTimer;function scheduleAdminDraw(){clearTimeout(adminDrawTimer);adm
 function home(){closeMapDetail();selection=null;local.clearLayers();focus.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();subdivisionKey='';communeLabelKey='';centerKey='';map.fitBounds([[41.3,-5.3],[51.2,9.8]],{paddingTopLeft:[innerWidth<640?10:125,85],paddingBottomRight:[25,innerWidth<640?100:45]});renderSide();draw();requestAnimationFrame(()=>{updateSubdivisions(true);updateCenters(true)})}
 function getJSON(url){if(!cache.has(url))cache.set(url,fetch(url,{signal:AbortSignal.timeout(25000)}).then(r=>{if(!r.ok)throw Error(r.status);return r.json()}).catch(e=>{cache.delete(url);throw e}));return cache.get(url)}
 async function getJSONFallback(urls){let last=null;for(const url of urls){try{const j=await getJSON(url);if(j?.features?.length)return j}catch(e){last=e}}throw(last||Error("Aucune source disponible"))}
+async function getJSONMerged(urls){
+ const settled=await Promise.allSettled(urls.map(url=>getJSON(url))),features=[],seen=new Set;let last=null;
+ for(const r of settled){
+   if(r.status!=='fulfilled'){last=r.reason;continue}
+   for(const f of r.value?.features||[]){
+     const code=featureAdminCode(f)||JSON.stringify(f.geometry?.coordinates?.[0]?.[0]||'');
+     if(!code||seen.has(code))continue;
+     seen.add(code);features.push(f)
+   }
+ }
+ if(!features.length)throw(last||Error("Aucune source disponible"));
+ return{type:'FeatureCollection',features}
+}
 function featureAdminCode(f){const p=f?.properties||{};return String(p.code??p.code_epci??p.epci_code??p.siren??p.SIREN??"")}
 function featureAdminName(f){const p=f?.properties||{};return p.nom||p.name||p.libelle||p.libelle_epci||featureAdminCode(f)}
 
@@ -517,7 +535,7 @@ function updateLegend(){
  const legend=$('legend');
  if(mode>=1){
    const min=densityMinCount(),max=densityMaxCount();
-   legend.innerHTML='<span class="ramp" style="background:'+densityLegendGradient()+';opacity:'+densityLegendOpacity()+'"></span><span class="legend-scale"><b>'+min+'</b><span></span><b>'+max+'</b></span>'
+   legend.innerHTML='<span class="legend-scale"><b>'+min+'</b><span class="ramp" style="background:'+densityLegendGradient()+';opacity:'+densityLegendOpacity()+'"></span><b>'+max+'</b></span>'
  }else legend.innerHTML='Cercles : nombre de fiches · ◆ au siège · épingles au zoom'
 }
 function draw(){drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer()}
@@ -1242,11 +1260,11 @@ async function bootCartography(){
  document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',+b.dataset.mode===mode);b.setAttribute('aria-pressed',String(+b.dataset.mode===mode))});
  renderTags();renderDeckTree();filterChanged();home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours…';
  const results=await Promise.allSettled([
-  getJSONFallback([
+  getJSONMerged([
    'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson',
    'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/departements-1000m.geojson'
   ]).then(j=>{deptGeo=j;scheduleAdminDraw();updateSubdivisions(true);updateCenters(true)}),
-  getJSONFallback([
+  getJSONMerged([
    'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson',
    'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/regions-1000m.geojson'
   ]).then(j=>{regionGeo=j;scheduleAdminDraw();updateSubdivisions(true);updateCenters(true)}),
