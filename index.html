@@ -360,7 +360,7 @@ body.overlay-scroll-locked{
 #tableReadBody img,.table-read-images img{display:block;max-width:100%;height:auto;max-height:300px;margin:8px 0;border-radius:7px}
 
 /* Barre d’outils téléphone portrait : tout sur une seule ligne. */
-@media(pointer:coarse) and (max-width:520px){
+@media(pointer:coarse) and (max-width:760px){
   .toolbar-shell{
     padding:5px 5px!important;
     margin:-8px -8px 7px!important;
@@ -376,18 +376,18 @@ body.overlay-scroll-locked{
   .date-jump{display:none!important}
 
   .toolbar>label:first-child{
-    flex:0 0 74px!important;
-    width:74px!important;
-    min-width:74px!important;
+    flex:0 0 40px!important;
+    width:40px!important;
+    min-width:40px!important;
   }
   #direction{
-    width:74px!important;
-    max-width:74px!important;
+    width:40px!important;
+    max-width:40px!important;
     min-width:0!important;
     height:26px!important;
     min-height:26px!important;
-    padding:1px 15px 1px 4px!important;
-    font-size:.56rem!important;
+    padding:1px 12px 1px 4px!important;
+    font-size:.78rem!important;
     border-radius:6px!important;
   }
 
@@ -410,23 +410,23 @@ body.overlay-scroll-locked{
   }
 
   #toggleFilters{
-    flex:0 0 55px!important;
-    width:55px!important;
-    min-width:55px!important;
+    flex:0 0 61px!important;
+    width:61px!important;
+    min-width:61px!important;
   }
   .deck-filter-menu{
-    flex:0 0 42px!important;
-    width:42px!important;
-    min-width:42px!important;
+    flex:0 0 49px!important;
+    width:49px!important;
+    min-width:49px!important;
   }
   #toggleDecks{
-    width:42px!important;
-    min-width:42px!important;
+    width:49px!important;
+    min-width:49px!important;
   }
   #toggleFilters,#toggleDecks,#batchToggle{
     min-height:26px!important;
     padding:2px 3px!important;
-    font-size:.56rem!important;
+    font-size:.55rem!important;
     border-radius:6px!important;
     white-space:nowrap!important;
   }
@@ -435,20 +435,21 @@ body.overlay-scroll-locked{
     width:52px!important;
     min-width:52px!important;
   }
-  .toolbar .chevron{display:none!important}
+  .toolbar .chevron{display:inline-block!important;font-size:.52rem!important;margin-left:1px!important}
 
   .search-box{
-    flex:1 1 48px!important;
-    min-width:38px!important;
-    width:auto!important;
+    flex:0 1 46px!important;
+    min-width:34px!important;
+    width:46px!important;
   }
   .search-box input{
-    width:100%!important;
-    min-width:0!important;
+    width:46px!important;
+    max-width:46px!important;
+    min-width:34px!important;
     height:26px!important;
     min-height:26px!important;
-    padding:2px 5px!important;
-    font-size:.56rem!important;
+    padding:2px 4px!important;
+    font-size:.53rem!important;
     border-radius:6px!important;
   }
   .search-results{
@@ -465,7 +466,7 @@ body.overlay-scroll-locked{
 <main>
   <div class="toolbar-shell">
     <div class="toolbar">
-      <label><select id="direction" aria-label="Sens de la frise"><option value="lr">Gauche → droite</option><option value="rl">Droite → gauche</option><option value="tb">Haut ↓ bas</option><option value="bt">Bas ↑ haut</option></select></label>
+      <label><select id="direction" aria-label="Sens de la frise" title="Sens de la frise"><option value="lr" aria-label="Gauche vers droite">→</option><option value="rl" aria-label="Droite vers gauche">←</option><option value="tb" aria-label="Haut vers bas">↓</option><option value="bt" aria-label="Bas vers haut">↑</option></select></label>
       <label class="compact-control"><input id="overlap" type="checkbox"> Superposer</label>
       <button id="toggleFilters" class="compact-control" type="button" aria-expanded="false">Étiquettes <span class="chevron" aria-hidden="true">⌄</span></button>
       <div class="deck-filter-menu"><button id="toggleDecks" class="compact-control" type="button" aria-expanded="false">Decks <span class="chevron" aria-hidden="true">⌄</span></button><div id="deckMenu" class="deck-menu-pop" hidden><div class="deck-menu-actions"><button id="checkAllDecks" type="button">Tout cocher</button><button id="uncheckAllDecks" type="button">Tout décocher</button></div><div id="deckTree" class="deck-tree" aria-label="Filtres par deck"></div></div></div>
