@@ -357,7 +357,7 @@ function hydrateCommuneUnitsFromCatalog(){
    u.name=c.name;u.dept=c.dept;u.region=c.region
  }
 }
-adminCatalogPromise.then(cat=>{if(!cat)return;hydrateCommuneUnitsFromCatalog();if(mode===0){renderSide();pointRenderKey='';drawPoints()}})
+adminCatalogPromise.then(cat=>{if(!cat)return;hydrateCommuneUnitsFromCatalog();if(mode===0){renderSide();pointRenderKey='';drawPoints();updateCommuneDataLayer(true)}})
 
 let data=[];function add(mode,unit,title,kind='global',at=null,shape=null,theme='Aménagement'){data.push({id:data.length+1,mode,unit,title,kind,at:at||units[unit].at,shape,theme});}
 add(0,'lyon','Des cours d’école ouvertes sur le quartier');add(0,'lyon','Un budget citoyen pour la renaturation');add(0,'lyon','Une tarification solidaire des équipements');add(0,'lyon','Rue Garibaldi : un axe rafraîchi','street',[45.7587,4.8526],[[45.7517,4.8509],[45.7587,4.8526],[45.7646,4.854]] ,'Mobilités');add(0,'lyon','Les Pentes : un quartier à hauteur d’enfant','quarter',[45.774,4.832],[[45.778,4.825],[45.779,4.837],[45.771,4.84],[45.769,4.828]]);add(0,'lyon','Une cour végétalisée à la Guillotière','point',[45.7526,4.8477],null,'Éducation');
@@ -382,7 +382,7 @@ function applySideWidth(width,persist=false){
  if(innerWidth<=640)return;
  const bounds=sideWidthBounds(),w=Math.round(Math.max(bounds.min,Math.min(bounds.max,Number(width)||320)));
  document.querySelector('.workspace').style.setProperty('--side-width',w+'px');
- if(persist)try{localStorage.setItem(SIDE_WIDTH_KEY,String(w))}catch{}
+ if(persist)try{localStorage.setItem(SIDE_WIDTH_KEY,String(w));markCartCloudStateDirty()}catch{}
  requestAnimationFrame(()=>map.invalidateSize({pan:false,animate:false}))
 }
 try{const saved=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(saved)applySideWidth(saved)}catch{}
@@ -397,7 +397,7 @@ const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const stripHtml=html=>{const t=document.createElement('template');t.innerHTML=String(html||'');return t.content.textContent||''},unique=a=>[...new Set((a||[]).filter(Boolean).map(String))];
 let selectedTags=new Set(),selectedDeckPaths=new Set(),allDeckPaths=[],deckStateLoaded=false;
 try{const fs=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');selectedTags=new Set(fs.tags||[]);if(Array.isArray(fs.decks)){selectedDeckPaths=new Set(fs.decks);deckStateLoaded=true}}catch{}
-function saveFilters(){localStorage.setItem(CART_FILTER_KEY,JSON.stringify({tags:[...selectedTags],decks:[...selectedDeckPaths]}))}
+function saveFilters(){localStorage.setItem(CART_FILTER_KEY,JSON.stringify({tags:[...selectedTags],decks:[...selectedDeckPaths]}));markCartCloudStateDirty()}
 function itemDecks(d){return d.deck?.length?d.deck:['Sans deck']}
 function tagsPass(d){return !selectedTags.size||(d.tags||[]).some(t=>selectedTags.has(t))}
 function decksPass(d){return itemDecks(d).some(p=>selectedDeckPaths.has(p))}
@@ -515,7 +515,7 @@ async function choose(g,bounds){
 }
 function closeMapDetail(){$('mapDetail').hidden=true;activeItem=null;focus.clearLayers()}
 function showItem(d){if(!d)return;focus.clearLayers();const g=groups().find(g=>g.key===d.unit)||{key:d.unit,...units[d.unit],items:[d]};selection=g;renderSide();activeItem=d;refreshAdminStyle();const detail=$('mapDetail');detail.style.setProperty('--event-color',temporaryEventColor(d));$('mapDetailTitle').innerHTML=cleanCartInline(d.title);$('mapDetailPlace').textContent=(units[d.unit]?.name||d.unit)+' · '+kindLabel(d);$('mapDetailSubtitle').innerHTML=cleanCartInline(d.subtitle||'');$('mapDetailSubtitle').hidden=!d.subtitle;const body=$('mapDetailBody');body.innerHTML=cleanCartHtml(d.html||'');for(const src of d.image||[]){const img=document.createElement('img');img.src=src;img.alt=stripHtml(d.title);img.loading='lazy';body.append(img)}detail.hidden=false;detail.scrollTop=0;if(mode===0){map.setView(d.at,Math.max(map.getZoom(),d.kind==='global'?13:14));L.circleMarker(d.at,{radius:18,color:temporaryEventColor(d),weight:2,fillColor:temporaryEventColor(d),fillOpacity:.12,interactive:false}).addTo(focus);drawPoints();updateBasemap()}}
-function setMode(n){closeMapDetail();mode=+n;epoch++;selection=null;activeItem=null;focus.clearLayers();local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();subdivisionKey='';communeLabelKey='';centerKey='';$('scale').value=mode;document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',+b.dataset.mode===mode);b.setAttribute('aria-pressed',String(+b.dataset.mode===mode))});$('scale').setAttribute('aria-valuetext',modes[mode]);renderSide();draw();updateSubdivisions(true);updateCenters(true);}
+function setMode(n){closeMapDetail();mode=+n;epoch++;markCartCloudStateDirty();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();subdivisionKey='';communeLabelKey='';centerKey='';$('scale').value=mode;document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('active',+b.dataset.mode===mode);b.setAttribute('aria-pressed',String(+b.dataset.mode===mode))});$('scale').setAttribute('aria-valuetext',modes[mode]);renderSide();draw();updateSubdivisions(true);updateCenters(true);}
 
 let metaPromise=null;
 async function loadJsonAny(urls){let last=null;for(const url of urls){try{return await getJSON(url)}catch(e){last=e}}throw last||Error('Source indisponible')}
@@ -755,7 +755,7 @@ for(const [i,d] of doms.entries()){const el=document.createElement('div');el.cla
 
 
 let cartEditedId=null,cartEditing={deck:[],image:[]};
-function persistCartData(){const savedUnits={};for(const [k,u] of Object.entries(units))if(data.some(d=>d.unit===k))savedUnits[k]=u;localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:savedUnits}));hasImportedCartData=true}
+function persistCartData(){const savedUnits={};for(const [k,u] of Object.entries(units))if(data.some(d=>d.unit===k))savedUnits[k]=u;localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:savedUnits}));hasImportedCartData=true;if(cartGithubMode)queueCartDataSync()}
 function safeCartImage(value){const src=String(value??'').trim();if(/^data:image\/(png|jpeg|webp);base64,/i.test(src)||/^https?:\/\/[^\s<>"']+$/i.test(src)||/^(?:\.\/)?(?:[\w .-]+\/)*[\w .-]+\.(?:png|jpe?g|webp)$/i.test(src)&&!src.includes('..'))return src;return''}
 function cleanCartHtml(html){const t=document.createElement('template');t.innerHTML=String(html||'');const ok=new Set(['P','BR','DIV','B','STRONG','I','EM','U','HR','UL','OL','LI','A','IMG']);function walk(p){for(const el of [...p.children]){if(!ok.has(el.tagName)){el.replaceWith(document.createTextNode(el.textContent));continue}const href=el.getAttribute('href'),src=safeCartImage(el.getAttribute('src')),alt=el.getAttribute('alt');for(const a of [...el.attributes])el.removeAttribute(a.name);if(el.tagName==='A'&&href&&/^https?:\/\//i.test(href)){el.href=href;el.target='_blank';el.rel='noopener noreferrer'}if(el.tagName==='IMG'){if(src){el.src=src;el.alt=alt||'Illustration'}else{el.remove();continue}}walk(el)}}walk(t.content);return t.innerHTML}
 function cleanCartInline(html){const t=document.createElement('template');t.innerHTML=String(html||'');const ok=new Set(['B','STRONG','I','EM','U','BR']);function walk(p){for(const el of [...p.children]){if(!ok.has(el.tagName)){el.replaceWith(document.createTextNode(el.textContent));continue}for(const a of [...el.attributes])el.removeAttribute(a.name);walk(el)}}walk(t.content);return t.innerHTML}
@@ -1146,16 +1146,22 @@ sideResize.onpointerup=finishSideResize;sideResize.onpointercancel=finishSideRes
 addEventListener('resize',()=>{if(innerWidth>640){const raw=getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width');applySideWidth(parseFloat(raw)||320,false)}else document.querySelector('.workspace').style.removeProperty('--side-width')});
 $('mapDetailClose').onclick=closeMapDetail;$('mapDetailEdit').onclick=()=>{const d=data.find(x=>x.id===activeItem?.id);if(d)openCartEditor(d)};$('addItem').onclick=()=>openCartEditor();$('sideAdd').onclick=()=>openCartEditor();$('mapDetail').onclick=e=>e.stopPropagation();$('randomItem').onclick=randomCurrentItem;
 $('menuHome').onclick=()=>{closeTools();home()};
-$('importButton').onclick=()=>{$('importCsv').click();closeTools()};$('exportButton').onclick=()=>{exportCartCsv();closeTools()};$('importCsv').onchange=async()=>{const file=$('importCsv').files[0];if(!file)return;try{const parsed=await validateCartAdminReferences(readCartCsv(await file.text()));if(!parsed.rows.length)throw Error('Aucune fiche');if(!confirm('Remplacer la cartographie actuelle par les '+parsed.rows.length+' fiches de ce CSV ?'))return;data=parsed.rows;Object.assign(units,parsed.units);localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:parsed.units}));selectedTags.clear();selectedDeckPaths.clear();deckStateLoaded=false;renderTags();renderDeckTree();saveFilters();filterChanged()}catch(e){$('status').textContent='Import impossible : '+e.message}finally{$('importCsv').value=''}};
+$('privateAccessButton').onclick=openCartGithubPanel;
+$('privateSyncButton').onclick=()=>{closeTools();queueCartDataSync();scheduleCartCloudSync(0)};
+$('cartGhCancel').onclick=closeCartGithubPanel;
+$('privateScrim').onclick=closeCartGithubPanel;
+$('cartGhConnect').onclick=async()=>{if(await connectCartGithub($('cartGhToken').value.trim())){closeCartGithubPanel();renderTags();renderDeckTree();filterChanged();home()}};
+$('cartGhForget').onclick=forgetCartGithub;
+$('importButton').onclick=()=>{$('importCsv').click();closeTools()};$('exportButton').onclick=()=>{exportCartCsv();closeTools()};$('importCsv').onchange=async()=>{const file=$('importCsv').files[0];if(!file)return;try{const parsed=await validateCartAdminReferences(readCartCsv(await file.text()));if(!parsed.rows.length)throw Error('Aucune fiche');if(!confirm('Remplacer la cartographie actuelle par les '+parsed.rows.length+' fiches de ce CSV ?'))return;data=parsed.rows;Object.assign(units,parsed.units);localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:parsed.units}));hasImportedCartData=true;if(cartGithubMode)queueCartDataSync();selectedTags.clear();selectedDeckPaths.clear();deckStateLoaded=false;renderTags();renderDeckTree();saveFilters();filterChanged()}catch(e){$('status').textContent='Import impossible : '+e.message}finally{$('importCsv').value=''}};
 const CART_GAME_KEY='cartographie-v3:game-bests',CART_GAME_ERROR_KEY='cartographie-v3:game-errors',CART_GAME_RECENT_KEY='cartographie-v3:game-recent';
 let gameState={mode:null,active:false,streak:0,mistakes:0,total:0,current:null,pool:[],bag:[],locked:false,answers:[],reviewOnly:false},gameNextTimer=null;
 function readGameBests(){try{const x=JSON.parse(localStorage.getItem(CART_GAME_KEY)||'{}');return{where:Math.max(0,Number(x.where)||0),example:Math.max(0,Number(x.example)||0)}}catch{return{where:0,example:0}}}
-function writeGameBest(mode,score){const b=readGameBests();if(score>b[mode]){b[mode]=score;localStorage.setItem(CART_GAME_KEY,JSON.stringify(b))}updateGameRecords();return b[mode]}
+function writeGameBest(mode,score){const b=readGameBests();if(score>b[mode]){b[mode]=score;localStorage.setItem(CART_GAME_KEY,JSON.stringify(b));markCartCloudStateDirty()}updateGameRecords();return b[mode]}
 function updateGameRecords(){const b=readGameBests();$('gameBestWhere').textContent=b.where;$('gameBestExample').textContent=b.example;if(gameState.mode)$('gameBest').textContent=b[gameState.mode]||0}
 function readGameErrors(){try{const x=JSON.parse(localStorage.getItem(CART_GAME_ERROR_KEY)||'{}');return x&&typeof x==='object'?x:{}}catch{return{}}}
-function recordGameAttempt(e,mode,correct){const all=readGameErrors(),key=String(e.id),x=all[key]||{total:0,attempts:0,correct:0,where:0,example:0,last:0};x.attempts=(Number(x.attempts)||0)+1;if(correct)x.correct=(Number(x.correct)||0)+1;else{x.total=(Number(x.total)||0)+1;x[mode]=(Number(x[mode])||0)+1}x.last=Date.now();all[key]=x;localStorage.setItem(CART_GAME_ERROR_KEY,JSON.stringify(all))}
+function recordGameAttempt(e,mode,correct){const all=readGameErrors(),key=String(e.id),x=all[key]||{total:0,attempts:0,correct:0,where:0,example:0,last:0};x.attempts=(Number(x.attempts)||0)+1;if(correct)x.correct=(Number(x.correct)||0)+1;else{x.total=(Number(x.total)||0)+1;x[mode]=(Number(x[mode])||0)+1}x.last=Date.now();all[key]=x;localStorage.setItem(CART_GAME_ERROR_KEY,JSON.stringify(all));markCartCloudStateDirty()}
 function readGameRecent(){try{const x=JSON.parse(localStorage.getItem(CART_GAME_RECENT_KEY)||'[]');return Array.isArray(x)?x.map(String):[]}catch{return[]}}
-function rememberGameQuestion(e){let r=readGameRecent().filter(x=>x!==String(e.id));r.unshift(String(e.id));if(r.length>600)r.length=600;localStorage.setItem(CART_GAME_RECENT_KEY,JSON.stringify(r))}
+function rememberGameQuestion(e){let r=readGameRecent().filter(x=>x!==String(e.id));r.unshift(String(e.id));if(r.length>600)r.length=600;localStorage.setItem(CART_GAME_RECENT_KEY,JSON.stringify(r));markCartCloudStateDirty()}
 function shuffleGame(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=paletteRandomIndex(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
 function gamePool(mode=gameState.mode){const pool=current();if(mode==='where'&&groups().length<2)return[];if(mode==='example'&&new Set(pool.map(d=>d.unit)).size<2)return[];return pool}
 function buildGameBag(pool){const recent=readGameRecent(),rank=new Map(recent.map((id,i)=>[id,i])),fresh=[],seen=[];for(const e of pool){const i=rank.get(String(e.id));i==null?fresh.push(e):seen.push({e,i})}seen.sort((a,b)=>b.i-a.i);return[...shuffleGame(fresh),...seen.map(x=>x.e)]}
