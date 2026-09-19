@@ -225,11 +225,11 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto.html" aria-current="page">Cartographie</a></nav><div class="header-actions">
 <button id="randomItem" type="button" aria-label="Exemple au hasard" title="Exemple au hasard">🎲</button>
 <div class="header-tool"><button id="paletteButton" type="button" aria-label="Couleurs" title="Couleurs" aria-expanded="false">🎨</button><div id="paletteMenu" class="header-pop palette-panel" hidden>
-  <div class="palette-head"><strong>Palette temporaire</strong><label><select id="paletteCount" aria-label="Nombre de couleurs"><option value="3">3</option><option value="4">4</option><option value="6">6</option><option value="8" selected>8</option></select> couleurs</label></div>
+  <div class="palette-head"><strong>Palette temporaire</strong><label><select id="paletteCount" aria-label="Nombre de couleurs"><option value="3">3</option><option value="4" selected>4</option><option value="6">6</option><option value="8">8</option></select> couleurs</label></div>
   <div id="paletteColors" class="palette-colors"></div>
   <label class="palette-opacity">Opacité des unités <input id="paletteOpacity" type="range" min="25" max="100" step="1" value="68"><output id="paletteOpacityValue" for="paletteOpacity">68 %</output></label>
   <details class="color-library-details"><summary>Couleurs prédéfinies</summary><div id="paletteSwatches" class="preset-color-library"></div></details>
-  <div class="palette-auto"><select id="palettePreset" aria-label="Style automatique"><option value="surprise">Surprise</option><option value="analogous">Nuancée</option><option value="vivid">Vive</option><option value="pastel">Pastel</option><option value="mono">Dégradé</option></select><button id="generatePalette" type="button">Générer</button></div>
+  <div class="palette-auto"><select id="palettePreset" aria-label="Style automatique"><option value="surprise">Surprise</option><option value="analogous">Nuancée</option><option value="vivid">Vive</option><option value="pastel">Pastel</option><option value="mono" selected>Dégradé</option></select><button id="generatePalette" type="button">Générer</button></div>
   <div class="palette-actions"><button id="applyPalette" class="primary" type="button">Appliquer</button><button id="resetPalette" type="button">Original</button></div>
 </div></div>
 <div class="header-tool"><button id="gameButton" type="button" aria-label="Jeux" title="Jeux" aria-expanded="false">🎮</button><div id="gameMenu" class="header-pop game-menu-pop" hidden>
@@ -388,17 +388,17 @@ function shade(n,code=''){
  return mixHex('#ffffff',unitDisplayColor(code),n===1?.18:n===2?.34:n===3?.5:n<=5?.68:.88)
 }
 function countCode(code){return current().filter(d=>String(keyOf(d))===String(code)).length;}
-function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom();let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0,opacity=.96;const baseWeight=mode===3?1.8:mode===2?1.45:mode===1?.9:.8;if(hasSelection&&!selected){fillOpacity*=.16;opacity=.22}if(selected){fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));opacity=1}return {color:selected?'#102536':'#5f7483',weight:selected?Math.max(4.2,baseWeight+2.4):baseWeight,fillColor:shade(n,code),fillOpacity,opacity};}
+function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom();let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0,opacity=.94;const baseWeight=mode===3?1.8:mode===2?1.45:mode===1?.9:.8;if(hasSelection&&!selected){fillOpacity*=.16;opacity=.72}if(selected){fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));opacity=1}return {color:selected?'#000000':'#111315',weight:selected?Math.max(4.2,baseWeight+2.4):baseWeight,fillColor:shade(n,code),fillOpacity,opacity};}
 function updateBasemap(){if(map.getZoom()>=13){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
 function restyleAdminLayer(layer){if(layer.feature&&layer.setStyle)layer.setStyle(adminStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleAdminLayer)}
 function refreshAdminStyle(){admin.eachLayer(restyleAdminLayer)}
 function pointState(){const z=map.getZoom();return mode+':'+(selection?.key||'')+':'+(mode===0?(z<11?'agg':'pin'):selection?'pin':'none')}
 function maybeDrawPoints(){const key=pointState();if(key!==pointRenderKey)drawPoints()}
-function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true});l.on({mouseover:()=>{const selected=mode>=1&&selection&&String(selection.code)===code;l.setStyle(selected?adminStyle(f):{weight:2.2,color:'#223f54'});l.bringToFront()},mouseout:()=>l.setStyle(adminStyle(f)),click:()=>{if(mode<1)return;const g=groups().find(g=>String(g.code)===code);choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},l.getBounds());}})}}).addTo(target);}
+function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true});l.on({mouseover:()=>{const selected=mode>=1&&selection&&String(selection.code)===code;l.setStyle(selected?adminStyle(f):{weight:2.2,color:'#050607',opacity:1});l.bringToFront()},mouseout:()=>l.setStyle(adminStyle(f)),click:()=>{if(mode<1)return;const g=groups().find(g=>String(g.code)===code);choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},l.getBounds());}})}}).addTo(target);}
 function drawContextAdmin(){
  contextAdmin.clearLayers();
  if(mode<=2&&regionGeo)L.geoJSON(regionGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:mode===1?'#050607':mode===2?'#111820':'#202a32',weight:mode===1?3.05:mode===2?2.8:2.45,opacity:mode===1?1:.97,fillOpacity:0}}).addTo(contextAdmin);
- if(mode<=1&&deptGeo)L.geoJSON(deptGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#46545e',weight:1.18,opacity:.9,fillOpacity:0}}).addTo(contextAdmin)
+ if(mode<=1&&deptGeo)L.geoJSON(deptGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#17191B',weight:1.18,opacity:.92,fillOpacity:0}}).addTo(contextAdmin)
 }
 function drawAdmin(){
  contextAdmin.clearLayers();admin.clearLayers();
@@ -410,7 +410,7 @@ function drawAdmin(){
      const mapped={type:'FeatureCollection',features:d.geo.features.map(f=>({...f,properties:{code:mode===3?d.region:d.dept,nom:d.name}}))};
      geoLayer(mapped,admin,true)
    }else if(mode===3&&d.regionOnly){
-     const n=domItems(d).length,c=L.circle(d.at,{radius:d.radius||120000,color:'#87939d',weight:1.25,fillColor:shade(n,d.region),fillOpacity:.68}).addTo(admin);
+     const n=domItems(d).length,c=L.circle(d.at,{radius:d.radius||120000,color:'#111315',weight:1.25,fillColor:shade(n,d.region),fillOpacity:.68}).addTo(admin);
      c.bindTooltip(escape(d.name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true});
      c.on('click',()=>{const g=groups().find(g=>String(g.code)===String(d.region));choose(g||{key:'empty-'+d.region,name:d.name,code:d.region,items:[],at:d.at},c.getBounds())})
    }
@@ -718,13 +718,14 @@ const colorPresetGroups=[
 function validColor(c){return /^#[0-9A-F]{6}$/i.test(c)?c.toUpperCase():"#3D7BE0"}
 function renderColorPresetLibrary(container,onPick){if(!container)return;container.innerHTML="";for(const group of colorPresetGroups){const row=document.createElement("div");row.className="swatch-group";const label=document.createElement("span");label.className="swatch-group-label";label.textContent=group.label;const grid=document.createElement("div");grid.className="swatch-grid";for(const color of group.colors){const b=document.createElement("button");b.type="button";b.style.setProperty("--swatch",color);b.title=group.label+" · "+color;b.setAttribute("aria-label","Choisir "+color+" · "+group.label);b.onclick=()=>onPick(color);grid.append(b)}row.append(label,grid);container.append(row)}}
 const temporaryPaletteDefaults=[vividPalette.green,vividPalette.blue,vividPalette.pink,vividPalette.orange,vividPalette.brown,vividPalette.red,vividPalette.violet,vividPalette.turquoise];
-let temporaryPalette=[...temporaryPaletteDefaults],temporaryPaletteCount=8,temporaryPaletteActive=false,temporaryPaletteOpacity=.68,temporaryPaletteEditIndex=0,temporaryPalettePickerOpenIndex=null;
+let temporaryPalette=['#E8F3FD','#9CC9EF','#4E91CB','#174F82',...temporaryPaletteDefaults.slice(4)],temporaryPaletteCount=4,temporaryPaletteActive=false,temporaryPaletteOpacity=.68,temporaryPaletteEditIndex=0,temporaryPalettePickerOpenIndex=null;
 const temporaryPaletteAssignments=new Map;
 function paletteRandomUnit(){const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]/4294967295}
 function paletteRandomIndex(n){return Math.floor(paletteRandomUnit()*Math.max(1,n))%Math.max(1,n)}
 function temporaryEventColor(e){if(!e)return accent;if(!temporaryPaletteActive)return validColor(e.color||accent);if(!temporaryPaletteAssignments.has(e.id))temporaryPaletteAssignments.set(e.id,paletteRandomIndex(temporaryPaletteCount));return temporaryPalette[temporaryPaletteAssignments.get(e.id)%temporaryPaletteCount]||validColor(e.color||accent)}
 function renderTemporaryPaletteInputs(){const box=$("paletteColors");if(!box)return;temporaryPaletteEditIndex=Math.max(0,Math.min(temporaryPaletteCount-1,temporaryPaletteEditIndex));box.innerHTML="";const refreshActive=()=>{[...box.querySelectorAll('input[type="color"]')].forEach((el,j)=>el.classList.toggle("active-slot",j===temporaryPalettePickerOpenIndex))};temporaryPalette.slice(0,temporaryPaletteCount).forEach((c,i)=>{const input=document.createElement("input");input.type="color";input.value=c;input.setAttribute("aria-label","Couleur "+(i+1));input.onclick=e=>{e.preventDefault();if(temporaryPalettePickerOpenIndex===i){temporaryPalettePickerOpenIndex=null;input.blur();input.disabled=true;requestAnimationFrame(()=>{input.disabled=false;refreshActive()});refreshActive();return}temporaryPaletteEditIndex=i;temporaryPalettePickerOpenIndex=i;refreshActive();try{input.showPicker()}catch{input.focus()}};input.oninput=()=>{temporaryPalette[i]=validColor(input.value);if(temporaryPaletteActive)refreshPaletteMap()};box.append(input)});refreshActive();renderColorPresetLibrary($("paletteSwatches"),c=>{temporaryPalette[temporaryPaletteEditIndex]=validColor(c);const input=box.querySelectorAll('input[type="color"]')[temporaryPaletteEditIndex];if(input)input.value=temporaryPalette[temporaryPaletteEditIndex];if(temporaryPaletteActive)refreshPaletteMap()})}
-function applyTemporaryPalette(){temporaryPaletteActive=true;temporaryPaletteAssignments.clear();refreshPaletteMap()}
+function normalizeTemporaryPaletteOrder(){const head=temporaryPalette.slice(0,temporaryPaletteCount).map(validColor).sort((a,b)=>relativeLuminance(b)-relativeLuminance(a));temporaryPalette=[...head,...temporaryPalette.slice(temporaryPaletteCount)]}
+function applyTemporaryPalette(){normalizeTemporaryPaletteOrder();renderTemporaryPaletteInputs();temporaryPaletteActive=true;temporaryPaletteAssignments.clear();refreshPaletteMap()}
 function resetTemporaryPalette(){temporaryPaletteActive=false;temporaryPaletteOpacity=.68;temporaryPaletteAssignments.clear();if($('paletteOpacity')){$('paletteOpacity').value='68';$('paletteOpacityValue').value='68 %'}refreshPaletteMap()}
 function paletteHue(h){return(h%360+360)%360}
 function hsl(h,sat,light){sat/=100;light/=100;const k=n=>(n+h/30)%12,a=sat*Math.min(light,1-light),f=n=>light-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));return[f(0),f(8),f(4)].map(x=>Math.round(255*x))}
@@ -733,39 +734,47 @@ function automaticPaletteColors(style,n){
  const families=["analogous","vivid","pastel","mono"];
  if(style==="surprise")style=families[paletteRandomIndex(families.length)];
  const rnd=(a,b)=>a+(b-a)*paletteRandomUnit(),base=paletteRandomUnit()*360,out=[];
+ const sequenceLightness=i=>{
+   const t=n<=1?0:i/(n-1);
+   const light=n<=4?90-(60*t):90-(58*t);
+   return Math.max(28,Math.min(91,light))
+ };
  const shuffledOffsets=(count,step,jitter=0)=>{const a=Array.from({length:count},(_,i)=>i*step+rnd(-jitter,jitter));for(let i=a.length-1;i>0;i--){const j=paletteRandomIndex(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
- if(style==="vivid"){
+ if(style==="mono"){
+   const sat=rnd(62,78);
+   for(let i=0;i<n;i++){
+     const t=n<=1?0:i/(n-1),light=sequenceLightness(i),s=Math.min(88,sat+10*t);
+     out.push(hex(hsl(base,s,light)))
+   }
+ }else if(style==="analogous"){
+   const drift=rnd(-20,20),sat=rnd(58,74);
+   for(let i=0;i<n;i++){
+     const t=n<=1?0:i/(n-1),h=paletteHue(base+drift*(t-.5)),light=sequenceLightness(i),s=Math.min(86,sat+8*t);
+     out.push(hex(hsl(h,s,light)))
+   }
+ }else if(style==="vivid"){
    const variant=paletteRandomIndex(5);let hues=[];
    if(variant===0)hues=Array.from({length:n},(_,i)=>base+i*(360/n)+rnd(-18,18));
    else if(variant===1){const golden=137.507764;hues=Array.from({length:n},(_,i)=>base+i*golden+rnd(-12,12))}
    else if(variant===2){const anchors=[0,120,240];hues=Array.from({length:n},(_,i)=>base+anchors[i%3]+Math.floor(i/3)*rnd(8,24)+rnd(-8,8))}
    else if(variant===3){const anchors=[0,180];hues=Array.from({length:n},(_,i)=>base+anchors[i%2]+Math.floor(i/2)*rnd(10,28)+rnd(-10,10))}
    else hues=shuffledOffsets(n,360/n,22).map(x=>base+x);
-   for(const h of hues)out.push(hex(hsl(paletteHue(h),rnd(76,100),rnd(43,63))));
- }else if(style==="pastel"){
+   for(const h of hues)out.push(hex(hsl(paletteHue(h),rnd(76,100),rnd(43,67))))
+ }else{
    const variant=paletteRandomIndex(5);let hues=[];
    if(variant===0)hues=Array.from({length:n},(_,i)=>base+i*(360/n)+rnd(-20,20));
    else if(variant===1){const span=rnd(90,220);hues=Array.from({length:n},(_,i)=>base-span/2+i*(span/Math.max(1,n-1))+rnd(-12,12))}
    else if(variant===2){const golden=137.507764;hues=Array.from({length:n},(_,i)=>base+i*golden+rnd(-15,15))}
    else if(variant===3){const anchors=[0,120,240];hues=Array.from({length:n},(_,i)=>base+anchors[i%3]+rnd(-18,18))}
    else hues=shuffledOffsets(n,360/n,26).map(x=>base+x);
-   for(const h of hues)out.push(hex(hsl(paletteHue(h),rnd(32,62),rnd(70,86))));
- }else if(style==="analogous"){
-   const variant=paletteRandomIndex(6),span=[48,72,105,145,190,235][variant];let hues=[];
-   if(variant<=3)hues=Array.from({length:n},(_,i)=>base-span/2+i*(span/Math.max(1,n-1))+rnd(-8,8));
-   else if(variant===4){const second=base+180+rnd(-30,30);hues=Array.from({length:n},(_,i)=>i%2?second+Math.floor(i/2)*rnd(8,22):base+Math.floor(i/2)*rnd(8,22))}
-   else {const anchors=[0,110+rnd(-20,20),230+rnd(-20,20)];hues=Array.from({length:n},(_,i)=>base+anchors[i%3]+Math.floor(i/3)*rnd(5,18))}
-   for(let i=0;i<n;i++)out.push(hex(hsl(paletteHue(hues[i]),rnd(42,78),rnd(40,68))));
- }else{
-   const variant=paletteRandomIndex(5),drift=rnd(-22,22);
-   for(let i=0;i<n;i++){const t=n===1?0:i/Math.max(1,n-1);let h=base,sat,light;if(variant===0){h=base+drift*t;sat=rnd(48,72);light=30+t*48}else if(variant===1){h=base+drift*t;sat=30+t*62;light=rnd(45,62)}else if(variant===2){h=base+rnd(-8,8)+drift*t;sat=70-t*28;light=72-t*38}else if(variant===3){h=base+rnd(-14,14)*t;sat=rnd(40,82);light=38+Math.sin(t*Math.PI)*30}else{h=base+drift*(t-.5);sat=45+Math.abs(.5-t)*55;light=35+t*42}out.push(hex(hsl(paletteHue(h),Math.max(0,Math.min(100,sat)),Math.max(0,Math.min(100,light)))))}
+   for(const h of hues)out.push(hex(hsl(paletteHue(h),rnd(32,62),rnd(70,88))))
  }
- return out
+ return out.sort((a,b)=>relativeLuminance(b)-relativeLuminance(a))
 }
 function generateAutomaticPalette(style=$("palettePreset")?.value||"surprise"){const n=temporaryPaletteCount,colors=automaticPaletteColors(style,n);temporaryPalette=[...colors,...temporaryPalette.slice(n)];renderTemporaryPaletteInputs();temporaryPaletteActive=true;temporaryPaletteAssignments.clear();refreshPaletteMap()}
 function refreshPaletteMap(){drawAdmin();drawPoints();updateInsets();updateLegend();centerKey='';updateCenters(true);if(activeItem){$("mapDetail")?.style.setProperty("--event-color",temporaryEventColor(activeItem));focus.eachLayer(l=>{if(l.setStyle)l.setStyle({color:temporaryEventColor(activeItem),fillColor:temporaryEventColor(activeItem)})})}}
 renderTemporaryPaletteInputs();renderColorPresetLibrary($('cartSwatches'),setCartEditorColor);$('paletteButton').onclick=e=>{e.stopPropagation();const panel=$('paletteMenu'),open=panel.hidden;closeTools(panel);panel.hidden=!open;$('paletteButton').setAttribute('aria-expanded',String(open));if(open)renderTemporaryPaletteInputs()};
-$('paletteCount').onchange=()=>{temporaryPaletteCount=Number($('paletteCount').value);temporaryPalettePickerOpenIndex=null;temporaryPaletteAssignments.clear();renderTemporaryPaletteInputs();if(temporaryPaletteActive)refreshPaletteMap()};$('paletteOpacity').oninput=()=>{temporaryPaletteOpacity=Math.max(.25,Math.min(1,Number($('paletteOpacity').value)/100));$('paletteOpacityValue').value=Math.round(temporaryPaletteOpacity*100)+' %';if(temporaryPaletteActive)refreshPaletteMap()};$('generatePalette').onclick=()=>generateAutomaticPalette();$('applyPalette').onclick=applyTemporaryPalette;$('resetPalette').onclick=resetTemporaryPalette;
+$('paletteCount').onchange=()=>{temporaryPaletteCount=Number($('paletteCount').value);temporaryPalettePickerOpenIndex=null;temporaryPaletteAssignments.clear();const style=$('palettePreset').value;if(style==='mono'||style==='analogous'){const colors=automaticPaletteColors(style,temporaryPaletteCount);temporaryPalette=[...colors,...temporaryPalette.slice(temporaryPaletteCount)]}else{while(temporaryPalette.length<temporaryPaletteCount)temporaryPalette.push(temporaryPaletteDefaults[temporaryPalette.length%temporaryPaletteDefaults.length]);normalizeTemporaryPaletteOrder()}renderTemporaryPaletteInputs();if(temporaryPaletteActive)refreshPaletteMap()};$('paletteOpacity').oninput=()=>{temporaryPaletteOpacity=Math.max(.25,Math.min(1,Number($('paletteOpacity').value)/100));$('paletteOpacityValue').value=Math.round(temporaryPaletteOpacity*100)+' %';if(temporaryPaletteActive)refreshPaletteMap()};$('generatePalette').onclick=()=>generateAutomaticPalette();$('applyPalette').onclick=applyTemporaryPalette;$('resetPalette').onclick=resetTemporaryPalette;
 $('gameButton').onclick=e=>{e.stopPropagation();const open=$('gameMenu').hidden;closeTools($('gameMenu'));$('gameMenu').hidden=!open;$('gameButton').setAttribute('aria-expanded',String(open));if(open){updateGameRecords();if(!$('gameHistoryPane').hidden)renderGameHistory()}};
 $('moreButton').onclick=e=>{e.stopPropagation();toggleTool($('moreMenu'))};$('toggleFilters').onclick=e=>{e.stopPropagation();const pop=$('tagFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleFilters').setAttribute('aria-expanded',String(open))};$('toggleDecks').onclick=e=>{e.stopPropagation();toggleTool($('deckMenu'))};$('tagFilters').onclick=e=>e.stopPropagation();$('deckMenu').onclick=e=>e.stopPropagation();$('searchResults').onclick=e=>e.stopPropagation();
 function randomCurrentItem(){const pool=current();if(!pool.length)return;const a=new Uint32Array(1);crypto.getRandomValues(a);showItem(pool[a[0]%pool.length])}
