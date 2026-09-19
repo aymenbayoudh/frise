@@ -144,6 +144,12 @@ header{position:relative;z-index:1600}
 .admin-center-dot.rank-region{width:15px!important;height:15px!important;border:2.5px solid #fff!important;box-shadow:0 1px 8px #0008,0 0 0 1px #102635!important}
 .admin-center-dot.rank-department{width:11px!important;height:11px!important;border:2px solid #fff!important;box-shadow:0 1px 7px #0007,0 0 0 1px #263846!important}
 .admin-center-dot.rank-subpref{width:8px!important;height:8px!important;border:1.5px solid #fff!important;box-shadow:0 1px 5px #0005,0 0 0 1px #52636f!important}
+
+.legend{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.legend-title{font-weight:700;white-space:nowrap}
+.legend .ramp{display:inline-block;width:118px;height:9px;border:1px solid #ffffffaa;border-radius:999px;box-shadow:inset 0 0 0 1px #17223618}
+.legend-scale{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:9px;white-space:nowrap}
+.legend-scale b{color:var(--ink);font-size:9px}
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto.html" aria-current="page">Cartographie</a></nav><div class="header-actions">
 <button id="randomItem" type="button" aria-label="Exemple au hasard" title="Exemple au hasard">🎲</button>
@@ -241,8 +247,32 @@ function unitDisplayColor(code){const g=groups().find(x=>String(x.code)===String
 function itemDisplayColor(d){return temporaryEventColor(d)}
 function adminItemFor(level,code){return data.find(d=>d.mode===level&&String(keyOf(d))===String(code))}
 function adminLevelColor(level,code){const e=adminItemFor(level,code);return e?temporaryEventColor(e):accent}
-function adminCenterColor(level,code,rank){const base=adminLevelColor(level,code);if(rank==='region')return mixHex(base,'#111827',.28);if(rank==='department')return mixHex(base,'#172033',.18);return mixHex(base,'#94A3B8',.42)}
-function shade(n,code=''){return n===0?'#ffffff':mixHex('#ffffff',unitDisplayColor(code),n===1?.18:n===2?.34:n===3?.5:n<=5?.68:.88)}
+function hexRgb(c){const x=validColor(c).slice(1);return[parseInt(x.slice(0,2),16),parseInt(x.slice(2,4),16),parseInt(x.slice(4,6),16)]}
+function relativeLuminance(c){const rgb=hexRgb(c).map(v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]}
+function densityPalette(){
+ const source=temporaryPaletteActive?temporaryPalette.slice(0,temporaryPaletteCount):[mixHex('#FFFFFF',accent,.16),mixHex('#FFFFFF',accent,.34),mixHex('#FFFFFF',accent,.52),mixHex('#FFFFFF',accent,.70),accent,mixHex(accent,'#111827',.22)];
+ return [...new Set(source.map(validColor))].sort((a,b)=>relativeLuminance(b)-relativeLuminance(a))
+}
+function densityMaxCount(){return Math.max(1,...groups().map(g=>g.items.length))}
+function densityColor(n){
+ if(n<=0)return'#FFFFFF';
+ const ramp=densityPalette(),max=densityMaxCount();
+ if(ramp.length===1)return ramp[0];
+ const t=Math.max(0,Math.min(1,Math.log1p(n)/Math.log1p(max)));
+ return ramp[Math.min(ramp.length-1,Math.max(0,Math.round(t*(ramp.length-1))))]
+}
+function adminCenterColor(level,code,rank){
+ const n=data.filter(d=>d.mode===level&&String(keyOf(d))===String(code)&&tagsPass(d)&&decksPass(d)).length;
+ const base=temporaryPaletteActive&&level>=1?densityColor(n):adminLevelColor(level,code);
+ if(rank==='region')return mixHex(base,'#111827',.25);
+ if(rank==='department')return mixHex(base,'#172033',.14);
+ return mixHex(base,'#94A3B8',.40)
+}
+function shade(n,code=''){
+ if(n<=0)return'#FFFFFF';
+ if(temporaryPaletteActive&&mode>=1)return densityColor(n);
+ return mixHex('#ffffff',unitDisplayColor(code),n===1?.18:n===2?.34:n===3?.5:n<=5?.68:.88)
+}
 function countCode(code){return current().filter(d=>String(keyOf(d))===String(code)).length;}
 function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,selected=mode>=1&&selection&&String(selection.code)===code,z=map.getZoom();let opacity=mode>=2?(z>=8?.72:.86):mode===1?(z>=8?.16:.90):0;const baseWeight=mode===3?1.8:mode===2?1.45:mode===1?.9:.8;return {color:selected?'#20394c':'#5f7483',weight:selected?Math.max(2.8,baseWeight+1):baseWeight,fillColor:shade(n,code),fillOpacity:opacity,opacity:.96};}
 function updateBasemap(){if(map.getZoom()>=13){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
@@ -279,7 +309,15 @@ function addMarker(at,items,label,pin,fn,target=points){const marker=L.marker(at
 function locationBuckets(items){const b=new Map();items.forEach(d=>{const k=d.at.join(',');if(!b.has(k))b.set(k,[]);b.get(k).push(d)});return [...b.values()];}
 function openBucket(items){if(items.length===1){showItem(items[0]);return;}activeItem=null;focus.clearLayers();$('heading').textContent='Au siège · '+units[items[0].unit].name;$('context').textContent=items.length+' initiatives à portée générale';$('back').hidden=false;renderCards(items);}
 function drawPoints(){pointRenderKey=pointState();points.clearLayers();const z=map.getZoom();let gs=groups();if(mode===1&&!selection){for(const g of gs.filter(x=>x.fiction))addMarker(g.at,g.items,g.name,false,()=>choose(g));return}if(mode>=1){if(!selection)return;gs=[selection]}for(const g of gs){if(!g.items.length)continue;if(mode===0&&z<11){addMarker(g.at,g.items,g.name,false,()=>choose(g));continue}for(const bucket of locationBuckets(g.items)){const label=bucket.length>1?'Siège · '+g.name:bucket[0].title;addMarker(bucket[0].at,bucket,label,true,()=>{if(!selection||selection.key!==g.key){selection=g;renderSide()}openBucket(bucket);});}}}
-function draw(){drawAdmin();drawPoints();updateInsets();$('legend').innerHTML=mode>=2?'Nombre de fiches à cette échelle <span class="ramp"></span> 0 → '+Math.max(1,...groups().map(g=>g.items.length)):'Cercles : nombre de fiches · ◆ au siège · épingles au zoom';}
+function densityLegendGradient(){const ramp=densityPalette();if(!ramp.length)return'linear-gradient(90deg,#fff,'+accent+')';if(ramp.length===1)return ramp[0];return'linear-gradient(90deg,'+ramp.map((c,i)=>c+' '+Math.round(i/(ramp.length-1)*100)+'%').join(',')+')'}
+function updateLegend(){
+ const legend=$('legend');
+ if(mode>=1){
+   const max=densityMaxCount(),label=mode===1?'Intercommunalités':mode===2?'Départements':'Régions';
+   legend.innerHTML='<span class="legend-title">'+label+' · nombre de fiches</span><span class="ramp" style="background:'+densityLegendGradient()+'"></span><span class="legend-scale"><b>0</b><span>clair → foncé</span><b>'+max+'</b></span>'
+ }else legend.innerHTML='Cercles : nombre de fiches · ◆ au siège · épingles au zoom'
+}
+function draw(){drawAdmin();drawPoints();updateInsets();updateLegend()}
 function renderCards(items){$('list').innerHTML=items.length?items.map(d=>'<button class="entry" data-item="'+d.id+'"><strong>'+escape(d.title)+'</strong><small>'+escape(kindLabel(d))+' · '+escape((d.tags||[]).join(' · '))+'</small></button>').join(''):'<p class="empty">Aucune fiche pour ce territoire avec les filtres actuels.</p>';$('list').querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>showItem(data.find(d=>d.id===+b.dataset.item)));}
 function kindLabel(d){return {global:'Portée générale · siège',point:'Lieu précis',street:'Rue / axe',quarter:'Quartier',area:'Périmètre syndical'}[d.kind];}
 function renderSide(){activeItem=null;$('back').hidden=!selection;$('back').textContent='← Tous les territoires';$('heading').textContent=selection?selection.name:modes[mode];$('context').textContent=selection?selection.items.length+' exemple'+(selection.items.length>1?'s':'')+' · '+(selection.fiction?'syndicat fictif':'cliquer une fiche pour la situer'):current().length+' exemples · '+groups().length+' territoires';if(selection){renderCards(selection.items);return;}$('list').innerHTML=groups().map(g=>'<button class="entry" data-unit="'+g.key+'"><span class="num">'+g.items.length+'</span><strong>'+escape(g.name)+'</strong><small>'+escape(g.fiction?'Périmètre fictif':mode===0?'Commune':mode===1?'Intercommunalité':modes[mode].slice(0,-1))+'</small></button>').join('');$('list').querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>choose(groups().find(g=>g.key===b.dataset.unit)));}
@@ -564,7 +602,7 @@ function automaticPaletteColors(style,n){
  return out
 }
 function generateAutomaticPalette(style=$("palettePreset")?.value||"surprise"){const n=temporaryPaletteCount,colors=automaticPaletteColors(style,n);temporaryPalette=[...colors,...temporaryPalette.slice(n)];renderTemporaryPaletteInputs();temporaryPaletteActive=true;temporaryPaletteAssignments.clear();refreshPaletteMap()}
-function refreshPaletteMap(){drawAdmin();drawPoints();updateInsets();centerKey='';updateCenters(true);if(activeItem){$("mapDetail")?.style.setProperty("--event-color",temporaryEventColor(activeItem));focus.eachLayer(l=>{if(l.setStyle)l.setStyle({color:temporaryEventColor(activeItem),fillColor:temporaryEventColor(activeItem)})})}}
+function refreshPaletteMap(){drawAdmin();drawPoints();updateInsets();updateLegend();centerKey='';updateCenters(true);if(activeItem){$("mapDetail")?.style.setProperty("--event-color",temporaryEventColor(activeItem));focus.eachLayer(l=>{if(l.setStyle)l.setStyle({color:temporaryEventColor(activeItem),fillColor:temporaryEventColor(activeItem)})})}}
 renderTemporaryPaletteInputs();$('paletteButton').onclick=e=>{e.stopPropagation();const panel=$('paletteMenu'),open=panel.hidden;closeTools(panel);panel.hidden=!open;$('paletteButton').setAttribute('aria-expanded',String(open));if(open)renderTemporaryPaletteInputs()};
 $('paletteCount').onchange=()=>{temporaryPaletteCount=Number($('paletteCount').value);temporaryPalettePickerOpenIndex=null;temporaryPaletteAssignments.clear();renderTemporaryPaletteInputs();if(temporaryPaletteActive)refreshPaletteMap()};$('generatePalette').onclick=()=>generateAutomaticPalette();$('applyPalette').onclick=applyTemporaryPalette;$('resetPalette').onclick=resetTemporaryPalette;
 $('gameButton').onclick=e=>{e.stopPropagation();const open=$('gameMenu').hidden;closeTools($('gameMenu'));$('gameMenu').hidden=!open;$('gameButton').setAttribute('aria-expanded',String(open));if(open){updateGameRecords();if(!$('gameHistoryPane').hidden)renderGameHistory()}};
