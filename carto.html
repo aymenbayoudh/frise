@@ -441,12 +441,18 @@ async function addAdminCenterBatch(entries,token){
  const concurrency=18;for(let i=0;i<uniqueEntries.length;i+=concurrency){if(token!==centerKey)return;await Promise.all(uniqueEntries.slice(i,i+concurrency).map(e=>addAdminCenter(e.code,e,token)))}
 }
 async function updateCenters(force=false){
- const z=map.getZoom(),showRegionNames=z>=5.8,showDeptNames=z>=7,showSubpref=mode===2&&z>=7,showRegionDeptSecondary=mode===3&&z>=6;
+ const z=map.getZoom(),
+       showRegionNames=z>=6.35,
+       showDeptNames=z>=7.45,
+       showSubpref=mode===2&&z>=7,
+       showSubprefNames=z>=7.75,
+       showRegionDeptSecondary=mode===3&&z>=6,
+       showRegionDeptSecondaryNames=z>=6.65;
  let visibleRegions=[],visibleDepts=[],visibleKey='national';
  if(showRegionDeptSecondary)visibleRegions=selection?[String(selection.code)]:visibleCodesFromGeo(regionGeo).sort();
  if(showSubpref)visibleDepts=selection?[String(selection.code)]:visibleCodesFromGeo(deptGeo).sort();
  if(showRegionDeptSecondary||showSubpref)visibleKey=(showRegionDeptSecondary?visibleRegions:visibleDepts).join(',');
- const key=mode+':'+(showRegionNames?'rN':'rD')+':'+(showDeptNames?'dN':'dD')+':'+visibleKey;
+ const key=mode+':'+(showRegionNames?'rN':'rD')+':'+(showDeptNames?'dN':'dD')+':'+(showSubprefNames?'sN':'sD')+':'+(showRegionDeptSecondaryNames?'rdN':'rdD')+':'+visibleKey;
  if(!force&&key===centerKey)return;centerKey=key;centers.clearLayers();const token=key;
  try{
    const meta=await loadAdminMeta();if(token!==centerKey)return;
@@ -461,13 +467,13 @@ async function updateCenters(force=false){
      await addAdminCenterBatch(regions.map(r=>({code:r.chefLieu,adminLevel:3,adminCode:String(r.code),rank:'region',showLabel:showRegionNames})),token);
      if(token!==centerKey||!showRegionDeptSecondary)return;
      const wanted=new Set(visibleRegions),visibleDeps=deps.filter(d=>wanted.has(String(d.region??d.codeRegion)));
-     await addAdminCenterBatch(visibleDeps.filter(d=>!regionCapitalCodes.has(String(d.chefLieu))).map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:true})),token)
+     await addAdminCenterBatch(visibleDeps.filter(d=>!regionCapitalCodes.has(String(d.chefLieu))).map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:showRegionDeptSecondaryNames})),token)
    }else{
      await addAdminCenterBatch(deps.map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:showDeptNames})),token);
      if(token!==centerKey||!showSubpref)return;
      const depCapitalByCode=new Map(deps.map(d=>[String(d.code),String(d.chefLieu||'')])),wanted=new Set(visibleDepts);
      const arrs=(meta.arrondissements||[]).filter(a=>wanted.has(String(a.departement??a.codeDepartement??a.dep??'')));
-     await addAdminCenterBatch(arrs.filter(a=>String(a.chefLieu||'')!==depCapitalByCode.get(String(a.departement??a.codeDepartement??a.dep??''))).map(a=>({code:a.chefLieu,adminLevel:2,adminCode:String(a.departement??a.codeDepartement??a.dep??''),rank:'subpref',showLabel:true})),token)
+     await addAdminCenterBatch(arrs.filter(a=>String(a.chefLieu||'')!==depCapitalByCode.get(String(a.departement??a.codeDepartement??a.dep??''))).map(a=>({code:a.chefLieu,adminLevel:2,adminCode:String(a.departement??a.codeDepartement??a.dep??''),rank:'subpref',showLabel:showSubprefNames})),token)
    }
    if(mode===0&&!selection){renderSide();pointRenderKey='';drawPoints()}
  }catch(e){$('status').textContent='Les contours restent disponibles ; chargement des chefs-lieux à réessayer.'}
