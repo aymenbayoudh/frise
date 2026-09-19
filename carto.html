@@ -281,7 +281,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 </div></div>
 <div class="header-tool"><button id="moreButton" type="button" aria-label="Menu" title="Menu" aria-expanded="false">⋯</button><div id="moreMenu" class="header-pop" hidden><button id="menuHome" type="button">↖ France entière</button><button id="importButton" type="button">Importer CSV…</button><button id="exportButton" type="button">Exporter CSV</button><button id="privateAccessButton" type="button">Accès privé</button><button id="privateSyncButton" type="button" hidden>Synchroniser</button></div></div>
 <button id="addItem" type="button" aria-label="Ajouter une fiche" title="Ajouter une fiche">＋</button>
-</div><span class="demo">Exemples fictifs</span><span id="cartOwnerBadge" class="sync-pill" hidden>Privé · connecté</span><input id="importCsv" type="file" accept=".csv,text/csv" hidden></header>
+</div><span id="cartOwnerBadge" class="sync-pill" hidden>Privé · connecté</span><input id="importCsv" type="file" accept=".csv,text/csv" hidden></header>
 <section class="cart-toolbar-shell">
 <div class="cart-toolbar">
   <div class="tag-filter-menu"><button id="toggleFilters" class="compact-control" type="button" aria-expanded="false">Étiquettes <span class="chevron">⌄</span></button><div id="tagFilters" class="tag-filter-pop" hidden></div></div>
@@ -403,7 +403,7 @@ map.attributionControl.addAttribution('<a href="https://github.com/gregoiredavid
 const satelliteTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,keepBuffer:2,updateWhenZooming:false,attribution:'Tiles © Esri'});
 map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
-let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,accent='#265f8c';
+let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,accent='#265f8c';
 const communeLabels=L.layerGroup().addTo(map);
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stripHtml=html=>{const t=document.createElement('template');t.innerHTML=String(html||'');return t.content.textContent||''},unique=a=>[...new Set((a||[]).filter(Boolean).map(String))];
@@ -493,10 +493,45 @@ function drawMainOutline(){
  const geo=mode===3?regionGeo:mode===2?(arrDeptGeo||deptGeo):mode===1?epciGeo:null;
  if(geo)L.geoJSON(geo,{pane:'mainOutlinePane',interactive:false,style:mainOutlineStyle}).addTo(mainOutline)
 }
+function adminGeoHasCode(geo,code){return !!geo?.features?.some(f=>featureAdminCode(f)===String(code))}
+function overseasOuterBoundary(geo){
+ if(!geo?.features?.length)return null;
+ if(overseasBoundaryCache.has(geo))return overseasBoundaryCache.get(geo);
+ const edges=new Map(),round=n=>Number(n).toFixed(5);
+ const addRing=ring=>{
+   if(!Array.isArray(ring)||ring.length<2)return;
+   for(let i=1;i<ring.length;i++){
+     const a=ring[i-1],b=ring[i];if(!Array.isArray(a)||!Array.isArray(b))continue;
+     const ak=round(a[0])+','+round(a[1]),bk=round(b[0])+','+round(b[1]),key=ak<bk?ak+'|'+bk:bk+'|'+ak;
+     const e=edges.get(key);if(e)e.count++;else edges.set(key,{count:1,line:[[Number(a[0]),Number(a[1])],[Number(b[0]),Number(b[1])]]})
+   }
+ };
+ const addGeometry=g=>{
+   if(!g)return;
+   if(g.type==='Polygon'){for(const ring of g.coordinates||[])addRing(ring)}
+   else if(g.type==='MultiPolygon'){for(const poly of g.coordinates||[])for(const ring of poly||[])addRing(ring)}
+   else if(g.type==='GeometryCollection'){for(const child of g.geometries||[])addGeometry(child)}
+ };
+ for(const f of geo.features)addGeometry(f.geometry);
+ const lines=[...edges.values()].filter(e=>e.count===1).map(e=>e.line);
+ const out=lines.length?{type:'Feature',properties:{},geometry:{type:'MultiLineString',coordinates:lines}}:null;
+ overseasBoundaryCache.set(geo,out);return out
+}
+function drawOverseasContext(target=contextAdmin){
+ if(mode>1)return;
+ for(const d of doms){
+   if(d.regionOnly||!d.geo)continue;
+   const hasRegion=adminGeoHasCode(regionGeo,d.region),hasDept=adminGeoHasCode(deptGeo,d.dept);
+   if(hasRegion&&hasDept)continue;
+   const boundary=overseasOuterBoundary(d.geo);if(!boundary)continue;
+   L.geoJSON(boundary,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#000000',weight:mode===0?2.65:1.7,opacity:1,fill:false,fillOpacity:0}}).addTo(target)
+ }
+}
 function drawContextAdmin(){
  contextAdmin.clearLayers();
  if(mode<=2&&regionGeo)L.geoJSON(regionGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:mode===1?'#000000':mode===2?'#050607':'#090B0D',weight:mode===1?1.575:mode===2?2.9:2.55,opacity:1,fillOpacity:0}}).addTo(contextAdmin);
- if(mode<=1&&deptGeo)L.geoJSON(deptGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#0B0D0F',weight:mode===1?.625:1.25,opacity:1,fillOpacity:0}}).addTo(contextAdmin)
+ if(mode<=1&&deptGeo)L.geoJSON(deptGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#0B0D0F',weight:mode===1?.625:1.25,opacity:1,fillOpacity:0}}).addTo(contextAdmin);
+ drawOverseasContext(contextAdmin)
 }
 function drawAdmin(){
  contextAdmin.clearLayers();admin.clearLayers();mainOutline.clearLayers();
@@ -815,7 +850,7 @@ function seedEpciDemoCoverage(){
 }
 
 function domItems(d){return current().filter(x=>mode<2?units[x.unit].dept===d.dept:mode===2?keyOf(x)===d.dept:keyOf(x)===d.region);}
-function updateInsets(){for(const d of doms){d.layer.clearLayers();const items=domItems(d),adminOpacity=temporaryPaletteActive&&mode>=2?temporaryPaletteOpacity:1;if(d.count)d.count.textContent=items.length;if(d.geo)L.geoJSON(d.geo,{interactive:false,style:{color:'#738797',weight:.6,fillColor:mode>=2?shade(items.length,mode===3?d.region:d.dept):'#e2eaf0',fillOpacity:adminOpacity}}).addTo(d.layer);if(d.regionOnly)L.circleMarker(d.at,{radius:15,color:'#fff',weight:2,fillColor:mode>=2?shade(items.length,d.region):(items.length?temporaryEventColor(items[0]):'#aeb8c0'),fillOpacity:adminOpacity,interactive:false}).addTo(d.layer);else if(mode<2&&items.length)L.circleMarker(d.at,{radius:7,color:'#fff',weight:1,fillColor:temporaryEventColor(items[0]),fillOpacity:1,interactive:false}).addTo(d.layer);}}
+function updateInsets(){for(const d of doms){d.layer.clearLayers();const items=domItems(d),adminOpacity=temporaryPaletteActive&&mode>=2?temporaryPaletteOpacity:1;if(d.count)d.count.textContent=items.length;if(d.geo){L.geoJSON(d.geo,{interactive:false,style:{color:mode<2?'#606A72':'#738797',weight:mode<2?.45:.6,fillColor:mode>=2?shade(items.length,mode===3?d.region:d.dept):'#e2eaf0',fillOpacity:adminOpacity}}).addTo(d.layer);if(mode<2){const boundary=overseasOuterBoundary(d.geo);if(boundary)L.geoJSON(boundary,{interactive:false,style:{color:'#000000',weight:2,opacity:1,fill:false,fillOpacity:0}}).addTo(d.layer)}}if(d.regionOnly)L.circleMarker(d.at,{radius:15,color:'#fff',weight:2,fillColor:mode>=2?shade(items.length,d.region):(items.length?temporaryEventColor(items[0]):'#aeb8c0'),fillOpacity:adminOpacity,interactive:false}).addTo(d.layer);else if(mode<2&&items.length)L.circleMarker(d.at,{radius:7,color:'#fff',weight:1,fillColor:temporaryEventColor(items[0]),fillOpacity:1,interactive:false}).addTo(d.layer);}}
 for(const [i,d] of doms.entries()){const el=document.createElement('div');el.className='inset';el.innerHTML='<div class="mini" id="mini'+i+'"></div><button aria-label="Afficher '+d.name+'"><span>'+d.name+' <b>0</b></span></button>';$('overseas').append(el);d.count=el.querySelector('b');d.map=L.map('mini'+i,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false,preferCanvas:true,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false}).setView(d.at,d.z);d.layer=L.layerGroup().addTo(d.map);el.querySelector('button').onclick=()=>{selection=null;activeItem=null;focus.clearLayers();local.clearLayers();map.setView(d.at,d.regionOnly?8:(d.dept==='973'?6:10));renderSide();drawPoints();};}
 
 
