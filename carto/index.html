@@ -728,6 +728,8 @@ const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),com
 const IGN_ADMIN_BASE='./data/ign/2026/';const IGN_GEO_BASE=IGN_ADMIN_BASE+'geographic/';const IGN_OVERVIEW_BASE=IGN_ADMIN_BASE+'overview/';
 let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c',ignAdminManifest=null;
 let overviewActive=false,overviewRegionGeo=null,overviewDeptGeo=null,overviewEpciGeo=null,overviewCommuneCenters=null,ignOverviewManifest=null,overviewDepartmentRenderGeoCache=null,overviewDepartmentOutlineGeoCache=null,overviewEpciPromise=null;
+// Must exist before desktop inset maps are initialized below.
+let temporaryPaletteActive=false,temporaryPaletteOpacity=.68;
 
 const communeLabels=L.layerGroup().addTo(map),groupCenterCache=new Map();let groupCenterToken=0,groupCenterHideTimer=null,adminCascadeToken=0;
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2242,7 +2244,7 @@ const colorPresetGroups=[
 function validColor(c){return /^#[0-9A-F]{6}$/i.test(c)?c.toUpperCase():"#3D7BE0"}
 function renderColorPresetLibrary(container,onPick){if(!container)return;container.innerHTML="";for(const group of colorPresetGroups){const row=document.createElement("div");row.className="swatch-group";const label=document.createElement("span");label.className="swatch-group-label";label.textContent=group.label;const grid=document.createElement("div");grid.className="swatch-grid";for(const color of group.colors){const b=document.createElement("button");b.type="button";b.style.setProperty("--swatch",color);b.title=group.label+" · "+color;b.setAttribute("aria-label","Choisir "+color+" · "+group.label);b.onclick=()=>onPick(color);grid.append(b)}row.append(label,grid);container.append(row)}}
 const temporaryPaletteDefaults=[vividPalette.green,vividPalette.blue,vividPalette.pink,vividPalette.orange,vividPalette.brown,vividPalette.red,vividPalette.violet,vividPalette.turquoise];
-let temporaryPalette=['#E8F3FD','#9CC9EF','#4E91CB','#174F82',...temporaryPaletteDefaults.slice(4)],temporaryPaletteCount=4,temporaryPaletteActive=false,temporaryPaletteOpacity=.68,temporaryPaletteEditIndex=0,temporaryPalettePickerOpenIndex=null;
+let temporaryPalette=['#E8F3FD','#9CC9EF','#4E91CB','#174F82',...temporaryPaletteDefaults.slice(4)],temporaryPaletteCount=4,temporaryPaletteEditIndex=0,temporaryPalettePickerOpenIndex=null;
 const temporaryPaletteAssignments=new Map;
 function paletteRandomUnit(){const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]/4294967295}
 function paletteRandomIndex(n){return Math.floor(paletteRandomUnit()*Math.max(1,n))%Math.max(1,n)}
