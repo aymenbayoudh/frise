@@ -487,6 +487,31 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
    font-size:10px!important;
  }
 }
+
+/* Paramètres d’affichage : même grammaire visuelle que le panneau Paramètres de la frise. */
+.cart-settings-panel{position:fixed;z-index:1901;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:min(520px,calc(100vw - 24px));padding:18px;background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow)}
+.cart-settings-panel h2{margin:0 0 14px;font-size:1rem}
+.cart-settings-panel .settings-grid{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+.cart-settings-panel .settings-grid>span{font-size:.85rem;font-weight:650}
+.settings-color-control{display:grid;grid-template-columns:52px 92px;gap:7px;align-items:center}
+.settings-color-control input[type="color"]{width:52px;height:38px;padding:2px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
+.settings-color-control input[type="text"]{width:92px;min-height:38px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase}
+.cart-settings-panel .settings-hint{margin:14px 0 0;padding-top:10px;border-top:1px solid #edf0f4;color:var(--muted);font-size:.7rem;line-height:1.35}
+.cart-settings-panel .batch-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:14px}
+.cart-settings-panel .batch-actions button{min-height:38px;padding:7px 12px}
+.cart-settings-panel .batch-actions .primary{color:#fff;background:var(--ink);border-color:var(--ink)}
+.cart-settings-panel .settings-actions-spacer{flex:1}
+#settingsReset{color:var(--muted)}
+@media(max-width:640px){
+ .cart-settings-panel{width:calc(100vw - 20px);padding:16px;border-radius:13px}
+ .cart-settings-panel .settings-grid{gap:10px 8px}
+ .cart-settings-panel .settings-grid>span{font-size:.78rem}
+ .settings-color-control{grid-template-columns:46px 82px;gap:6px}
+ .settings-color-control input[type="color"]{width:46px;height:36px}
+ .settings-color-control input[type="text"]{width:82px;min-height:36px;padding:6px;font-size:11px}
+ .cart-settings-panel .batch-actions{gap:6px}
+ .cart-settings-panel .batch-actions button{min-height:36px;padding:6px 9px;font-size:.75rem}
+}
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto" aria-current="page">Carte</a></nav><div class="header-actions">
 <button id="randomItem" type="button" aria-label="Exemple au hasard" title="Exemple au hasard">🎲</button>
@@ -508,7 +533,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
   </div>
   <div id="gameHistoryPane" hidden><button id="reviewErrors" class="review-errors-button" type="button">↻ Réviser mes erreurs</button><div id="gameHistoryList" class="game-history-list"></div></div>
 </div></div>
-<div class="header-tool"><button id="moreButton" type="button" aria-label="Menu" title="Menu" aria-expanded="false">⋯</button><div id="moreMenu" class="header-pop" hidden><button id="undoButton" type="button" disabled>↶ Annuler</button><button id="importButton" type="button">Importer CSV…</button><button id="exportButton" type="button">Exporter CSV</button><button id="privateAccessButton" type="button">Accès privé</button></div></div>
+<div class="header-tool"><button id="moreButton" type="button" aria-label="Menu" title="Menu" aria-expanded="false">⋯</button><div id="moreMenu" class="header-pop" hidden><button id="undoButton" type="button" disabled>↶ Annuler</button><button id="importButton" type="button">Importer CSV…</button><button id="exportButton" type="button">Exporter CSV</button><button id="openSettingsButton" type="button">Paramètres</button><button id="privateAccessButton" type="button">Accès privé</button></div></div>
 <button id="addItem" type="button" aria-label="Ajouter une fiche" title="Ajouter une fiche">＋</button>
 </div><input id="importCsv" type="file" accept=".csv,text/csv" hidden></header>
 <section class="cart-toolbar-shell">
@@ -539,6 +564,18 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
   <p id="cartGhStatus" class="owner-status">Non connecté.</p>
   <p class="private-hint">Même token que la Frise sur cet appareil · données privées : <code>frise-data/carto.csv</code>.</p>
   <div class="private-actions"><button id="cartGhForget" class="danger" type="button">Déconnecter</button><button id="cartGhCancel" type="button">Fermer</button><button id="cartGhConnect" class="primary" type="button">Connecter</button></div>
+</section>
+<div id="settingsScrim" class="editor-scrim" hidden></div>
+<section id="cartSettingsPanel" class="cart-settings-panel" hidden aria-label="Paramètres d’affichage">
+  <h2>Paramètres d’affichage</h2>
+  <div class="settings-grid base-color-settings">
+    <span>Communes</span><div class="settings-color-control"><input id="settingBaseColor0" type="color" aria-label="Couleur de base des communes"><input id="settingBaseColorCode0" type="text" maxlength="7" aria-label="Code couleur des communes"></div>
+    <span>Groupements</span><div class="settings-color-control"><input id="settingBaseColor1" type="color" aria-label="Couleur de base des groupements"><input id="settingBaseColorCode1" type="text" maxlength="7" aria-label="Code couleur des groupements"></div>
+    <span>Départements</span><div class="settings-color-control"><input id="settingBaseColor2" type="color" aria-label="Couleur de base des départements"><input id="settingBaseColorCode2" type="text" maxlength="7" aria-label="Code couleur des départements"></div>
+    <span>Régions</span><div class="settings-color-control"><input id="settingBaseColor3" type="color" aria-label="Couleur de base des régions"><input id="settingBaseColorCode3" type="text" maxlength="7" aria-label="Code couleur des régions"></div>
+  </div>
+  <p class="settings-hint">Ces couleurs pilotent les dégradés de base, les aplats et les légendes. Elles sont conservées au rechargement et synchronisées avec l’accès privé.</p>
+  <div class="batch-actions"><button id="settingsReset" type="button">Valeurs par défaut</button><span class="settings-actions-spacer"></span><button id="settingsCancel" type="button">Annuler</button><button id="settingsApply" class="primary" type="button">Appliquer</button></div>
 </section>
 <div id="editorScrim" class="editor-scrim" hidden></div>
 <form id="cartEditor" hidden>
@@ -641,9 +678,12 @@ function eventVisibleAtMode(d,target=mode){
  return false
 }
 
-const CART_DATA_KEY='cartographie-v2:data',CART_FILTER_KEY='cartographie-v2:filters',SHARED_GITHUB_KEY='frise-private-github-v1',CART_CLOUD_UPDATED_KEY='cartographie-v3:cloud-state-updated',CART_GITHUB_OWNER='aymenbayoudh',CART_GITHUB_REPO='frise-data',CART_GITHUB_BRANCH='main',CART_GITHUB_FILE='carto.csv',CART_GITHUB_STATE_FILE='carto-user-state.json';
+const CART_DATA_KEY='cartographie-v2:data',CART_FILTER_KEY='cartographie-v2:filters',CART_BASE_COLORS_KEY='cartographie-v4:base-colors',SHARED_GITHUB_KEY='frise-private-github-v1',CART_CLOUD_UPDATED_KEY='cartographie-v3:cloud-state-updated',CART_GITHUB_OWNER='aymenbayoudh',CART_GITHUB_REPO='frise-data',CART_GITHUB_BRANCH='main',CART_GITHUB_FILE='carto.csv',CART_GITHUB_STATE_FILE='carto-user-state.json';
 let cartGithubMode=false,cartGithubConfig=null,cartPrivateDataSha=null,cartGithubSyncChain=Promise.resolve(),cartCloudTimer=null,applyingCartCloudState=false,cartDataDirty=false;
-const modeKeys=['commune','interco','departement','region'],defaultColors=['#A9D54A','#3F7650','#E56AA6','#258DBB'];
+const modeKeys=['commune','interco','departement','region'],BASE_COLOR_DEFAULTS=['#A8D93F','#245C3D','#D65A94','#1B83B2'];
+function normalizeBaseColorValue(c,fallback){return /^#[0-9A-F]{6}$/i.test(String(c||''))?String(c).toUpperCase():fallback}
+function normalizeBaseColors(values){return BASE_COLOR_DEFAULTS.map((fallback,i)=>normalizeBaseColorValue(Array.isArray(values)?values[i]:'',fallback))}
+let defaultColors=(()=>{try{return normalizeBaseColors(JSON.parse(localStorage.getItem(CART_BASE_COLORS_KEY)||'null'))}catch{return[...BASE_COLOR_DEFAULTS]}})();
 function demoDeckPaths(theme,level,index=0){
  const primary={
   'Santé':'OGCT::Solidarité::Santé',
@@ -802,27 +842,48 @@ function featureAdminName(f){const p=f?.properties||{};return p.nom||p.nom_offic
 function compactMapUi(){return matchMedia('(max-width:640px)').matches}
 function adminStroke(v){return compactMapUi()?v*.52:v}
 function mixHex(a,b,t){const pa=a.match(/\w\w/g).map(x=>parseInt(x,16)),pb=b.match(/\w\w/g).map(x=>parseInt(x,16));return'#'+pa.map((v,i)=>Math.round(v+(pb[i]-v)*t).toString(16).padStart(2,'0')).join('')}
-function unitDisplayColor(code){const g=groupByCode(code);return g?.items?.length?temporaryEventColor(g.items[0]):accent}
+function unitDisplayColor(code){const g=groupByCode(code),n=g?.items?.length||0;if(!n)return defaultColors[mode]||accent;return mode===0?densityContinuousColor(n):densityColor(n)}
 function itemDisplayColor(d){return temporaryEventColor(d)}
 function adminItemFor(level,code){return data.find(d=>d.mode===level&&String(level===2?displayDepartmentCode(keyOf(d)):keyOf(d))===String(code))}
 function adminLevelColor(level,code){const e=adminItemFor(level,code);return e?temporaryEventColor(e):accent}
 function hexRgb(c){const x=validColor(c).slice(1);return[parseInt(x.slice(0,2),16),parseInt(x.slice(2,4),16),parseInt(x.slice(4,6),16)]}
 function relativeLuminance(c){const rgb=hexRgb(c).map(v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]}
 function baseDensityColor(){
- if(mode>=1&&defaultColors[mode])return validColor(defaultColors[mode]);
- const first=groups()[0]?.items?.[0];
- return first?validColor(first.color||accent):validColor(accent)
+ return validColor(defaultColors[mode]||BASE_COLOR_DEFAULTS[mode]||accent)
 }
-const defaultDensityRamps={
- 0:['#FAF9D8','#EDF3A8','#D7E978','#B3D94E','#7FBB2E'],
- 1:['#DDE9D7','#A9C89D','#73A174','#447852','#1F5138'],
- 2:['#FCE6F0','#F5B9D1','#E98AAF','#D75D96','#B43A78'],
- 3:['#E1F3FA','#A9DDEE','#69BBDD','#2E91C0','#0E6598']
-};
+function baseDensityRamp(level=mode){
+ const base=validColor(defaultColors[level]||BASE_COLOR_DEFAULTS[level]||accent);
+ if(level===0)return[
+   mixHex('#FFFFF2',base,.11),
+   mixHex('#FBFCDC',base,.28),
+   mixHex('#F0F5B8',base,.48),
+   mixHex('#D8E978',base,.72),
+   base
+ ];
+ if(level===1)return[
+   mixHex('#F5F8F4',base,.20),
+   mixHex('#E2EBE0',base,.38),
+   mixHex('#BED2BA',base,.56),
+   mixHex('#7FA486',base,.76),
+   mixHex(base,'#0B2F20',.30)
+ ];
+ if(level===2)return[
+   mixHex('#FFFFFF',base,.18),
+   mixHex('#FFFFFF',base,.36),
+   mixHex('#FFFFFF',base,.54),
+   mixHex('#FFFFFF',base,.74),
+   mixHex(base,'#8F285C',.22)
+ ];
+ return[
+   mixHex('#FFFFFF',base,.16),
+   mixHex('#FFFFFF',base,.34),
+   mixHex('#FFFFFF',base,.52),
+   mixHex('#FFFFFF',base,.72),
+   mixHex(base,'#07557E',.24)
+ ]
+}
 function densityPalette(){
- const source=temporaryPaletteActive
-   ?temporaryPalette.slice(0,temporaryPaletteCount)
-   :(defaultDensityRamps[mode]||(()=>{const base=baseDensityColor();return[mixHex('#FFFFFF',base,.18),mixHex('#FFFFFF',base,.34),mixHex('#FFFFFF',base,.50),mixHex('#FFFFFF',base,.68),mixHex('#FFFFFF',base,.88)]})());
+ const source=temporaryPaletteActive?temporaryPalette.slice(0,temporaryPaletteCount):baseDensityRamp(mode);
  return [...new Set(source.map(validColor))].sort((a,b)=>relativeLuminance(b)-relativeLuminance(a))
 }
 function densityMaxCount(){groups();return groupMaxCountCache}
@@ -2015,7 +2076,9 @@ function queueCartDataSync(force=false){
  return cartGithubSyncChain
 }
 function localCartCloudUpdated(){return Math.max(0,Number(localStorage.getItem(CART_CLOUD_UPDATED_KEY))||0)}
-function hasLocalCartCloudState(){return !!(localStorage.getItem(CART_FILTER_KEY)||localStorage.getItem(CART_GAME_ERROR_KEY)||localStorage.getItem(CART_GAME_RECENT_KEY)||localStorage.getItem(CART_GAME_KEY)||localStorage.getItem(SIDE_WIDTH_KEY))}
+function hasLocalCartCloudState(){
+ return !!(localStorage.getItem(CART_FILTER_KEY)||localStorage.getItem(CART_GAME_ERROR_KEY)||localStorage.getItem(CART_GAME_RECENT_KEY)||localStorage.getItem(CART_GAME_KEY)||localStorage.getItem(SIDE_WIDTH_KEY)||localStorage.getItem(CART_BASE_COLORS_KEY))
+}
 function markCartCloudStateDirty(){
  if(applyingCartCloudState)return;
  try{localStorage.setItem(CART_CLOUD_UPDATED_KEY,String(Date.now()))}catch{}
@@ -2027,7 +2090,7 @@ function scheduleCartCloudSync(delay=7000){
  cartCloudTimer=setTimeout(()=>{cartCloudTimer=null;syncCartCloudStateToGitHub().catch(()=>{})},Math.max(0,delay))
 }
 function collectCartCloudState(){
- return{version:4,updatedAt:localCartCloudUpdated()||Date.now(),filters:{initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320}
+ return{version:5,updatedAt:localCartCloudUpdated()||Date.now(),filters:{initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors]}
 }
 function applyCartCloudState(state){
  if(!state||typeof state!=='object')return;applyingCartCloudState=true;
@@ -2043,6 +2106,7 @@ function applyCartCloudState(state){
   if(state.gameBests)localStorage.setItem(CART_GAME_KEY,JSON.stringify(state.gameBests));
   if(Number.isInteger(Number(state.mode)))mode=Math.max(0,Math.min(3,Number(state.mode)));
   if(Number(state.sideWidth))localStorage.setItem(SIDE_WIDTH_KEY,String(state.sideWidth));
+  if(Array.isArray(state.baseColors)){defaultColors=normalizeBaseColors(state.baseColors);localStorage.setItem(CART_BASE_COLORS_KEY,JSON.stringify(defaultColors))}
   localStorage.setItem(CART_CLOUD_UPDATED_KEY,String(Math.max(0,Number(state.updatedAt)||Date.now())))
  }finally{applyingCartCloudState=false}
 }
@@ -2186,7 +2250,7 @@ function automaticPaletteColors(style,n){
  return out.sort((a,b)=>relativeLuminance(b)-relativeLuminance(a))
 }
 function generateAutomaticPalette(style=$("palettePreset")?.value||"surprise"){const n=temporaryPaletteCount,colors=automaticPaletteColors(style,n);temporaryPalette=[...colors,...temporaryPalette.slice(n)];renderTemporaryPaletteInputs();temporaryPaletteActive=true;temporaryPaletteAssignments.clear();refreshPaletteMap()}
-function scalePaletteColor(){if(!temporaryPaletteActive)return accent;const ramp=densityPalette();return ramp[Math.min(ramp.length-1,Math.max(0,Math.round((ramp.length-1)*.66)))]||accent}
+function scalePaletteColor(){if(!temporaryPaletteActive)return defaultColors[mode]||accent;const ramp=densityPalette();return ramp[Math.min(ramp.length-1,Math.max(0,Math.round((ramp.length-1)*.66)))]||accent}
 function updateScalePaletteColor(){document.querySelector('.scale-panel')?.style.setProperty('--scale-color',scalePaletteColor())}
 function refreshPaletteMap(){updateScalePaletteColor();if(mode===1){refreshAdminStyle();drawSelectedGroupOverlay()}else drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer(true);centerKey='';updateCenters(true);if(activeItem){$("mapDetail")?.style.setProperty("--event-color",temporaryEventColor(activeItem));focus.eachLayer(l=>{if(l.setStyle)l.setStyle({color:temporaryEventColor(activeItem),fillColor:temporaryEventColor(activeItem)})})}}
 let paletteOpacityFrame=0;
@@ -2203,6 +2267,33 @@ function schedulePaletteOpacityLive(){
 renderTemporaryPaletteInputs();renderColorPresetLibrary($('cartSwatches'),setCartEditorColor);updateScalePaletteColor();$('paletteButton').onclick=e=>{e.stopPropagation();const panel=$('paletteMenu'),open=panel.hidden;closeTools(panel);panel.hidden=!open;$('paletteButton').setAttribute('aria-expanded',String(open));if(open)renderTemporaryPaletteInputs()};
 $('paletteCount').onchange=()=>{temporaryPaletteCount=Number($('paletteCount').value);temporaryPalettePickerOpenIndex=null;temporaryPaletteAssignments.clear();const style=$('palettePreset').value;if(style==='mono'||style==='analogous'){const colors=automaticPaletteColors(style,temporaryPaletteCount);temporaryPalette=[...colors,...temporaryPalette.slice(temporaryPaletteCount)]}else{while(temporaryPalette.length<temporaryPaletteCount)temporaryPalette.push(temporaryPaletteDefaults[temporaryPalette.length%temporaryPaletteDefaults.length]);normalizeTemporaryPaletteOrder()}renderTemporaryPaletteInputs();if(temporaryPaletteActive)refreshPaletteMap()};$('paletteOpacity').oninput=()=>{temporaryPaletteOpacity=Math.max(.25,Math.min(1,Number($('paletteOpacity').value)/100));$('paletteOpacityValue').value=Math.round(temporaryPaletteOpacity*100)+' %';schedulePaletteOpacityLive()};$('paletteOpacity').onchange=()=>{if(temporaryPaletteActive)refreshPaletteMap()};$('applyPalette').onclick=()=>generateAutomaticPalette();$('resetPalette').onclick=resetTemporaryPalette;
 $('gameButton').onclick=e=>{e.stopPropagation();const open=$('gameMenu').hidden;closeTools($('gameMenu'));$('gameMenu').hidden=!open;$('gameButton').setAttribute('aria-expanded',String(open));if(open){updateGameRecords();if(!$('gameHistoryPane').hidden)renderGameHistory()}};
+function setSettingsColorRow(i,color){
+ const value=normalizeBaseColorValue(color,BASE_COLOR_DEFAULTS[i]),picker=$('settingBaseColor'+i),code=$('settingBaseColorCode'+i);
+ if(picker)picker.value=value;if(code)code.value=value
+}
+function openCartSettings(){
+ closeTools();for(let i=0;i<4;i++)setSettingsColorRow(i,defaultColors[i]);
+ $('settingsScrim').hidden=false;$('cartSettingsPanel').hidden=false
+}
+function closeCartSettings(){$('settingsScrim').hidden=true;$('cartSettingsPanel').hidden=true}
+function refreshBaseColorDisplay(){
+ temporaryPaletteActive=false;temporaryPaletteAssignments.clear();pointRenderKey='';communeDataKey='';centerKey='';subdivisionKey='';
+ updateScalePaletteColor();drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true)
+}
+for(let i=0;i<4;i++){
+ const picker=$('settingBaseColor'+i),code=$('settingBaseColorCode'+i);
+ picker.oninput=()=>{code.value=picker.value.toUpperCase()};
+ code.oninput=()=>{const raw=code.value.trim();if(/^#[0-9A-F]{6}$/i.test(raw))picker.value=raw};
+ code.onblur=()=>setSettingsColorRow(i,code.value)
+}
+$('openSettingsButton').onclick=openCartSettings;
+$('settingsCancel').onclick=closeCartSettings;
+$('settingsScrim').onclick=closeCartSettings;
+$('settingsReset').onclick=()=>{for(let i=0;i<4;i++)setSettingsColorRow(i,BASE_COLOR_DEFAULTS[i])};
+$('settingsApply').onclick=()=>{
+ const next=BASE_COLOR_DEFAULTS.map((fallback,i)=>normalizeBaseColorValue($('settingBaseColorCode'+i).value||$('settingBaseColor'+i).value,fallback));
+ defaultColors=next;localStorage.setItem(CART_BASE_COLORS_KEY,JSON.stringify(defaultColors));markCartCloudStateDirty();closeCartSettings();refreshBaseColorDisplay();$('status').textContent='Couleurs de base enregistrées.'
+};
 $('moreButton').onclick=e=>{e.stopPropagation();toggleTool($('moreMenu'))};$('toggleFilters').onclick=e=>{e.stopPropagation();const pop=$('tagFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleFilters').setAttribute('aria-expanded',String(open))};$('toggleDecks').onclick=e=>{e.stopPropagation();toggleTool($('deckMenu'))};$('tagFilters').onclick=e=>e.stopPropagation();$('deckMenu').onclick=e=>e.stopPropagation();$('searchResults').onclick=e=>e.stopPropagation();$('adminSearchResults').onclick=e=>e.stopPropagation();$('adminSearch').onclick=e=>e.stopPropagation();
 async function focusItemFromNavigation(d){if(!d)return;setMode(d.mode);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));const u=units[d.unit]||{},code=String(u.code||d.unit);let bounds=null;if(d.mode===0){const f=await communeOutlineGeo(code);if(f)bounds=featureBounds(f)}else{const wanted=d.mode===2?displayDepartmentCode(code):code,geo=d.mode===3?regionGeo:d.mode===2?departmentRenderGeo():epciGeo,fs=geo?.features?.filter(f=>featureAdminCode(f)===wanted)||[];if(fs.length)bounds=L.geoJSON({type:'FeatureCollection',features:fs}).getBounds()}const g=groups().find(g=>g.key===d.unit)||{key:d.unit,...u,code,items:data.filter(x=>x.mode===d.mode&&x.unit===d.unit)};const maxZoom=d.mode===0?9.25:d.mode===1?7.8:d.mode===2?6.6:5.7;await choose(g,bounds||undefined,{maxZoom});showItem(d,{recenter:false})}
 
