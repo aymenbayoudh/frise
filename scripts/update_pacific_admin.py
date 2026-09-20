@@ -439,6 +439,12 @@ PF_LAYOUT = {
     "australes": (-0.58, -0.60, 0.34, 0.28),
     "tuamotugambier": (0.35, -0.10, 0.72, 0.61),
 }
+# The Saint-Barthélemy slot is narrow: keep the whole PF cartogram compact
+# enough not to hit Mayotte on the west, mainland France on the north, or NC
+# on the east.  The internal archipelago layout stays identical.
+PF_OVERVIEW_SCALE = 0.52
+PF_OVERVIEW_LAT_SHIFT = -0.10
+PF_OVERVIEW_LON_SHIFT = 0.04
 
 
 def pf_sub_key(name):
@@ -460,6 +466,8 @@ def build_pf_overview(pf, center):
     # A cartogram inspired by the familiar PF archipelago map: each archipelago
     # keeps its internal island pattern, but ocean distances are compressed.
     ty, tx = center
+    ty += PF_OVERVIEW_LAT_SHIFT
+    tx += PF_OVERVIEW_LON_SHIFT
     # Saint-Barthélemy's CARTO PLUS slot is tiny. Our readable archipelago
     # cartogram is larger, so lower it slightly to keep every island clear of
     # the Pyrenean/Mediterranean edge of mainland France.
@@ -474,9 +482,18 @@ def build_pf_overview(pf, center):
     for key, members in sub_members.items():
         g = unary_union([shape(f["geometry"]) for f in members])
         dx, dy, wf, hf = PF_LAYOUT.get(key, (0, 0, .4, .4))
-        # The full PF slot is about 2.15° x 1.65°.
-        local_center = (ty + dy * 1.55, tx + dx * 2.05)
-        transforms[key] = uniform_transformer(g.bounds, local_center, max(.18, wf * 2.05), max(.16, hf * 1.55))
+        # Compact cartogram: same relative archipelago layout, scaled as one
+        # block to fit cleanly in the old Saint-Barthélemy slot.
+        local_center = (
+            ty + dy * 1.55 * PF_OVERVIEW_SCALE,
+            tx + dx * 2.05 * PF_OVERVIEW_SCALE,
+        )
+        transforms[key] = uniform_transformer(
+            g.bounds,
+            local_center,
+            max(.10, wf * 2.05 * PF_OVERVIEW_SCALE),
+            max(.09, hf * 1.55 * PF_OVERVIEW_SCALE),
+        )
 
     def t_commune(f):
         key = pf_sub_key(f["properties"].get("subdivision_name", ""))
@@ -486,7 +503,7 @@ def build_pf_overview(pf, center):
         g = tr[0](shape(f["geometry"]))
         # Tiny atolls disappear at national scale. Add a very small visual
         # minimum while preserving their actual island position.
-        min_width = 0.045
+        min_width = 0.028
         minx, miny, maxx, maxy = g.bounds
         if max(maxx - minx, maxy - miny) < min_width:
             g = g.buffer(min_width / 2)
