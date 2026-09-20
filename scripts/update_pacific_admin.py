@@ -140,10 +140,17 @@ def build_pf():
     communes.extend(f for f in fallbacks if f["properties"]["code"] not in existing_codes)
     subs=merge_same(subs)
     by={fold(f["properties"]["nom"]):f for f in communes};groups=[];missing={}
+    def commune_member(name):
+        key=fold(name)
+        if key in by:return by[key]
+        # Tefenua can qualify an island/commune name; accept an unambiguous
+        # containment match (notably Gambier) after accent/punctuation folding.
+        matches=[f for k,f in by.items() if key in k or k in key]
+        return matches[0] if len(matches)==1 else None
     for code,name,members in PF_GROUPS:
         selected=[];absent=[]
         for m in members:
-            x=by.get(fold(m));selected.append(x) if x else absent.append(m)
+            x=commune_member(m);selected.append(x) if x else absent.append(m)
         if absent:missing[name]=absent
         u=union_features([x for x in selected if x],code,name,region="987",dept="987",territory="PF",kind="communaute_de_communes")
         if u:groups.append(u)
