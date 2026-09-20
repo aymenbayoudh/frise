@@ -1538,8 +1538,15 @@ async function updateSubdivisions(force=false){
  }
  if(mode===0&&selection&&z>=9&&!epciGeo){try{await ensureEpciGeo()}catch{}if(mode!==0||!selection)return}
 
- const focusedOverseas=overseasForView(),
-       overseasArrFocus=(mode===0||mode===2)&&!!focusedOverseas?.departmentArrondissements;
+ const focusedOverseas=overseasForView();
+ if(focusedOverseas?.pacific&&(mode===2||mode===3)){
+  const key='pacific-sub:'+focusedOverseas.dept+':'+mode+':'+(selection?.code||'');
+  if(!force&&key===subdivisionKey)return;subdivisionKey=key;subAdmin.clearLayers();communeHits.clearLayers();communeLabelKey='';communeLabels.clearLayers();
+  const geo=mode===3?focusedOverseas.departmentGeo:focusedOverseas.detailGeo;
+  if(geo?.features?.length)L.geoJSON(geo,{pane:mode===2?'arrondissementPane':'subAdminPane',interactive:false,style:{pane:mode===2?'arrondissementPane':'subAdminPane',color:'#0C1014',weight:adminStroke(mode===2?1.28:.82),opacity:1,fillOpacity:0}}).addTo(subAdmin);
+  return
+ }
+ const overseasArrFocus=(mode===0||mode===2)&&!!focusedOverseas?.departmentArrondissements;
  const showRegionDepartments=mode===3&&z>=6;
  const showArrondissements=(mode===2||mode===0)&&(z>=7||overseasArrFocus);
  let arrWanted=[];
