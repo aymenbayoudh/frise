@@ -271,6 +271,11 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 .admin-search-results button small{display:block;margin-top:2px;color:var(--muted);font-size:10px;font-weight:550;white-space:normal;line-height:1.25}
 @media(max-width:900px){.admin-search-box{min-width:160px}.admin-search-box input{width:160px}}
 @media(max-width:720px){.cart-toolbar{flex-wrap:wrap}.admin-search-box,.admin-search-box input{width:100%;min-width:0}}
+
+.admin-cascade{min-height:1em;margin:7px 0 0;color:#788691;font-size:10.5px;line-height:1.35}
+.group-center-label{background:none!important;border:0!important;pointer-events:none!important}.group-center-label span{display:inline-block;transform:translate(-50%,-50%);padding:2px 5px;border-radius:5px;background:#fffffff2;color:#101820;box-shadow:0 1px 5px #0003;font-size:10px;font-weight:760;white-space:nowrap}
+.leaflet-groupCenterPane-pane{pointer-events:none!important}
+@media(max-width:640px){.admin-center-dot.rank-region{width:9px!important;height:9px!important;border-width:1.4px!important}.admin-center-dot.rank-department{width:7px!important;height:7px!important;border-width:1.1px!important}.admin-center-dot.rank-regionSecondary,.admin-center-dot.rank-subpref{width:4.5px!important;height:4.5px!important;border-width:.8px!important}.admin-center-dot span{font-size:7px!important;padding:1px 3px!important}.group-center-label span{font-size:7.5px!important;padding:1px 3px!important}.bubble-label{font-size:8px!important}.bubble-body{border-width:1.3px!important;font-size:9px!important}}
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto" aria-current="page">Carte</a></nav><div class="header-actions">
 <button id="randomItem" type="button" aria-label="Exemple au hasard" title="Exemple au hasard">🎲</button>
@@ -304,8 +309,8 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
   <span id="visibleCount" class="visible-count"></span>
 </div>
 </section>
-<main class="workspace"><section class="canvas" aria-label="Carte des exemples locaux"><div id="map"></div><div class="scale-panel"><div id="scaleSelector" class="scale-selector" style="--scale-position:0"><div id="scaleGlass" class="scale-glass" role="slider" tabindex="0" aria-label="Échelle territoriale" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" aria-valuetext="Communes"></div><div class="scale-labels"><button data-mode="0" class="active" aria-pressed="true">Communes</button><button data-mode="1" aria-pressed="false">Interco / syndicat</button><button data-mode="2" aria-pressed="false">Départements</button><button data-mode="3" aria-pressed="false">Régions</button></div></div></div><button class="home" id="home">↖ France entière</button><div class="overseas" id="overseas" aria-label="Encarts outre-mer"></div><div id="status" class="status" role="status"></div><div class="legend" id="legend"></div><aside id="mapDetail" class="map-detail" hidden aria-label="Détail de la fiche"><div class="map-detail-head"><button id="mapDetailClose" class="close" type="button" aria-label="Fermer">×</button><div class="detail-actions"><button id="mapDetailEdit" type="button">Modifier</button></div></div><h2 id="mapDetailTitle"></h2><p id="mapDetailPlace"></p><p id="mapDetailSubtitle"></p><div id="mapDetailBody"></div></aside></section>
-<aside id="sidePanel"><div id="sideResize" class="side-resize" role="separator" aria-orientation="vertical" aria-label="Redimensionner le panneau"></div><div class="aside-head"><div class="aside-topline"><button id="back" class="back" hidden>← Tous les territoires</button><button id="sideAdd" class="side-add" type="button">＋ Ajouter</button></div><div class="eyebrow" id="eyebrow">Atlas des exemples</div><h1 id="heading">Communes</h1><p id="context"></p></div><div id="list" class="list"></div><div class="foot">Démonstration · aucune donnée Anki importée.<details><summary>Géométrie et sources</summary><p>Contours régions, départements et EPCI : données administratives Etalab. Sélecteur Région → Département → Commune : référentiel open data local <code>admin-locations.json</code>. Contours communaux : <a href="https://geo.api.gouv.fr/decoupage-administratif">API Découpage administratif</a>. Fond satellite au zoom fort : Esri World Imagery.</p><p>Rues et quartiers : point localisé uniquement, sans tracé. Les sièges sont des repères approximatifs. Encarts à des échelles différentes : DROM, Polynésie française et Nouvelle-Calédonie.</p></details></div></aside></main>
+<main class="workspace"><section class="canvas" aria-label="Carte des exemples locaux"><div id="map"></div><div class="scale-panel"><div id="scaleSelector" class="scale-selector" style="--scale-position:0"><div id="scaleGlass" class="scale-glass" role="slider" tabindex="0" aria-label="Échelle territoriale" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" aria-valuetext="Communes"></div><div class="scale-labels"><button data-mode="0" class="active" aria-pressed="true">Communes</button><button data-mode="1" aria-pressed="false">Groupements</button><button data-mode="2" aria-pressed="false">Départements</button><button data-mode="3" aria-pressed="false">Régions</button></div></div></div><button class="home" id="home">↖ France entière</button><div class="overseas" id="overseas" aria-label="Encarts outre-mer"></div><div id="status" class="status" role="status"></div><div class="legend" id="legend"></div><aside id="mapDetail" class="map-detail" hidden aria-label="Détail de la fiche"><div class="map-detail-head"><button id="mapDetailClose" class="close" type="button" aria-label="Fermer">×</button><div class="detail-actions"><button id="mapDetailEdit" type="button">Modifier</button></div></div><h2 id="mapDetailTitle"></h2><p id="mapDetailPlace"></p><p id="mapDetailSubtitle"></p><div id="mapDetailBody"></div></aside></section>
+<aside id="sidePanel"><div id="sideResize" class="side-resize" role="separator" aria-orientation="vertical" aria-label="Redimensionner le panneau"></div><div class="aside-head"><div class="aside-topline"><button id="back" class="back" hidden>← Tous les territoires</button><button id="sideAdd" class="side-add" type="button">＋ Ajouter</button></div><div class="eyebrow" id="eyebrow">Atlas des exemples</div><h1 id="heading">Communes</h1><p id="context"></p><p id="adminCascade" class="admin-cascade"></p></div><div id="list" class="list"></div><div class="foot">Démonstration · aucune donnée Anki importée.<details><summary>Géométrie et sources</summary><p>Contours régions, départements et EPCI : données administratives Etalab. Sélecteur Région → Département → Commune : référentiel open data local <code>admin-locations.json</code>. Contours communaux : <a href="https://geo.api.gouv.fr/decoupage-administratif">API Découpage administratif</a>. Fond satellite au zoom fort : Esri World Imagery.</p><p>Rues et quartiers : point localisé uniquement, sans tracé. Les sièges sont des repères approximatifs. Encarts à des échelles différentes : DROM, Polynésie française et Nouvelle-Calédonie.</p></details></div></aside></main>
 <div id="gameScrim" class="game-scrim" hidden></div>
 <section id="gamePanel" class="game-panel" hidden aria-label="Mode jeu">
   <div class="game-panel-head"><div><h2 id="gameModeTitle">Mode jeu</h2><div class="game-stats"><span>Série <strong id="gameScore">0</strong></span><span>Record <strong id="gameBest">0</strong></span><span id="gameStrikes" class="game-strikes" aria-label="Erreurs : 0 sur 3"><i class="game-strike" aria-hidden="true"></i><i class="game-strike" aria-hidden="true"></i><i class="game-strike" aria-hidden="true"></i></span></div><div class="game-progress-row"><div id="gameProgress" class="game-progress-track" role="progressbar" aria-label="Bonnes réponses" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"><span id="gameProgressFill" class="game-progress-fill"></span></div><strong id="gameProgressText" class="game-progress-text">0/0</strong></div></div><div class="game-head-actions"><button id="gameStop" class="game-stop" type="button" aria-label="Terminer la partie" title="Terminer la partie">🏳️</button><button id="gameClose" class="game-close" type="button" aria-label="Fermer">×</button></div></div>
@@ -330,7 +335,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
   <div class="form-grid">
     <div class="field rich-field"><span>Titre</span><div class="richbar mini-richbar"><button type="button" data-cart-command="bold" data-cart-target="cartTitle"><b>B</b></button><button type="button" data-cart-command="italic" data-cart-target="cartTitle"><i>I</i></button><button type="button" data-cart-command="underline" data-cart-target="cartTitle"><u>U</u></button></div><div id="cartTitle" class="inline-rich-editor" contenteditable="true" role="textbox" aria-label="Titre enrichi" data-placeholder="Titre de la fiche"></div></div>
     <div class="field rich-field"><span>Sous-titre</span><div class="richbar mini-richbar"><button type="button" data-cart-command="bold" data-cart-target="cartSubtitle"><b>B</b></button><button type="button" data-cart-command="italic" data-cart-target="cartSubtitle"><i>I</i></button><button type="button" data-cart-command="underline" data-cart-target="cartSubtitle"><u>U</u></button></div><div id="cartSubtitle" class="inline-rich-editor" contenteditable="true" role="textbox" aria-label="Sous-titre enrichi" data-placeholder="Sous-titre court"></div></div>
-    <label>Niveau<select id="cartMode"><option value="0">Commune</option><option value="1">Interco / syndicat</option><option value="2">Département</option><option value="3">Région</option></select></label>
+    <label>Niveau<select id="cartMode"><option value="0">Commune</option><option value="1">Groupements</option><option value="2">Département</option><option value="3">Région</option></select></label>
     <label id="cartRegionLabel">Région<select id="cartRegion"></select></label>
     <label id="cartDepartmentLabel">Département<select id="cartDepartment"></select></label>
     <label id="cartUnitLabel"><span id="cartUnitText">Commune</span><select id="cartUnit"></select></label>
@@ -354,7 +359,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 </form>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
 (()=>{'use strict';
-const $=id=>document.getElementById(id), modes=['Communes','Interco / syndicat','Départements','Régions'];
+const $=id=>document.getElementById(id), modes=['Communes','Groupements','Départements','Régions'];
 const units={
 lyon:{name:'Lyon',code:'69123',at:[45.7675,4.8343],dept:'69',region:'84'},bordeaux:{name:'Bordeaux',code:'33063',at:[44.8378,-.5804],dept:'33',region:'75'},dijon:{name:'Dijon',code:'21231',at:[47.3217,5.0415],dept:'21',region:'27'},dax:{name:'Dax',code:'40088',at:[43.7078,-1.0513],dept:'40',region:'75'},rennes:{name:'Rennes',code:'35238',at:[48.1118,-1.6801],dept:'35',region:'53'},lille:{name:'Lille',code:'59350',at:[50.6304,3.0708],dept:'59',region:'32'},paris:{name:'Paris',code:'75056',at:[48.8566,2.3522],dept:'75',region:'11'},marseille:{name:'Marseille',code:'13055',at:[43.2963,5.3698],dept:'13',region:'93'},
 bt:{name:'Basse-Terre',code:'97105',at:[15.996,-61.732],dept:'971',region:'01'},fdf:{name:'Fort-de-France',code:'97209',at:[14.604,-61.069],dept:'972',region:'02'},cayenne:{name:'Cayenne',code:'97302',at:[4.938,-52.335],dept:'973',region:'03'},sd:{name:'Saint-Denis',code:'97411',at:[-20.878,55.448],dept:'974',region:'04'},mam:{name:'Mamoudzou',code:'97611',at:[-12.781,45.23],dept:'976',region:'06'},
@@ -415,10 +420,10 @@ try{const saved=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(saved)applySideW
 
 map.attributionControl.addAttribution('<a href="https://github.com/gregoiredavid/france-geojson">France GeoJSON</a> · <a href="https://geo.api.gouv.fr">API Geo</a>');
 const satelliteTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,keepBuffer:2,updateWhenZooming:false,attribution:'Tiles © Esri'});
-map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
-const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
+map.createPane('groupCenterPane');map.getPane('groupCenterPane').style.zIndex='445';map.getPane('groupCenterPane').style.pointerEvents='none';map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
+const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
 let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,accent='#265f8c';
-const communeLabels=L.layerGroup().addTo(map);
+const communeLabels=L.layerGroup().addTo(map),groupCenterCache=new Map();let groupCenterToken=0,groupCenterHideTimer=null,adminCascadeToken=0;
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stripHtml=html=>{const t=document.createElement('template');t.innerHTML=String(html||'');return t.content.textContent||''},unique=a=>[...new Set((a||[]).filter(Boolean).map(String))];
 let selectedTags=new Set(),selectedDeckPaths=new Set(),allDeckPaths=[],deckStateLoaded=false;
@@ -431,7 +436,7 @@ function visibleAll(){return data.filter(d=>tagsPass(d)&&decksPass(d))}
 const current=()=>visibleAll().filter(d=>d.mode===mode);const keyOf=d=>units[d.unit]?.code||d.unit;
 function groups(list=current()){const out=new Map();list.forEach(d=>{const k=d.unit;if(!out.has(k))out.set(k,{key:k,...units[k],items:[]});out.get(k).items.push(d)});return [...out.values()].sort((a,b)=>b.items.length-a.items.length||a.name.localeCompare(b.name));}
 let adminDrawTimer;function scheduleAdminDraw(){clearTimeout(adminDrawTimer);adminDrawTimer=setTimeout(()=>{drawAdmin();refreshAdminStyle()},120)}
-function home(){closeMapDetail();selection=null;local.clearLayers();focus.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();subdivisionKey='';communeLabelKey='';centerKey='';map.fitBounds([[41.3,-5.3],[51.2,9.8]],{paddingTopLeft:[innerWidth<640?10:125,85],paddingBottomRight:[25,innerWidth<640?100:45]});renderSide();draw();requestAnimationFrame(()=>{updateSubdivisions(true);updateCenters(true)})}
+function home(){closeMapDetail();selection=null;local.clearLayers();focus.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;subdivisionKey='';communeLabelKey='';centerKey='';map.fitBounds([[41.3,-5.3],[51.2,9.8]],{paddingTopLeft:[innerWidth<640?10:125,85],paddingBottomRight:[25,innerWidth<640?100:45]});renderSide();draw();requestAnimationFrame(()=>{updateSubdivisions(true);updateCenters(true)})}
 function getJSON(url){if(!cache.has(url))cache.set(url,fetch(url,{signal:AbortSignal.timeout(25000)}).then(r=>{if(!r.ok)throw Error(r.status);return r.json()}).catch(e=>{cache.delete(url);throw e}));return cache.get(url)}
 async function getJSONFallback(urls){let last=null;for(const url of urls){try{const j=await getJSON(url);if(j?.features?.length)return j}catch(e){last=e}}throw(last||Error("Aucune source disponible"))}
 async function getJSONMerged(urls){
@@ -450,6 +455,8 @@ async function getJSONMerged(urls){
 function featureAdminCode(f){const p=f?.properties||{};return String(p.code??p.code_epci??p.epci_code??p.siren??p.SIREN??"")}
 function featureAdminName(f){const p=f?.properties||{};return p.nom||p.name||p.libelle||p.libelle_epci||featureAdminCode(f)}
 
+function compactMapUi(){return matchMedia('(max-width:640px)').matches}
+function adminStroke(v){return compactMapUi()?v*.58:v}
 function mixHex(a,b,t){const pa=a.match(/\w\w/g).map(x=>parseInt(x,16)),pb=b.match(/\w\w/g).map(x=>parseInt(x,16));return'#'+pa.map((v,i)=>Math.round(v+(pb[i]-v)*t).toString(16).padStart(2,'0')).join('')}
 function unitDisplayColor(code){const g=groups().find(x=>String(x.code)===String(code));return g?.items?.length?temporaryEventColor(g.items[0]):accent}
 function itemDisplayColor(d){return temporaryEventColor(d)}
@@ -496,13 +503,21 @@ function shade(n,code=''){
  return mixHex('#ffffff',unitDisplayColor(code),n===1?.18:n===2?.34:n===3?.5:n<=5?.68:.88)
 }
 function countCode(code){return current().filter(d=>String(keyOf(d))===String(code)).length;}
-function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom();let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=mode===3?1.9:mode===2?1.55:mode===1?.525:.8;if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));const selectedWeight=mode===1?2.15:Math.max(4.3,baseWeight+2.4);return {color:selected?'#000000':'#090B0D',weight:selected?selectedWeight:baseWeight,fillColor:shade(n,code),fillOpacity,opacity:1};}
+function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom(),rawBase=mode===3?1.9:mode===2?1.55:mode===1?.525:.8;let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=adminStroke(rawBase);if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));const selectedWeight=adminStroke(mode===1?2.15:Math.max(4.3,rawBase+2.4));return {color:selected?'#000000':'#090B0D',weight:selected?selectedWeight:baseWeight,fillColor:shade(n,code),fillOpacity,opacity:1};}
 function updateBasemap(){if(map.getZoom()>=13){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
 function restyleAdminLayer(layer){if(layer.feature&&layer.setStyle)layer.setStyle(adminStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleAdminLayer)}
 function refreshAdminStyle(){admin.eachLayer(restyleAdminLayer);mainOutline.eachLayer(restyleMainOutline)}
 function pointState(){const z=map.getZoom();return mode+':'+(selection?.key||'')+':'+(mode===0?(z<11?'agg':'pin'):mode===1?'free-interco':selection?'pin':'none')}
 function maybeDrawPoints(){const key=pointState();if(key!==pointRenderKey)drawPoints()}
 function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on({mouseover:e=>{l.openTooltip(e.latlng);const selected=mode>=1&&selection&&String(selection.code)===code,base=adminStyle(f),hoverWeight=mode===1?Math.max(1.15,base.weight+.25):Math.max(2.25,base.weight+.45);l.setStyle(selected?base:{weight:hoverWeight,color:'#000000',opacity:1});l.bringToFront()},mouseout:()=>{l.closeTooltip();l.setStyle(adminStyle(f))},click:()=>{if(mode<1)return;const g=groups().find(g=>String(g.code)===code);choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},l.getBounds());}})}}).addTo(target);}
+async function groupCenterCommune(code){
+ code=String(code||'');if(!code)return null;if(groupCenterCache.has(code))return groupCenterCache.get(code);
+ const p=(async()=>{try{const communes=await getJSON('https://geo.api.gouv.fr/epcis/'+encodeURIComponent(code)+'/communes?fields=nom,code,population,centre,codeDepartement,codeRegion');if(!Array.isArray(communes)||!communes.length)return null;const c=[...communes].sort((a,b)=>(Number(b.population)||0)-(Number(a.population)||0))[0],feature=await communeOutlineGeo(c.code);let at=null;if(Array.isArray(c.centre?.coordinates))at=[c.centre.coordinates[1],c.centre.coordinates[0]];else if(feature){const b=featureBounds(feature),x=b.getCenter();at=[x.lat,x.lng]}return{code:String(c.code),name:String(c.nom||c.code),dept:String(c.codeDepartement||''),region:String(c.codeRegion||''),at,feature}}catch{return null}})();groupCenterCache.set(code,p);return p
+}
+function groupCenterLabelIcon(name){return L.divIcon({className:'group-center-label',iconSize:null,html:'<span>'+escape(name)+'</span>'})}
+async function showGroupCenter(code,persistent=false){if(mode!==1||!code)return;clearTimeout(groupCenterHideTimer);const token=++groupCenterToken,info=await groupCenterCommune(code);if(token!==groupCenterToken||mode!==1||!info)return;if(!persistent&&selection&&String(selection.code)!==String(code))return;groupCenter.clearLayers();if(info.feature)L.geoJSON(info.feature,{pane:'groupCenterPane',interactive:false,style:{pane:'groupCenterPane',color:'#050607',weight:adminStroke(1.75),opacity:1,fillColor:'#ffffff',fillOpacity:.07}}).addTo(groupCenter);if(info.at)L.marker(info.at,{icon:groupCenterLabelIcon(info.name),interactive:false,zIndexOffset:120}).addTo(groupCenter)}
+function hideGroupCenterSoon(code){clearTimeout(groupCenterHideTimer);if(selection&&String(selection.code)===String(code))return;groupCenterHideTimer=setTimeout(()=>{if(mode===1&&(!selection||String(selection.code)!==String(code))){groupCenterToken++;groupCenter.clearLayers()}},110)}
+
 function setMainOutlineHover(code,on){
  const visit=layer=>{
    if(layer.feature&&layer.setStyle&&featureAdminCode(layer.feature)===String(code)){
@@ -524,8 +539,8 @@ function addAdminHitGeo(geo){
      if(!code)return;
      l.bindTooltip(escape(name)+' · '+countCode(code)+' exemple'+(countCode(code)>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
      l.on({
-       mouseover:e=>{l.openTooltip(e.latlng);setMainOutlineHover(code,true)},
-       mouseout:()=>{l.closeTooltip();setMainOutlineHover(code,false)},
+       mouseover:e=>{l.openTooltip(e.latlng);setMainOutlineHover(code,true);if(mode===1)showGroupCenter(code,false)},
+       mouseout:()=>{l.closeTooltip();setMainOutlineHover(code,false);if(mode===1)hideGroupCenterSoon(code)},
        click:e=>{L.DomEvent.stopPropagation(e);const g=groups().find(g=>String(g.code)===String(code));choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},l.getBounds())}
      })
    }
@@ -547,9 +562,8 @@ function drawAdminHits(){
  }
 }
 function mainOutlineStyle(f){
- const code=featureAdminCode(f),selected=mode>=1&&selection&&String(selection.code)===code;
- const base=mode===3?1.95:mode===2?1.6:mode===1?.54:.85;
- const selectedWeight=mode===1?2.18:Math.max(4.35,base+2.45);
+ const code=featureAdminCode(f),selected=mode>=1&&selection&&String(selection.code)===code,rawBase=mode===3?1.95:mode===2?1.6:mode===1?.54:.85;
+ const base=adminStroke(rawBase),selectedWeight=adminStroke(mode===1?2.18:Math.max(4.35,rawBase+2.45));
  return {pane:'mainOutlinePane',color:'#000000',weight:selected?selectedWeight:base,opacity:1,fill:false,fillOpacity:0}
 }
 function restyleMainOutline(layer){if(layer.feature&&layer.setStyle)layer.setStyle(mainOutlineStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleMainOutline)}
@@ -592,8 +606,8 @@ function drawOverseasContext(target=contextAdmin){
 }
 function drawContextAdmin(){
  contextAdmin.clearLayers();
- if(mode<=2&&regionGeo)L.geoJSON(regionGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:mode===1?'#000000':mode===2?'#050607':'#090B0D',weight:mode===1?1.575:mode===2?2.9:2.55,opacity:1,fillOpacity:0}}).addTo(contextAdmin);
- if(mode<=1&&deptGeo)L.geoJSON(deptGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#0B0D0F',weight:mode===1?.625:1.25,opacity:1,fillOpacity:0}}).addTo(contextAdmin);
+ if(mode<=2&&regionGeo)L.geoJSON(regionGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:mode===1?'#000000':mode===2?'#050607':'#090B0D',weight:adminStroke(mode===1?1.575:mode===2?2.9:2.55),opacity:1,fillOpacity:0}}).addTo(contextAdmin);
+ if(mode===0&&deptGeo)L.geoJSON(deptGeo,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#0B0D0F',weight:adminStroke(1.25),opacity:1,fillOpacity:0}}).addTo(contextAdmin);
  drawOverseasContext(contextAdmin)
 }
 function drawAdmin(){
@@ -613,7 +627,10 @@ function drawAdmin(){
  }
  drawMainOutline();drawContextAdmin();drawAdminHits()
 }
-function icon(items,label,pin=false){const n=items.length,global=items.every(x=>x.kind==='global'),s=pin?(global?35:26):Math.min(60,28+Math.sqrt(n)*9),c=temporaryEventColor(items[0]);return L.divIcon({className:pin?'pin-wrap':'bubble',iconSize:[s,s],iconAnchor:[s/2,pin?s:s/2],html:pin?'<div class="pin-body '+(global?'global':'')+'" style="--unit-color:'+c+'"><span>'+(n>1?n:global?'◆':'')+'</span></div>':'<div class="bubble-body" style="--unit-color:'+c+';width:'+s+'px;height:'+s+'px">'+n+'</div><span class="bubble-label">'+escape(label)+'</span>'});}
+function densityProgress(n){const max=densityMaxCount();return max<=1?1:Math.max(0,Math.min(1,Math.log1p(n)/Math.log1p(max)))}
+function densityContinuousColor(n){const ramp=densityPalette();if(!ramp.length)return accent;if(ramp.length===1)return ramp[0];const x=densityProgress(n)*(ramp.length-1),i=Math.floor(x),j=Math.min(ramp.length-1,i+1);return mixHex(ramp[i],ramp[j],x-i)}
+function communeBubbleSize(n){const t=densityProgress(n);return compactMapUi()?Math.round(14+20*t):Math.round(22+36*t)}
+function icon(items,label,pin=false){const n=items.length,global=items.every(x=>x.kind==='global'),s=pin?(global?35:26):communeBubbleSize(n),c=pin?temporaryEventColor(items[0]):densityContinuousColor(n);return L.divIcon({className:pin?'pin-wrap':'bubble',iconSize:[s,s],iconAnchor:[s/2,pin?s:s/2],html:pin?'<div class="pin-body '+(global?'global':'')+'" style="--unit-color:'+c+'"><span>'+(n>1?n:global?'◆':'')+'</span></div>':'<div class="bubble-body" style="--unit-color:'+c+';width:'+s+'px;height:'+s+'px">'+n+'</div><span class="bubble-label">'+escape(label)+'</span>'});}
 function addMarker(at,items,label,pin,fn,target=points){const marker=L.marker(at,{icon:icon(items,label,pin),title:label,alt:label,keyboard:true}).addTo(target);marker.bindTooltip(escape(label)+' · '+items.length+' exemple'+(items.length>1?'s':''));marker.on('click',fn);}
 function locationBuckets(items){const b=new Map();items.forEach(d=>{const k=d.at.join(',');if(!b.has(k))b.set(k,[]);b.get(k).push(d)});return [...b.values()];}
 function openBucket(items){if(items.length===1){showItem(items[0]);return;}activeItem=null;focus.clearLayers();$('heading').textContent='Au siège · '+units[items[0].unit].name;$('context').textContent=items.length+' initiatives à portée générale';$('back').hidden=false;renderCards(items);}
@@ -646,22 +663,32 @@ function updateLegend(){
 function draw(){drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer()}
 function renderCards(items){$('list').innerHTML=items.length?items.map(d=>'<button class="entry" data-item="'+d.id+'"><strong>'+escape(d.title)+'</strong><small>'+escape(kindLabel(d))+' · '+escape((d.tags||[]).join(' · '))+'</small></button>').join(''):'<p class="empty">Aucune fiche pour ce territoire avec les filtres actuels.</p>';$('list').querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>showItem(data.find(d=>d.id===+b.dataset.item)));}
 function kindLabel(d){return {global:'Portée générale · siège',point:'Lieu précis',street:'Rue / axe',quarter:'Quartier',area:'Périmètre syndical'}[d.kind];}
-function renderSide(){activeItem=null;$('back').hidden=!selection;$('back').textContent='← Tous les territoires';$('heading').textContent=selection?selection.name:modes[mode];$('context').textContent=selection?selection.items.length+' exemple'+(selection.items.length>1?'s':'')+' · '+(selection.fiction?'syndicat fictif':'cliquer une fiche pour l’ouvrir'):current().length+' exemples · '+groups().length+' territoires';if(selection){renderCards(selection.items);return;}$('list').innerHTML=groups().map(g=>'<button class="entry" data-unit="'+g.key+'"><span class="num">'+g.items.length+'</span><strong>'+escape(g.name)+'</strong><small>'+escape(g.fiction?'Périmètre fictif':mode===0?'Commune':mode===1?(isFreeIntercoGroup(g)?'Syndicat':'Intercommunalité'):modes[mode].slice(0,-1))+'</small></button>').join('');$('list').querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>choose(groups().find(g=>g.key===b.dataset.unit)));}
-async function choose(g,bounds){
+const relationCache=new Map();
+function regionName(code){return adminCatalog?.regionByCode.get(String(code))?.name||String(code||'')}
+function departmentName(code){const d=adminCatalog?.departmentByCode.get(String(code));return d?d.name+' ('+d.code+')':String(code||'')}
+async function communeRelations(code){code=String(code||'');if(!code)return null;if(relationCache.has(code))return relationCache.get(code);const p=getJSON('https://geo.api.gouv.fr/communes/'+encodeURIComponent(code)+'?fields=nom,code,codeEpci,epci,codeDepartement,departement,codeRegion,region,centre').catch(()=>null);relationCache.set(code,p);return p}
+async function arrondissementAt(at){if(!Array.isArray(at))return null;try{const geo=await ensureArrGeo(),p=L.latLng(at),f=geo?.features?.find(f=>featureBounds(f).contains(p)&&pointInFeature(p.lat,p.lng,f));return f?{code:featureAdminCode(f),name:featureAdminName(f)}:null}catch{return null}}
+async function communeNameFromCode(code){const c=adminCatalog?.communeByCode.get(String(code));if(c)return c.name;const p=await communeCenter(code);return p?.name||String(code||'')}
+async function adminCascadeFor(g,level=mode){if(!g)return'';const u=units[g.key]||g,code=String(g.code||u.code||'');if(level===3){const meta=await loadAdminMeta(),r=(meta.regions||[]).find(x=>String(x.code)===code),pref=r?.chefLieu?await communeNameFromCode(r.chefLieu):'';return pref?'Préfecture · '+pref:''}if(level===2){const meta=await loadAdminMeta(),d=(meta.departements||[]).find(x=>String(x.code)===code),reg=regionName(d?.region??d?.codeRegion??u.region),pref=d?.chefLieu?await communeNameFromCode(d.chefLieu):'';return[reg,pref?'Préfecture · '+pref:''].filter(Boolean).join(' · ')}if(level===1){const center=await groupCenterCommune(code),rel=center?await communeRelations(center.code):null,dept=String(rel?.codeDepartement||center?.dept||u.dept||''),reg=String(rel?.codeRegion||center?.region||u.region||''),arr=await arrondissementAt(center?.at);return[regionName(reg),departmentName(dept),arr?'Arrondissement · '+arr.name:''].filter(Boolean).join(' · ')}const rel=await communeRelations(code),dept=String(rel?.codeDepartement||u.dept||''),reg=String(rel?.codeRegion||u.region||''),arr=await arrondissementAt(Array.isArray(u.at)?u.at:g.at),epciName=rel?.epci?.nom||rel?.epci?.name||'';return[regionName(reg),departmentName(dept),arr?'Arrondissement · '+arr.name:'',epciName].filter(Boolean).join(' · ')}
+async function updateAdminCascade(g){const token=++adminCascadeToken,box=$('adminCascade');if(!g){box.textContent='';return}box.textContent='…';const text=await adminCascadeFor(g,mode);if(token!==adminCascadeToken||selection!==g)return;box.textContent=text}
+
+function renderSide(){activeItem=null;$('back').hidden=!selection;$('back').textContent='← Tous les territoires';$('heading').textContent=selection?selection.name:modes[mode];$('context').textContent=selection?selection.items.length+' exemple'+(selection.items.length>1?'s':'')+' · '+(selection.fiction?'groupement libre':'cliquer une fiche pour l’ouvrir'):current().length+' exemples · '+groups().length+' territoires';$('adminCascade').textContent='';if(selection){renderCards(selection.items);updateAdminCascade(selection);return;}$('list').innerHTML=groups().map(g=>'<button class="entry" data-unit="'+g.key+'"><span class="num">'+g.items.length+'</span><strong>'+escape(g.name)+'</strong><small>'+escape(g.fiction?'Groupement libre':mode===0?'Commune':mode===1?'Groupement':modes[mode].slice(0,-1))+'</small></button>').join('');$('list').querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>choose(groups().find(g=>g.key===b.dataset.unit)));}
+async function choose(g,bounds,options={}){
  selection=g;activeItem=null;focus.clearLayers();local.clearLayers();renderSide();refreshAdminStyle();
  if(!bounds&&mode>=1){const geo=mode===3?regionGeo:mode===2?deptGeo:epciGeo;const feature=geo?.features.find(f=>featureAdminCode(f)===String(g.code));const overseas=mode>=2?doms.find(d=>(mode===3?d.region:d.dept)===String(g.code)):null;if(feature)bounds=featureBounds(feature);else if(overseas?.geo)bounds=L.geoJSON(overseas.geo).getBounds()}
- if(bounds)map.fitBounds(bounds,{padding:[70,80],maxZoom:mode===0?13:mode===3?8:10});else if(g.items.length){const latlngs=g.items.map(d=>d.at);map.fitBounds(L.latLngBounds(latlngs).pad(.35),{padding:[80,85],maxZoom:mode===0?13:mode===1?11:mode===2?9:8})}
- drawPoints();updateCommuneDataLayer(true);subdivisionKey='';communeLabelKey='';centerKey='';updateSubdivisions(true);updateCenters(true);++epoch
+ const defaultMax=mode===0?13:mode===1?10:mode===2?9:8,maxZoom=Number.isFinite(options.maxZoom)?options.maxZoom:defaultMax;
+ if(bounds)map.fitBounds(bounds,{padding:[70,80],maxZoom});else if(g.items.length){const latlngs=g.items.map(d=>d.at);map.fitBounds(L.latLngBounds(latlngs).pad(.35),{padding:[80,85],maxZoom})}
+ drawPoints();updateCommuneDataLayer(true);subdivisionKey='';communeLabelKey='';centerKey='';updateSubdivisions(true);updateCenters(true);if(mode===1&&g.code)showGroupCenter(g.code,true);else{groupCenterToken++;groupCenter.clearLayers()}++epoch
 }
 function closeMapDetail(){$('mapDetail').hidden=true;activeItem=null;focus.clearLayers()}
-function showItem(d){if(!d)return;focus.clearLayers();const g=groups().find(g=>g.key===d.unit)||{key:d.unit,...units[d.unit],items:[d]};selection=g;renderSide();activeItem=d;refreshAdminStyle();const detail=$('mapDetail');detail.style.setProperty('--event-color',temporaryEventColor(d));$('mapDetailTitle').innerHTML=cleanCartInline(d.title);$('mapDetailPlace').textContent=(units[d.unit]?.name||d.unit)+' · '+kindLabel(d);$('mapDetailSubtitle').innerHTML=cleanCartInline(d.subtitle||'');$('mapDetailSubtitle').hidden=!d.subtitle;const body=$('mapDetailBody');body.innerHTML=cleanCartHtml(d.html||'');for(const src of d.image||[]){const img=document.createElement('img');img.src=src;img.alt=stripHtml(d.title);img.loading='lazy';body.append(img)}detail.hidden=false;detail.scrollTop=0;if(mode===0){map.setView(d.at,Math.max(map.getZoom(),d.kind==='global'?13:14));L.circleMarker(d.at,{radius:18,color:temporaryEventColor(d),weight:2,fillColor:temporaryEventColor(d),fillOpacity:.12,interactive:false}).addTo(focus);drawPoints();updateBasemap()}}
+function showItem(d,options={}){if(!d)return;focus.clearLayers();const g=groups().find(g=>g.key===d.unit)||{key:d.unit,...units[d.unit],items:[d]};selection=g;renderSide();activeItem=d;refreshAdminStyle();const detail=$('mapDetail');detail.style.setProperty('--event-color',temporaryEventColor(d));$('mapDetailTitle').innerHTML=cleanCartInline(d.title);$('mapDetailPlace').textContent=(units[d.unit]?.name||d.unit)+' · '+kindLabel(d);$('mapDetailSubtitle').innerHTML=cleanCartInline(d.subtitle||'');$('mapDetailSubtitle').hidden=!d.subtitle;const body=$('mapDetailBody');body.innerHTML=cleanCartHtml(d.html||'');for(const src of d.image||[]){const img=document.createElement('img');img.src=src;img.alt=stripHtml(d.title);img.loading='lazy';body.append(img)}detail.hidden=false;detail.scrollTop=0;if(mode===0&&options.recenter!==false){map.setView(d.at,Math.max(map.getZoom(),d.kind==='global'?13:14));L.circleMarker(d.at,{radius:18,color:temporaryEventColor(d),weight:2,fillColor:temporaryEventColor(d),fillOpacity:.12,interactive:false}).addTo(focus);drawPoints();updateBasemap()}}
 function updateScaleSelector(value=mode,animate=true){
  const selector=$('scaleSelector'),glass=$('scaleGlass'),v=Math.max(0,Math.min(3,Number(value)||0));
  if(selector){selector.style.setProperty('--scale-position',String(v));selector.classList.toggle('instant',!animate)}
  if(glass){glass.setAttribute('aria-valuenow',String(Math.round(v)));glass.setAttribute('aria-valuetext',modes[Math.round(v)]||modes[mode])}
  document.querySelectorAll('.scale-labels [data-mode]').forEach(b=>{const active=+b.dataset.mode===Math.round(v);b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))})
 }
-function setMode(n){closeMapDetail();mode=Math.max(0,Math.min(3,+n));epoch++;markCartCloudStateDirty();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();adminHits.clearLayers();communeLabels.clearLayers();centers.clearLayers();if(mode!==0){communeData.clearLayers();communeDataKey=''}subdivisionKey='';communeLabelKey='';centerKey='';updateScaleSelector(mode,true);renderSide();draw();updateSubdivisions(true);updateCenters(true);}
+function setMode(n){closeMapDetail();mode=Math.max(0,Math.min(3,+n));epoch++;markCartCloudStateDirty();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();adminHits.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;if(mode!==0){communeData.clearLayers();communeDataKey=''}subdivisionKey='';communeLabelKey='';centerKey='';updateScaleSelector(mode,true);renderSide();draw();updateSubdivisions(true);updateCenters(true);}
 
 let metaPromise=null;
 async function loadJsonAny(urls){let last=null;for(const url of urls){try{return await getJSON(url)}catch(e){last=e}}throw last||Error('Source indisponible')}
@@ -759,11 +786,11 @@ async function updateSubdivisions(force=false){
  subdivisionKey=key;subAdmin.clearLayers();communeHits.clearLayers();
  try{
    if(kind==='departements'&&deptGeo){
-     L.geoJSON(deptGeo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:.82,opacity:.96,fillOpacity:0}}).addTo(subAdmin)
+     L.geoJSON(deptGeo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(.82),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
    }else if(kind.startsWith('arrondissements:')){
      const geo=await ensureArrGeo();if(key!==subdivisionKey)return;
      const wanted=new Set(wantedCodes),filtered={type:'FeatureCollection',features:geo.features.filter(f=>wanted.has(arrondissementDepartmentCode(f)))};
-     L.geoJSON(filtered,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#181B1E',weight:.76,opacity:.94,fillOpacity:0}}).addTo(subAdmin)
+     L.geoJSON(filtered,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#181B1E',weight:adminStroke(.76),opacity:.94,fillOpacity:0}}).addTo(subAdmin)
    }else if(kind.startsWith('epci-communes:')){
      const epci=kind.slice('epci-communes:'.length),geo=await epciCommuneGeo(epci);if(key!==subdivisionKey||!geo?.features||contextEpci()!==epci)return;
      L.geoJSON(geo,{pane:'subAdminPane',interactive:false,style:communeBoundaryStyle}).addTo(subAdmin);
@@ -822,20 +849,20 @@ async function addAdminCenter(code,options,token){
  syncGeneratedCommuneFromCenter(code,p);
  if(visibleEventNear(p.at))return;
  const color=adminCenterColor(options.adminLevel,options.adminCode,options.rank);
- L.marker(p.at,{icon:centerIcon(p.name,{rank:options.rank,showLabel:!!options.showLabel,color}),interactive:false,zIndexOffset:options.rank==='region'?320:options.rank==='department'?280:options.rank==='regionSecondary'?250:220}).addTo(centers)
+ L.marker(p.at,{icon:centerIcon(p.name,{rank:options.rank,showLabel:!!options.showLabel,color}),interactive:false,zIndexOffset:mode===0?-260:options.rank==='region'?220:options.rank==='department'?190:options.rank==='regionSecondary'?160:130}).addTo(centers)
 }
 async function addAdminCenterBatch(entries,token){
  const uniqueEntries=[],seen=new Set();for(const e of entries){const code=String(e.code||'');if(!code||seen.has(code))continue;seen.add(code);uniqueEntries.push({...e,code})}
  const concurrency=18;for(let i=0;i<uniqueEntries.length;i+=concurrency){if(token!==centerKey)return;await Promise.all(uniqueEntries.slice(i,i+concurrency).map(e=>addAdminCenter(e.code,e,token)))}
 }
 async function updateCenters(force=false){
- const z=map.getZoom(),
-       showRegionNames=z>=6.35,
-       showDeptNames=z>=7.45,
+ const z=map.getZoom(),mobile=compactMapUi(),
+       showRegionNames=z>=(mobile?5.85:6.15),
+       showDeptNames=z>=(mobile?6.65:7.05),
        showSubpref=mode===2&&z>=7,
-       showSubprefNames=z>=7.75,
+       showSubprefNames=z>=(mobile?7.35:7.75),
        showRegionDeptSecondary=mode===3&&z>=6,
-       showRegionDeptSecondaryNames=z>=6.65;
+       showRegionDeptSecondaryNames=z>=(mobile?6.25:6.6);
  let visibleRegions=[],visibleDepts=[],visibleKey='national';
  if(showRegionDeptSecondary)visibleRegions=selection?[String(selection.code)]:visibleCodesFromGeo(regionGeo).sort();
  if(showSubpref)visibleDepts=selection?[String(selection.code)]:visibleCodesFromGeo(deptGeo).sort();
@@ -1067,14 +1094,14 @@ $('cartCancel').onclick=closeCartEditor;$('editorScrim').onclick=closeCartEditor
 function refreshDeckPaths(){allDeckPaths=unique(data.flatMap(itemDecks));if(!deckStateLoaded){selectedDeckPaths=new Set(allDeckPaths);deckStateLoaded=true}else selectedDeckPaths=new Set([...selectedDeckPaths].filter(p=>allDeckPaths.includes(p)))}
 function renderTags(){const tags=unique(data.flatMap(d=>d.tags||[])).sort((a,b)=>a.localeCompare(b,'fr'));$('tagFilters').innerHTML=tags.map(t=>'<button type="button" class="'+(selectedTags.has(t)?'active':'')+'" data-tag="'+escape(t)+'">'+escape(t)+'</button>').join('');$('tagFilters').querySelectorAll('[data-tag]').forEach(b=>b.onclick=()=>{const t=b.dataset.tag;selectedTags.has(t)?selectedTags.delete(t):selectedTags.add(t);saveFilters();renderTags();filterChanged()});$('toggleFilters').classList.toggle('active',selectedTags.size>0)}
 function renderDeckTree(){refreshDeckPaths();const root={children:new Map()};for(const full of allDeckPaths){let node=root,path='';for(const part of full.split('::')){path=path?path+'::'+part:part;if(!node.children.has(part))node.children.set(part,{children:new Map(),path,name:part});node=node.children.get(part)}}const box=$('deckTree');box.innerHTML='';function visit(node,depth){for(const child of [...node.children.values()].sort((a,b)=>a.name.localeCompare(b.name,'fr'))){const affected=allDeckPaths.filter(p=>p===child.path||p.startsWith(child.path+'::')),checked=affected.length&&affected.every(p=>selectedDeckPaths.has(p)),some=affected.some(p=>selectedDeckPaths.has(p));const row=document.createElement('div');row.className='deck-row';row.style.paddingLeft=(4+depth*14)+'px';const label=document.createElement('label'),input=document.createElement('input'),span=document.createElement('span');input.type='checkbox';input.checked=checked;input.indeterminate=some&&!checked;span.textContent=child.name;input.onchange=()=>{for(const p of affected)input.checked?selectedDeckPaths.add(p):selectedDeckPaths.delete(p);saveFilters();renderDeckTree();filterChanged()};label.append(input,span);row.append(label);box.append(row);visit(child,depth+1)}}visit(root,0);$('toggleDecks').classList.toggle('active',selectedDeckPaths.size<allDeckPaths.length)}
-function filterChanged(){closeMapDetail();selection=null;activeItem=null;local.clearLayers();focus.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();subdivisionKey='';communeLabelKey='';centerKey='';pointRenderKey='';renderSide();draw();updateSubdivisions(true);updateCenters(true);$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'')}
+function filterChanged(){closeMapDetail();selection=null;activeItem=null;local.clearLayers();focus.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;subdivisionKey='';communeLabelKey='';centerKey='';pointRenderKey='';renderSide();draw();updateSubdivisions(true);updateCenters(true);$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'')}
 $('checkAllDecks').onclick=()=>{selectedDeckPaths=new Set(allDeckPaths);saveFilters();renderDeckTree();filterChanged()};
 $('uncheckAllDecks').onclick=()=>{selectedDeckPaths.clear();saveFilters();renderDeckTree();filterChanged()};
 
 function searchTokens(q){return(q.match(/"[^"]+"|\S+/g)||[]).map(x=>x.replace(/^"|"$/g,'').toLocaleLowerCase('fr'))}
 function searchable(d){const u=units[d.unit]||{};return[d.title,d.subtitle,d.theme,u.name,keyOf(d),(d.tags||[]).join(' '),itemDecks(d).join(' '),stripHtml(d.html)].join(' ').toLocaleLowerCase('fr')}
 function matchesSearch(d,q){const hay=searchable(d);return searchTokens(q).every(tok=>{const i=tok.indexOf(':');if(i>0){const op=tok.slice(0,i),v=tok.slice(i+1);if(op==='tag')return(d.tags||[]).some(t=>t.toLocaleLowerCase('fr').includes(v));if(op==='deck')return itemDecks(d).some(t=>t.toLocaleLowerCase('fr').includes(v));if(op==='type')return modes[d.mode].toLocaleLowerCase('fr').includes(v);if(op==='lieu')return String(units[d.unit]?.name||'').toLocaleLowerCase('fr').includes(v)}return hay.includes(tok)})}
-function updateSearch(){const q=$('search').value.trim(),box=$('searchResults');if(!q){box.hidden=true;box.innerHTML='';return}const found=data.filter(d=>matchesSearch(d,q)).slice(0,15);box.innerHTML=found.length?found.map(d=>'<button type="button" data-search-id="'+d.id+'"><strong>'+escape(d.title)+'</strong><small>'+escape(units[d.unit]?.name||d.unit)+' · '+escape(modes[d.mode])+'</small></button>').join(''):'<span class="empty">Aucun résultat</span>';box.hidden=false;box.querySelectorAll('[data-search-id]').forEach(b=>b.onclick=()=>{const d=data.find(x=>x.id===+b.dataset.searchId);selectedTags.clear();selectedDeckPaths=new Set(allDeckPaths);saveFilters();renderTags();renderDeckTree();box.hidden=true;setMode(d.mode);requestAnimationFrame(()=>showItem(d))})}
+function updateSearch(){const q=$('search').value.trim(),box=$('searchResults');if(!q){box.hidden=true;box.innerHTML='';return}const found=data.filter(d=>matchesSearch(d,q)).slice(0,15);box.innerHTML=found.length?found.map(d=>'<button type="button" data-search-id="'+d.id+'"><strong>'+escape(d.title)+'</strong><small>'+escape(units[d.unit]?.name||d.unit)+' · '+escape(modes[d.mode])+'</small></button>').join(''):'<span class="empty">Aucun résultat</span>';box.hidden=false;box.querySelectorAll('[data-search-id]').forEach(b=>b.onclick=()=>{const d=data.find(x=>x.id===+b.dataset.searchId);selectedTags.clear();selectedDeckPaths=new Set(allDeckPaths);saveFilters();renderTags();renderDeckTree();box.hidden=true;focusItemFromNavigation(d)})}
 $('search').oninput=updateSearch;
 
 function adminSearchText(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('fr').replace(/[’']/g,"'").trim()}
@@ -1086,7 +1113,7 @@ function adminSearchEntries(){
    for(const c of adminCatalog.communes)out.push({mode:0,type:'Commune',code:c.code,name:c.name,dept:c.dept,region:c.region})
  }
  if(epciGeo?.features?.length){
-   for(const f of epciGeo.features){const code=featureAdminCode(f),name=featureAdminName(f);if(code&&name)out.push({mode:1,type:'Intercommunalité',code,name,feature:f})}
+   for(const f of epciGeo.features){const code=featureAdminCode(f),name=featureAdminName(f);if(code&&name)out.push({mode:1,type:'Groupement',code,name,feature:f})}
  }
  return out
 }
@@ -1107,7 +1134,7 @@ function collectivityMeta(entry){
    const dep=adminCatalog?.departmentByCode.get(String(entry.dept));
    return 'Commune · '+entry.code+(dep?' · '+dep.name+' ('+dep.code+')':'')
  }
- if(entry.mode===1)return 'Intercommunalité · '+entry.code;
+ if(entry.mode===1)return 'Groupement · '+entry.code;
  if(entry.mode===2)return 'Département · '+entry.code;
  return 'Région · '+entry.code
 }
@@ -1120,7 +1147,7 @@ async function navigateToCollectivity(entry){
    const feature=await communeOutlineGeo(entry.code),bounds=feature?featureBounds(feature):null;
    const g={key:'search-commune-'+entry.code,name:entry.name,code:entry.code,dept:entry.dept,region:entry.region,items:data.filter(d=>d.mode===0&&String(keyOf(d))===String(entry.code))};
    if(feature){const c=featureBounds(feature).getCenter();g.at=[c.lat,c.lng]}
-   choose(g,bounds||undefined);
+   choose(g,bounds||undefined,{maxZoom:9.25});
    return
  }
  const geo=entry.mode===3?regionGeo:entry.mode===2?deptGeo:epciGeo;
@@ -1129,7 +1156,7 @@ async function navigateToCollectivity(entry){
  const existing=groups().find(g=>String(g.code)===String(entry.code));
  const at=bounds?bounds.getCenter():map.getCenter();
  const g=existing||{key:'search-admin-'+entry.mode+'-'+entry.code,name:entry.name,code:entry.code,items:[],at:[at.lat,at.lng]};
- choose(g,bounds||undefined)
+ choose(g,bounds||undefined,{maxZoom:entry.mode===1?7.8:entry.mode===2?6.6:5.7})
 }
 let adminSearchTimer=null,adminSearchSerial=0;
 function updateAdminSearch(){
@@ -1379,7 +1406,9 @@ renderTemporaryPaletteInputs();renderColorPresetLibrary($('cartSwatches'),setCar
 $('paletteCount').onchange=()=>{temporaryPaletteCount=Number($('paletteCount').value);temporaryPalettePickerOpenIndex=null;temporaryPaletteAssignments.clear();const style=$('palettePreset').value;if(style==='mono'||style==='analogous'){const colors=automaticPaletteColors(style,temporaryPaletteCount);temporaryPalette=[...colors,...temporaryPalette.slice(temporaryPaletteCount)]}else{while(temporaryPalette.length<temporaryPaletteCount)temporaryPalette.push(temporaryPaletteDefaults[temporaryPalette.length%temporaryPaletteDefaults.length]);normalizeTemporaryPaletteOrder()}renderTemporaryPaletteInputs();if(temporaryPaletteActive)refreshPaletteMap()};$('paletteOpacity').oninput=()=>{temporaryPaletteOpacity=Math.max(.25,Math.min(1,Number($('paletteOpacity').value)/100));$('paletteOpacityValue').value=Math.round(temporaryPaletteOpacity*100)+' %';if(temporaryPaletteActive)refreshPaletteMap()};$('generatePalette').onclick=()=>generateAutomaticPalette();$('applyPalette').onclick=applyTemporaryPalette;$('resetPalette').onclick=resetTemporaryPalette;
 $('gameButton').onclick=e=>{e.stopPropagation();const open=$('gameMenu').hidden;closeTools($('gameMenu'));$('gameMenu').hidden=!open;$('gameButton').setAttribute('aria-expanded',String(open));if(open){updateGameRecords();if(!$('gameHistoryPane').hidden)renderGameHistory()}};
 $('moreButton').onclick=e=>{e.stopPropagation();toggleTool($('moreMenu'))};$('toggleFilters').onclick=e=>{e.stopPropagation();const pop=$('tagFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleFilters').setAttribute('aria-expanded',String(open))};$('toggleDecks').onclick=e=>{e.stopPropagation();toggleTool($('deckMenu'))};$('tagFilters').onclick=e=>e.stopPropagation();$('deckMenu').onclick=e=>e.stopPropagation();$('searchResults').onclick=e=>e.stopPropagation();$('adminSearchResults').onclick=e=>e.stopPropagation();$('adminSearch').onclick=e=>e.stopPropagation();
-function randomCurrentItem(){const pool=current();if(!pool.length)return;const a=new Uint32Array(1);crypto.getRandomValues(a);showItem(pool[a[0]%pool.length])}
+async function focusItemFromNavigation(d){if(!d)return;setMode(d.mode);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));const u=units[d.unit]||{},code=String(u.code||d.unit);let bounds=null;if(d.mode===0){const f=await communeOutlineGeo(code);if(f)bounds=featureBounds(f)}else{const geo=d.mode===3?regionGeo:d.mode===2?deptGeo:epciGeo,f=geo?.features?.find(f=>featureAdminCode(f)===code);if(f)bounds=featureBounds(f)}const g=groups().find(g=>g.key===d.unit)||{key:d.unit,...u,code,items:data.filter(x=>x.mode===d.mode&&x.unit===d.unit)};const maxZoom=d.mode===0?9.25:d.mode===1?7.8:d.mode===2?6.6:5.7;await choose(g,bounds||undefined,{maxZoom});showItem(d,{recenter:false})}
+
+function randomCurrentItem(){const pool=current();if(!pool.length)return;const a=new Uint32Array(1);crypto.getRandomValues(a);focusItemFromNavigation(pool[a[0]%pool.length])}
 const sideResize=$('sideResize');let sideResizeActive=false;
 sideResize.onpointerdown=e=>{if(innerWidth<=640)return;sideResizeActive=true;sideResize.classList.add('dragging');document.body.classList.add('side-resizing');sideResize.setPointerCapture?.(e.pointerId);e.preventDefault()};
 sideResize.onpointermove=e=>{if(!sideResizeActive)return;applySideWidth(innerWidth-e.clientX,false)};
@@ -1442,7 +1471,7 @@ scaleGlass.onpointermove=e=>{if(!scaleDrag||scaleDrag.id!==e.pointerId)return;pr
 function finishScaleDrag(e){if(!scaleDrag||scaleDrag.id!==e.pointerId)return;const target=Math.round(scalePositionFromPointer(e.clientX));scaleDrag=null;scaleGlass.classList.remove('dragging');try{scaleGlass.releasePointerCapture?.(e.pointerId)}catch{}setMode(target)}
 scaleGlass.onpointerup=finishScaleDrag;scaleGlass.onpointercancel=e=>{if(!scaleDrag)return;scaleDrag=null;scaleGlass.classList.remove('dragging');updateScaleSelector(mode,true)};
 scaleGlass.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowDown'){e.preventDefault();setMode(Math.max(0,mode-1))}else if(e.key==='ArrowRight'||e.key==='ArrowUp'){e.preventDefault();setMode(Math.min(3,mode+1))}else if(e.key==='Home'){e.preventDefault();setMode(0)}else if(e.key==='End'){e.preventDefault();setMode(3)}};
-document.querySelectorAll('.scale-labels [data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));$('home').onclick=home;$('back').onclick=()=>{if(activeItem){activeItem=null;focus.clearLayers();renderSide();}else{selection=null;local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();subdivisionKey='';communeLabelKey='';centerKey='';renderSide();drawPoints();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);}};document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('back').click();}});
+document.querySelectorAll('.scale-labels [data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));$('home').onclick=home;$('back').onclick=()=>{if(activeItem){activeItem=null;focus.clearLayers();renderSide();}else{selection=null;local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;subdivisionKey='';communeLabelKey='';centerKey='';renderSide();drawPoints();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);}};document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('back').click();}});
 let mapDetailLayerTimer=null;function scheduleDetailLayers(){clearTimeout(mapDetailLayerTimer);mapDetailLayerTimer=setTimeout(()=>{updateSubdivisions();updateCommuneLabels();updateCenters()},190)}map.on('zoomend',()=>{updateBasemap();refreshAdminStyle();maybeDrawPoints();scheduleDetailLayers()});map.on('moveend',scheduleDetailLayers);
 async function bootCartography(){
  await autoConnectCartGithub();
