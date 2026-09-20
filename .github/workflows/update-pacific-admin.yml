@@ -39,5 +39,11 @@ jobs:
             exit 0
           fi
           git commit -m "data(carto): refresh Pacific administrative layers"
-          git pull --rebase origin "$GITHUB_REF_NAME"
-          git push origin "HEAD:$GITHUB_REF_NAME"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            if git push origin "HEAD:$GITHUB_REF_NAME"; then
+              exit 0
+            fi
+            sleep $((attempt * 3))
+          done
+          exit 1
