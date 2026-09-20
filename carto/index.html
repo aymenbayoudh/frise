@@ -621,7 +621,15 @@ for(const k of ['bt','fdf','cayenne','sd','mam'])add(0,k,'Des équipements publi
 add(1,'bm','Un réseau intercommunal de recycleries');add(1,'bm','Une plateforme de matériaux à Bègles','point',[44.808,-.55],null,'Réemploi');add(1,'gd','Une desserte commune des pôles de santé');add(1,'dm','Une stratégie foncière métropolitaine');add(1,'syn','Un contrat de restauration des zones humides','area',[43.81,-.85],[[43.93,-1.13],[43.93,-.68],[43.7,-.57],[43.61,-.99]],'Eau');add(1,'syn','Une prairie d’expansion des crues','point',[43.79,-.92],null,'Eau');
 add(2,'d40','Un observatoire des centres-bourgs');add(2,'d40','Un guichet départemental de l’habitat');add(2,'d40','Un collège démonstrateur à Dax','point',[43.709,-1.045],null,'Éducation');add(2,'d40','Une voie verte expérimentale','street',[43.78,-.81],[[43.75,-.84],[43.78,-.81],[43.81,-.79]],'Mobilités');add(2,'d33','Un programme départemental des digues');add(2,'d21','Un équipement mutualisé à Beaune','point',[47.026,4.84]);add(2,'d971','Un service départemental itinérant');add(2,'d974','Un collège bioclimatique dans l’Ouest','point',[-21.01,55.28]);
 add(3,'r27','Un fonds régional des petites lignes');add(3,'r27','Un contrat régional des centralités');add(3,'r27','Un lycée pilote à Besançon','point',[47.239,6.026],null,'Éducation');add(3,'r75','Une filière régionale de réemploi');add(3,'r84','Un programme régional de sobriété foncière');add(3,'r01','Un programme insulaire de résilience');add(3,'r04','Une expérimentation dans les Hauts','point',[-21.15,55.48]);add(3,'rpf','Un programme territorial des mobilités insulaires');add(3,'rnc','Une stratégie territoriale de réemploi');
-const doms=[{name:'Guadeloupe',dept:'971',region:'01',at:[16.2,-61.5],z:7},{name:'Martinique',dept:'972',region:'02',at:[14.65,-61.02],z:8},{name:'Guyane',dept:'973',region:'03',at:[4,-53.2],z:5},{name:'La Réunion',dept:'974',region:'04',at:[-21.12,55.53],z:8},{name:'Mayotte',dept:'976',region:'06',at:[-12.83,45.15],z:9},{name:'Polynésie française',dept:'987',region:'987',at:[-17.55,-149.56],z:5,focusWhole:true,focusZ:5},{name:'Nouvelle-Calédonie',dept:'988',region:'988',at:[-22.275,166.458],z:7,focusWhole:true,focusZ:7}];
+const doms=[
+ {name:'Guadeloupe',dept:'971',region:'01',at:[16.2,-61.5],z:7,nationalEpci:true,departmentArrondissements:true},
+ {name:'Martinique',dept:'972',region:'02',at:[14.65,-61.02],z:8,nationalEpci:true,departmentArrondissements:true},
+ {name:'Guyane',dept:'973',region:'03',at:[4,-53.2],z:5,nationalEpci:true,departmentArrondissements:true},
+ {name:'La Réunion',dept:'974',region:'04',at:[-21.12,55.53],z:8,nationalEpci:true,departmentArrondissements:true},
+ {name:'Mayotte',dept:'976',region:'06',at:[-12.83,45.15],z:9,nationalEpci:true,departmentArrondissements:false},
+ {name:'Polynésie française',dept:'987',region:'987',at:[-17.55,-149.56],z:5,focusWhole:true,focusZ:5,nationalEpci:false,departmentArrondissements:false},
+ {name:'Nouvelle-Calédonie',dept:'988',region:'988',at:[-22.275,166.458],z:7,focusWhole:true,focusZ:7,nationalEpci:false,departmentArrondissements:false}
+];
 function overseasByDepartment(code){code=String(code||'');return doms.find(d=>String(d.dept)===code)||null}
 function overseasByRegion(code){code=String(code||'');return doms.find(d=>String(d.region)===code)||null}
 function eventVisibleAtMode(d,target=mode){
@@ -692,6 +700,11 @@ const current=()=>visibleAll().filter(d=>eventVisibleAtMode(d,mode));const keyOf
 const SPECIAL_DEPARTMENTS={'2A':'20R','2B':'20R','20R':'20R','67':'6AE','68':'6AE','6AE':'6AE'},SPECIAL_DEPARTMENT_NAMES={'20R':'Collectivité de Corse','6AE':'Collectivité européenne d’Alsace'},SPECIAL_DEPARTMENT_REGIONS={'20R':'94','6AE':'44'};
 function displayDepartmentCode(code){return SPECIAL_DEPARTMENTS[String(code)]||String(code)}
 function rawDepartmentCodes(code){code=String(code);return code==='20R'?['2A','2B']:code==='6AE'?['67','68']:[code]}
+function departmentHasArrondissements(code){
+ code=String(code||'');
+ const overseas=overseasByDepartment(code);
+ return !overseas||overseas.departmentArrondissements!==false
+}
 function itemDisplayAdminCode(d,target=mode){const raw=String(keyOf(d));if(target===3&&d.mode===2)return String(overseasByDepartment(raw)?.region||raw);if(target===2&&d.mode===3)return displayDepartmentCode(String(overseasByRegion(raw)?.dept||raw));return target===2?displayDepartmentCode(raw):raw}
 let departmentRenderGeoCache=null,departmentOutlineGeoCache=null;
 function recodeDepartmentFeature(f){const raw=featureAdminCode(f),code=displayDepartmentCode(raw);if(code===raw)return f;return{...f,properties:{...(f.properties||{}),code,nom:SPECIAL_DEPARTMENT_NAMES[code],_mergedDeptPart:true,_rawDept:raw}}}
@@ -735,8 +748,8 @@ let adminDrawTimer;function scheduleAdminDraw(){clearTimeout(adminDrawTimer);adm
 function home(){closeMapDetail();selection=null;local.clearLayers();focus.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;subdivisionKey='';communeLabelKey='';centerKey='';map.fitBounds([[41.3,-5.3],[51.2,9.8]],{paddingTopLeft:[innerWidth<640?10:125,85],paddingBottomRight:[25,innerWidth<640?100:45]});renderSide();draw();requestAnimationFrame(()=>{updateSubdivisions(true);updateCenters(true)})}
 function getJSON(url){if(!cache.has(url))cache.set(url,fetch(url,{signal:AbortSignal.timeout(25000)}).then(r=>{if(!r.ok)throw Error(r.status);return r.json()}).catch(e=>{cache.delete(url);throw e}));return cache.get(url)}
 const ADMIN_BOUNDARY_SOURCES=[
- {label:'Etalab 2026',base:'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2026/geojson/'},
- {label:'Etalab 2025',base:'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/'}
+ {label:'Etalab 2026',base:'https://etalab-datasets.geo.data.gouv.fr/2026/geojson/'},
+ {label:'Etalab 2025',base:'https://etalab-datasets.geo.data.gouv.fr/2025/geojson/'}
 ];
 let activeAdminBoundarySource=ADMIN_BOUNDARY_SOURCES[0];
 async function loadAdminBoundaryBundle(){
@@ -1140,9 +1153,15 @@ function loadAdminMeta(){if(metaPromise)return metaPromise;metaPromise=(async()=
 function ignAdmin2026Wfs(layer){return 'https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&OUTPUTFORMAT=application%2Fjson&SRSNAME=EPSG%3A4326&TYPENAMES=ADMINEXPRESS-COG-CARTO-PE.2026:'+encodeURIComponent(layer)+'&COUNT=1000'}
 async function ensureArrGeo(){
  if(arrGeo)return arrGeo;
- arrGeo=await getJSONFallback([
+ const officialUrl=ignAdmin2026Wfs('arrondissement');
+ try{
+   const official=await getJSON(officialUrl);
+   const features=official?.features||[],requiredDrom=['971','972','973','974'];
+   const hasDrom=requiredDrom.every(dep=>features.some(f=>arrondissementDepartmentCode(f)===dep));
+   if(features.length&&hasDrom)arrGeo=official
+ }catch{}
+ if(!arrGeo)arrGeo=await getJSONFallback([
   './data/admin/arrondissements.geojson',
-  ignAdmin2026Wfs('arrondissement'),
   'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-version-simplifiee.geojson'
  ]);
  arrDeptGeo=deptGeo;
@@ -1226,11 +1245,11 @@ async function updateSubdivisions(force=false){
  const showArrondissements=(mode===2||mode===0)&&z>=7;
  let arrWanted=[];
  if(showArrondissements){
-   if(mode===2&&selection)arrWanted=rawDepartmentCodes(String(selection.code));
+   if(mode===2&&selection)arrWanted=rawDepartmentCodes(String(selection.code)).filter(departmentHasArrondissements);
    else if(mode===0&&selection){
      const u=units[selection.key]||selection,dep=String(u?.dept||'');
-     arrWanted=dep?rawDepartmentCodes(dep):visibleCodesFromGeo(deptGeo).sort()
-   }else arrWanted=visibleCodesFromGeo(deptGeo).sort()
+     arrWanted=dep?rawDepartmentCodes(dep).filter(departmentHasArrondissements):visibleCodesFromGeo(deptGeo).filter(departmentHasArrondissements).sort()
+   }else arrWanted=visibleCodesFromGeo(deptGeo).filter(departmentHasArrondissements).sort()
  }
  let epci='';
  if(mode===0&&selection&&z>=9)epci=contextEpci();
