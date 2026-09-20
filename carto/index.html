@@ -1823,6 +1823,12 @@ function addGeneratedDemo(level,unit,title,at,theme,index){
  data.push({id:demoNextId++,mode:level,unit,title,subtitle:index%3===0?'Exemple fictif de démonstration':'',kind:'global',at:[...at],shape:null,theme,tags:[theme,modes[level],'Fictif'],color:defaultColors[(level+index)%defaultColors.length],html:'<p>Exemple fictif destiné à visualiser les concentrations, filtres et changements d’échelle de la carte.</p>',deck:demoDeckPaths(theme,level,index),image:[],generatedDemo:true})
 }
 function refreshAfterDemoSeed(){
+ // If the user had every existing deck selected, keep the semantic "all decks"
+ // after runtime demo decks are added. Otherwise preserve the user's explicit subset.
+ const previousDeckPaths=[...allDeckPaths],
+       allPreviouslySelected=previousDeckPaths.length>0&&previousDeckPaths.every(p=>selectedDeckPaths.has(p));
+ refreshDeckPaths();
+ if(allPreviouslySelected)selectedDeckPaths=new Set(allDeckPaths);
  invalidateGroupCache();renderTags();renderDeckTree();pointRenderKey='';subdivisionKey='';centerKey='';renderSide();draw();updateSubdivisions(true);updateCenters(true);$('visibleCount').textContent=visibleAll().length+' fiches'
 }
 async function seedAdministrativeDemoCoverage(){
