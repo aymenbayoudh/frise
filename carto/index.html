@@ -1705,7 +1705,7 @@ function seedEpciDemoCoverage(){
   const deptFeature=(deptGeo?.features||[]).find(f=>featureAdminCode(f)===String(d.dept));if(!deptFeature)continue;
   const localEpcis=(epciGeo.features||[]).filter(f=>{const at=demoFeatureCenter(f);return pointInFeature(at[0],at[1],deptFeature)});
   for(const f of localEpcis){
-   const code=featureAdminCode(f);if(!code)continue;let unit=unitKeyForModeCode(1,code);if(!unit){unit='demo-e-'+code;units[unit]={name:featureAdminName(f),code,dept:String(d.dept),region:String(d.region),at:demoFeatureCenter(f)}}
+   const code=featureAdminCode(f);if(!code)continue;let unit=unitKeyForModeCode(1,code);if(!unit){unit='demo-e-'+code;units[unit]={name:featureAdminName(f),code,dept:String(d.dept),region:String(d.region),at:demoFeatureCenter(f)}}else{units[unit].dept=String(d.dept);units[unit].region=String(d.region)}
    const existing=data.filter(x=>x.mode===1&&String(keyOf(x))===String(code)).length,target=3;
    for(let i=existing;i<target;i++)addGeneratedDemo(1,unit,demoActions[(demoHash(code+'om')+i)%demoActions.length]+' dans '+d.name,units[unit].at||demoFeatureCenter(f),demoThemes[(i+6+demoHash(code))%demoThemes.length],i)
   }
