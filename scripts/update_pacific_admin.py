@@ -32,8 +32,11 @@ session = requests.Session()
 session.headers.update({"User-Agent": "frise-carto-pacific-admin/2.0 (+https://github.com/aymenbayoudh/frise)"})
 
 
-def get_geojson(url: str, where: str = "1=1", out_fields: str = "*") -> dict[str, Any]:
+def get_geojson(url: str, where: str = "1=1", out_fields: str = "*", max_offset: float | None = None) -> dict[str, Any]:
     params = {"where": where, "outFields": out_fields, "returnGeometry": "true", "outSR": "4326", "f": "geojson"}
+    if max_offset:
+        params["maxAllowableOffset"] = str(max_offset)
+        params["geometryPrecision"] = "5"
     r = session.get(url.rstrip("/") + "/query", params=params, timeout=TIMEOUT)
     r.raise_for_status()
     data = r.json()
@@ -212,8 +215,10 @@ def pf_commune_code(props):
 
 
 def build_nc():
-    rawc = get_geojson(NC_SERVICE + "/0")
-    rawp = get_geojson(NC_SERVICE + "/1")
+    # Ask ArcGIS to generalise server-side as well: the source dataset is
+    # extremely detailed and otherwise produces ~50 MB browser files.
+    rawc = get_geojson(NC_SERVICE + "/0", max_offset=0.0012)
+    rawp = get_geojson(NC_SERVICE + "/1", max_offset=0.0012)
 
     communes = []
     for f in rawc.get("features", []):
