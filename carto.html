@@ -313,6 +313,23 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
  #paletteMenu .preset-color-library{max-height:121px!important}
 }
 #moreMenu #undoButton{min-height:27px;padding:3px 7px;font-size:.72rem;color:var(--muted)}#moreMenu #undoButton:not(:disabled){color:var(--ink)}
+
+#applyPalette{display:none!important}
+#generatePalette{min-height:40px!important;padding:7px 14px!important;color:#fff!important;background:var(--ink)!important;border-color:var(--ink)!important;font-weight:750!important}
+.palette-opacity input[type="range"]{height:30px!important}
+.palette-opacity input[type="range"]::-webkit-slider-runnable-track{height:8px;border-radius:999px;background:#dbe2e9}
+.palette-opacity input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-8px;border:2px solid #fff;border-radius:50%;background:var(--ink);box-shadow:0 1px 5px #17223655}
+.palette-opacity input[type="range"]::-moz-range-track{height:8px;border-radius:999px;background:#dbe2e9}
+.palette-opacity input[type="range"]::-moz-range-thumb{width:24px;height:24px;border:2px solid #fff;border-radius:50%;background:var(--ink);box-shadow:0 1px 5px #17223655}
+@media(pointer:coarse) and (max-width:760px){
+ #paletteMenu .palette-opacity{grid-template-columns:1fr!important;gap:3px!important;font-size:12px!important}
+ #paletteMenu .palette-opacity input[type="range"]{height:42px!important}
+ #paletteMenu .palette-opacity output{justify-self:end;margin-top:-8px;font-size:12px}
+ #paletteMenu .palette-auto{grid-template-columns:minmax(0,1fr) minmax(112px,.7fr)!important;gap:8px!important}
+ #paletteMenu #generatePalette{min-height:48px!important;font-size:13px!important}
+ #paletteMenu .palette-actions{justify-content:flex-end}
+ #paletteMenu #resetPalette{min-height:40px!important;padding:7px 13px!important}
+}
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto" aria-current="page">Carte</a></nav><div class="header-actions">
 <button id="randomItem" type="button" aria-label="Exemple au hasard" title="Exemple au hasard">🎲</button>
@@ -441,8 +458,30 @@ const doms=[{name:'Guadeloupe',dept:'971',region:'01',at:[16.2,-61.5],z:7},{name
 const CART_DATA_KEY='cartographie-v2:data',CART_FILTER_KEY='cartographie-v2:filters',SHARED_GITHUB_KEY='frise-private-github-v1',CART_CLOUD_UPDATED_KEY='cartographie-v3:cloud-state-updated',CART_GITHUB_OWNER='aymenbayoudh',CART_GITHUB_REPO='frise-data',CART_GITHUB_BRANCH='main',CART_GITHUB_FILE='carto.csv',CART_GITHUB_STATE_FILE='carto-user-state.json';
 let cartGithubMode=false,cartGithubConfig=null,cartPrivateDataSha=null,cartGithubSyncChain=Promise.resolve(),cartCloudTimer=null,applyingCartCloudState=false,cartDataDirty=false;
 const modeKeys=['commune','interco','departement','region'],defaultColors=['#21BCFF','#7C86FF','#FE9A37','#46ECD5'];
-for(const d of data){d.subtitle=String(d.subtitle||'');d.tags=Array.isArray(d.tags)&&d.tags.length?d.tags:[d.theme||'Aménagement',modes[d.mode]];d.deck=Array.isArray(d.deck)&&d.deck.length?d.deck:['Exemples fictifs::'+modes[d.mode]];d.color=/^#[0-9A-F]{6}$/i.test(d.color||'')?d.color.toUpperCase():defaultColors[d.mode]||'#315EB6';d.html=String(d.html||'<p>Exemple fictif utilisé pour tester la carte.</p>');d.image=Array.isArray(d.image)?d.image:[];d.shape=null}
-let hasImportedCartData=false;try{const saved=JSON.parse(localStorage.getItem(CART_DATA_KEY)||'null');if(saved?.rows?.length){data=saved.rows;Object.assign(units,saved.units||{});hasImportedCartData=true}}catch{};adminCatalogPromise.then(()=>hydrateCommuneUnitsFromCatalog())
+function demoDeckPaths(theme,level,index=0){
+ const primary={
+  'Santé':'OGCT::Solidarité::Santé',
+  'Action sociale':'OGCT::Solidarité::Action sociale',
+  'Politique de la ville':'OGCT::Solidarité::Politique de la ville',
+  'Culture':'Compo::Culture::Politiques culturelles',
+  'Patrimoine':'Compo::Culture::Patrimoine et musées',
+  'Éducation':'OGCT::Services publics::Éducation',
+  'Habitat':'OGCT::Urbanisme::Logement',
+  'Urbanisme':'OGCT::Urbanisme::Aménagement',
+  'Mobilités':'OGCT::Aménagement::Mobilités',
+  'Eau':'OGCT::Environnement::Eau',
+  'Nature':'OGCT::Environnement::Biodiversité',
+  'Énergie':'OGCT::Environnement::Énergie',
+  'Réemploi':'OGCT::Environnement::Économie circulaire',
+  'Économie circulaire':'OGCT::Environnement::Économie circulaire',
+  'Aménagement':'OGCT::Urbanisme::Aménagement'
+ };
+ const out=[primary[theme]||('OGCT::Compétences territoriales::'+String(theme||'Aménagement'))];
+ if(Number(index)%7===0)out.push(level===3?'OGCT::Organisation territoriale::Régions':level===2?'OGCT::Organisation territoriale::Départements':level===1?'OGCT::Organisation territoriale::Groupements':'OGCT::Organisation territoriale::Communes');
+ return[...new Set(out)]
+}
+for(const d of data){d.subtitle=String(d.subtitle||'');d.tags=Array.isArray(d.tags)&&d.tags.length?d.tags:[d.theme||'Aménagement',modes[d.mode]];d.deck=Array.isArray(d.deck)&&d.deck.length?d.deck:demoDeckPaths(d.theme||'Aménagement',d.mode,d.id||0);d.color=/^#[0-9A-F]{6}$/i.test(d.color||'')?d.color.toUpperCase():defaultColors[d.mode]||'#315EB6';d.html=String(d.html||'<p>Exemple fictif utilisé pour tester la carte.</p>');d.image=Array.isArray(d.image)?d.image:[];d.shape=null}
+let hasImportedCartData=false;try{const saved=JSON.parse(localStorage.getItem(CART_DATA_KEY)||'null');if(saved?.rows?.length){data=saved.rows;Object.assign(units,saved.units||{});hasImportedCartData=true}}catch{};for(const d of data){if(d.generatedDemo||(d.deck||[]).some(p=>String(p).startsWith('Exemples fictifs::')))d.deck=demoDeckPaths(d.theme||d.tags?.[0]||'Aménagement',d.mode,d.id||0)}adminCatalogPromise.then(()=>hydrateCommuneUnitsFromCatalog())
 
 if(!window.L){$('status').textContent='Le moteur cartographique ne se charge pas. Vérifiez votre connexion et rechargez la page.';return;}
 const map=L.map('map',{zoomControl:true,minZoom:3,maxZoom:19,zoomSnap:.25,attributionControl:true,preferCanvas:true,fadeAnimation:false,markerZoomAnimation:false});map.attributionControl.setPrefix(false);
@@ -992,14 +1031,14 @@ async function updateCenters(force=false){
  }catch(e){$('status').textContent='Les contours restent disponibles ; chargement des chefs-lieux à réessayer.'}
 }
 let demoAdminSeeded=false,demoEpciSeeded=false,demoNextId=Math.max(0,...data.map(d=>Number(d.id)||0))+1;
-const demoThemes=['Mobilités','Éducation','Patrimoine','Eau','Habitat','Culture','Santé','Réemploi','Nature','Énergie'];
+const demoThemes=['Mobilités','Éducation','Patrimoine','Eau','Habitat','Culture','Santé','Action sociale','Politique de la ville','Urbanisme','Réemploi','Nature','Énergie'];
 const demoActions=['un réseau de lieux partagés','un programme de renaturation','un fonds de transformation','un atelier mobile','une plateforme de réemploi','un plan de sobriété','une boucle de mobilités','un observatoire territorial','un dispositif culturel','un programme d’adaptation'];
 function demoHash(v){let h=2166136261;for(const c of String(v)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
 function demoSkew(code,level){const h=demoHash(level+':'+code);if(level==='region')return h%7===0?8:h%4===0?5:1+h%3;if(level==='departement')return h%13===0?8:h%5===0?5:1+h%3;if(level==='commune')return h%5===0?10:5+h%5;return h%9===0?5:1+h%3}
 function demoFeatureCenter(feature){const c=featureBounds(feature).getCenter();return[c.lat,c.lng]}
 function unitKeyForModeCode(level,code){const d=data.find(x=>x.mode===level&&String(keyOf(x))===String(code));return d?.unit||null}
 function addGeneratedDemo(level,unit,title,at,theme,index){
- data.push({id:demoNextId++,mode:level,unit,title,subtitle:index%3===0?'Exemple fictif de démonstration':'',kind:'global',at:[...at],shape:null,theme,tags:[theme,modes[level],'Fictif'],color:defaultColors[(level+index)%defaultColors.length],html:'<p>Exemple fictif destiné à visualiser les concentrations, filtres et changements d’échelle de la carte.</p>',deck:['Exemples fictifs::'+modes[level]],image:[],generatedDemo:true})
+ data.push({id:demoNextId++,mode:level,unit,title,subtitle:index%3===0?'Exemple fictif de démonstration':'',kind:'global',at:[...at],shape:null,theme,tags:[theme,modes[level],'Fictif'],color:defaultColors[(level+index)%defaultColors.length],html:'<p>Exemple fictif destiné à visualiser les concentrations, filtres et changements d’échelle de la carte.</p>',deck:demoDeckPaths(theme,level,index),image:[],generatedDemo:true})
 }
 function refreshAfterDemoSeed(){
  renderTags();renderDeckTree();pointRenderKey='';subdivisionKey='';centerKey='';renderSide();draw();updateSubdivisions(true);updateCenters(true);$('visibleCount').textContent=visibleAll().length+' fiches'
@@ -1495,10 +1534,10 @@ function renderTemporaryPaletteInputs(){
      if(temporaryPalettePickerOpenIndex===i){temporaryPalettePickerOpenIndex=null;input.blur();input.disabled=true;requestAnimationFrame(()=>{input.disabled=false;refreshActive()});return}
      temporaryPaletteEditIndex=i;temporaryPalettePickerOpenIndex=i;refreshActive();try{input.showPicker()}catch{input.focus()}
    };
-   input.oninput=()=>{temporaryPalette[i]=validColor(input.value);if(temporaryPaletteActive)refreshPaletteMap()};box.append(input)
+   input.oninput=()=>{temporaryPalette[i]=validColor(input.value);temporaryPaletteActive=true;temporaryPaletteAssignments.clear();refreshPaletteMap()};box.append(input)
  });
  refreshActive();
- renderColorPresetLibrary($("paletteSwatches"),c=>{temporaryPalette[temporaryPaletteEditIndex]=validColor(c);const input=box.querySelectorAll('input[type="color"]')[temporaryPaletteEditIndex];if(input)input.value=temporaryPalette[temporaryPaletteEditIndex];if(temporaryPaletteActive)refreshPaletteMap()})
+ renderColorPresetLibrary($("paletteSwatches"),c=>{temporaryPalette[temporaryPaletteEditIndex]=validColor(c);const input=box.querySelectorAll('input[type="color"]')[temporaryPaletteEditIndex];if(input)input.value=temporaryPalette[temporaryPaletteEditIndex];temporaryPaletteActive=true;temporaryPaletteAssignments.clear();refreshPaletteMap()})
 }
 function normalizeTemporaryPaletteOrder(){const head=temporaryPalette.slice(0,temporaryPaletteCount).map(validColor).sort((a,b)=>relativeLuminance(b)-relativeLuminance(a));temporaryPalette=[...head,...temporaryPalette.slice(temporaryPaletteCount)]}
 function applyTemporaryPalette(){normalizeTemporaryPaletteOrder();renderTemporaryPaletteInputs();temporaryPaletteActive=true;temporaryPaletteAssignments.clear();refreshPaletteMap()}
