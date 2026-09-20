@@ -67,6 +67,36 @@ def capabilities() -> list[str]:
     return sorted(set(names))
 
 
+def download_capabilities_carto_plus() -> list[str]:
+    """Return unique text/attribute values around CARTO PLUS download entries.
+
+    The download service is XML and its schema can evolve. Keeping a small
+    discovery snapshot lets the build adapt without hard-coding a guessed URL.
+    """
+    url = "https://data.geopf.fr/telechargement/capabilities"
+    try:
+        r = request(url)
+        root = ET.fromstring(r.content)
+    except Exception as e:
+        return [f"ERROR: {e}"]
+
+    values: set[str] = set()
+    for el in root.iter():
+        blob = " ".join(
+            [str(el.tag), str(el.text or "")]
+            + [f"{k}={v}" for k, v in el.attrib.items()]
+            + [str(ch.text or "") for ch in list(el)]
+        )
+        if "CARTOPLUS" not in blob.upper() and "CARTO_PLUS" not in blob.upper() and "CARTO PLUS" not in blob.upper():
+            continue
+        for node in el.iter():
+            if node.text and node.text.strip():
+                values.add(node.text.strip())
+            for k, v in node.attrib.items():
+                values.add(f"{k}={v}")
+    return sorted(values)
+
+
 def suffix(name: str) -> str:
     return name.split(":", 1)[-1].lower()
 
@@ -378,6 +408,7 @@ def main() -> int:
     discovery = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "wfs": WFS,
+        "download_carto_plus": download_capabilities_carto_plus(),
         "matching_2026_admin_layers": [
             n for n in names if "2026" in n.upper() and ("ADMIN" in n.upper() or "LIMITE" in n.upper())
         ],
