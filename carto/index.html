@@ -883,7 +883,7 @@ async function loadPacificAdmin(){
   const load=async kind=>{const base=PACIFIC_ADMIN_BASE+kind+'/';const [regions,departements,groupements,communes,centers]=await Promise.all([getJSON(base+'regions.geojson'),getJSON(base+'departements.geojson'),getJSON(base+'groupements.geojson'),getJSON(base+'communes.geojson'),getJSON(base+'commune-centers.json').catch(()=>({}))]);return{regions,departements,groupements,communes,centers}};
   const [pf,nc]=await Promise.all([load('pf'),load('nc')]);pacificAdmin={pf,nc};pacificOverviewCache.clear();
   for(const [kind,dept] of [['pf','987'],['nc','988']]){const d=doms.find(x=>String(x.dept)===dept),src=pacificAdmin[kind];if(!d||!src)continue;d.pacific=true;d.geo=src.regions;d.detailGeo=src.communes;d.departmentGeo=src.departements;d.epciGeo=src.groupements;d.epciCodes=new Set((src.groupements.features||[]).map(featureAdminCode).filter(Boolean));d.geoSource='pacific';d.fittedGeo=false}
-  seedPacificDemoCoverage();invalidateGroupCache();return pacificAdmin
+  invalidateGroupCache();return pacificAdmin
  })().catch(e=>{console.warn('Données administratives Pacifique indisponibles',e);pacificLoadPromise=null;return pacificAdmin});
  return pacificLoadPromise
 }
@@ -2614,27 +2614,27 @@ let mapDetailLayerTimer=null;function scheduleDetailLayers(){clearTimeout(mapDet
 async function bootCartography(){
  const savedWidth=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(savedWidth)applySideWidth(savedWidth);
  updateScaleSelector(mode,false);
- renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');const overviewPromise=loadIgnOverview();home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours IGN…';
+ renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');const overviewPromise=loadIgnOverview(),pacificPromise=loadPacificAdmin();home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours administratifs…';
  const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
  const results=await Promise.allSettled([
   loadAdminBoundaryBundle().then(async bundle=>{deptGeo=bundle.departements;regionGeo=bundle.regions;epciGeo=await augmentGrandParisGroups(bundle.epci);departmentRenderGeoCache=null;departmentOutlineGeoCache=null;invalidateGroupCache()})
  ]);
  await privateConnectPromise;
- await overviewPromise;
+ await Promise.allSettled([overviewPromise,pacificPromise]);
  overviewBootResolved=true;updateInsetVisibility();
  if(mode===1)try{if(overviewReady())await ensureOverviewEpciGeo();else await ensureEpciGeo()}catch{}
  if(cartGithubMode&&hasImportedCartData){
   const privateUnits=Object.fromEntries(Object.entries(units).filter(([key])=>data.some(d=>d.unit===key)));
   try{await validateCartAdminReferences({rows:data,units:privateUnits})}catch(e){$('status').textContent=e.message}
  }
- hydrateOverseasFromCore();seedAdministrativeDemoCoverage();if(epciGeo)seedEpciDemoCoverage();home();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);
+ hydrateOverseasFromCore();seedAdministrativeDemoCoverage();if(epciGeo)seedEpciDemoCoverage();seedPacificDemoCoverage();home();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);
  const failed=results.filter(r=>r.status==='rejected').length;
- if(!$('status').textContent||$('status').textContent==='Chargement des contours IGN…'||$('status').textContent==='Chargement des contours…')$('status').textContent=failed?'Impossible de charger le référentiel administratif local. Les sources de secours restent disponibles.':''
+ if(!$('status').textContent||$('status').textContent==='Chargement des contours administratifs…'||$('status').textContent==='Chargement des contours IGN…'||$('status').textContent==='Chargement des contours…')$('status').textContent=failed?'Impossible de charger le référentiel administratif local. Les sources de secours restent disponibles.':''
 }
 bootCartography();
 if(!compactMapUi()){const warmCatalog=()=>loadAdminCatalog().catch(()=>{});if('requestIdleCallback'in window)requestIdleCallback(warmCatalog,{timeout:5000});else setTimeout(warmCatalog,3500)}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&cartGithubMode){scheduleCartCloudSync(0);queueCartDataSync()}});
-// Detailed Polynésie/Nouvelle-Calédonie geometry is loaded only on demand from the inset.
+// Polynésie française et Nouvelle-Calédonie : référentiels locaux chargés au démarrage.
 
 })();
 </script></body></html>
