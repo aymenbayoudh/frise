@@ -715,6 +715,17 @@ async function augmentGrandParisGroups(geo){
  }catch{}
  return{type:'FeatureCollection',features:[...base,...extra]}
 }
+let epciLoadPromise=null;
+async function ensureEpciGeo(){
+ if(epciGeo?.features?.length)return epciGeo;
+ if(epciLoadPromise)return epciLoadPromise;
+ epciLoadPromise=getJSONFallback([
+   ADMIN_2026_GEOJSON_BASE+'epci-1000m.geojson',
+   './data/admin/epci.geojson',
+   'https://raw.githubusercontent.com/MTES-MCT/otelo/dev/apps/web/public/geojson/epci-1000m.geojson'
+ ]).then(augmentGrandParisGroups).then(j=>{epciGeo=j;invalidateGroupCache();seedEpciDemoCoverage();return epciGeo}).finally(()=>{epciLoadPromise=null});
+ return epciLoadPromise
+}
 
 async function groupCenterCommune(code){
  code=String(code||'');if(!code)return null;if(groupCenterCache.has(code))return groupCenterCache.get(code);
@@ -920,7 +931,7 @@ function updateScaleSelector(value=mode,animate=true){
  if(glass){glass.setAttribute('aria-valuenow',String(Math.round(v)));glass.setAttribute('aria-valuetext',modes[Math.round(v)]||modes[mode])}
  document.querySelectorAll('.scale-labels [data-mode]').forEach(b=>{const active=+b.dataset.mode===Math.round(v);b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))})
 }
-function setMode(n){closeMapDetail();mode=Math.max(0,Math.min(3,+n));invalidateGroupCache();epoch++;markCartCloudStateDirty();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();selectedGroup.clearLayers();adminHits.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;if(mode!==0){communeData.clearLayers();communeDataKey=''}subdivisionKey='';communeLabelKey='';centerKey='';updateScaleSelector(mode,true);renderSide();draw();updateSubdivisions(true);updateCenters(true);}
+function setMode(n){closeMapDetail();mode=Math.max(0,Math.min(3,+n));invalidateGroupCache();epoch++;markCartCloudStateDirty();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();selectedGroup.clearLayers();adminHits.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;if(mode!==0){communeData.clearLayers();communeDataKey=''}subdivisionKey='';communeLabelKey='';centerKey='';updateScaleSelector(mode,true);renderSide();draw();updateSubdivisions(true);updateCenters(true);if(mode===1&&!epciGeo){$('status').textContent='Chargement des groupements…';ensureEpciGeo().then(()=>{if(mode!==1)return;renderSide();draw();updateCenters(true);$('status').textContent=''}).catch(()=>{if(mode===1)$('status').textContent='Contours des groupements indisponibles.'})}}
 
 let metaPromise=null;
 async function loadJsonAny(urls){let last=null;for(const url of urls){try{return await getJSON(url)}catch(e){last=e}}throw last||Error('Source indisponible')}
@@ -1007,6 +1018,7 @@ function selectedCommuneCode(){return mode===0&&selection?.code?String(selection
 function communeBoundaryStyle(f){const code=featureAdminCode(f),selected=code&&code===selectedCommuneCode();return selected?{pane:'subAdminPane',color:'#000000',weight:3.2,opacity:1,fillColor:unitDisplayColor(code),fillOpacity:.08}:{pane:'subAdminPane',color:'#111820',weight:1.05,opacity:.9,fillOpacity:0}}
 async function updateCommuneLabels(force=false){
  const z=map.getZoom();if(mode!==0||!selection||z<11.25){communeLabelKey='';communeLabels.clearLayers();return}
+ if(!epciGeo){try{await ensureEpciGeo()}catch{return}if(mode!==0||!selection||map.getZoom()<11.25)return}
  const epci=contextEpci();if(!epci){communeLabelKey='';communeLabels.clearLayers();return}
  const geo=await epciCommuneGeo(epci);if(!geo?.features||mode!==0||!selection||map.getZoom()<11.25||contextEpci()!==epci)return;
  const view=map.getBounds().pad(.06),visible=[];
@@ -1016,7 +1028,8 @@ async function updateCommuneLabels(force=false){
  for(const [,f,at] of visible){const name=f.properties?.nom||f.properties?.name||'';if(name)L.marker(at,{icon:communeLabelIcon(name),interactive:false,zIndexOffset:-60}).addTo(communeLabels)}
 }
 async function updateSubdivisions(force=false){
- const z=map.getZoom();let kind='off',wantedCodes=[];
+ const z=map.getZoom();if(mode===0&&selection&&z>=9&&!epciGeo){try{await ensureEpciGeo()}catch{}if(mode!==0||!selection)return}
+ let kind='off',wantedCodes=[];
  if(mode===3&&z>=6)kind='departements';
  else if(mode===2&&z>=7){wantedCodes=selection?rawDepartmentCodes(String(selection.code)):visibleCodesFromGeo(deptGeo).sort();kind='arrondissements:'+wantedCodes.join(',')}
  else if(mode===0&&selection&&z>=9){const epci=contextEpci();if(epci)kind='epci-communes:'+epci}
@@ -1329,6 +1342,7 @@ function fillCartCommunes(preferredCode=''){
 }
 async function renderCartUnitOptions(preferred='',preserveCoordinates=false){
  const level=+$('cartMode').value,local=level===0,freeGroup=level===1&&$('cartGroupType').value==='free';
+ if(level===1&&!freeGroup&&!epciGeo)await ensureEpciGeo().catch(()=>null);
  $('cartGroupTypeLabel').hidden=level!==1;$('cartFreeGroupNameLabel').hidden=!freeGroup;$('cartFreeGroupCenterLabel').hidden=!freeGroup;$('cartUnitLabel').hidden=freeGroup;
  $('cartRegionLabel').hidden=!(local||freeGroup);$('cartDepartmentLabel').hidden=!(local||freeGroup);$('cartUnitText').textContent=local?'Commune':'Territoire';
  if(local||freeGroup){
@@ -1405,6 +1419,7 @@ function closeCartEditor(){
  return true
 }
 async function openCartEditor(item=null){
+ const requestedLevel=+(item?.mode??mode);if(requestedLevel===1&&!epciGeo)await ensureEpciGeo().catch(()=>null);
  closeTools();closeMapDetail();cartEditedId=item?.id??null;cartEditing={deck:[...(item?.deck||[])],image:[...(item?.image||[])]};
  $('cartFormTitle').textContent=item?'Modifier la fiche':'Nouvelle fiche';$('cartTitle').innerHTML=cleanCartInline(item?.title||'');$('cartSubtitle').innerHTML=cleanCartInline(item?.subtitle||'');
  $('cartMode').value=String(item?.mode??mode);const editUnit=units[item?.unit||''],editLevel=+(item?.mode??mode),freeGroup=editLevel===1&&(editUnit?.fiction||!String(editUnit?.code||'')||!epciGeo?.features?.some(f=>featureAdminCode(f)===String(editUnit?.code||'')));$('cartGroupType').value=freeGroup?'free':'surface';$('cartFreeGroupName').value=freeGroup?String(editUnit?.name||''):'';$('cartFreeGroupCenter').value=freeGroup?String(editUnit?.centerName||adminCatalog?.communeByCode.get(String(editUnit?.centerCode||''))?.name||''):'';$('cartKind').value=item?.kind||'global';$('cartTags').value=(item?.tags||[]).join(', ');
@@ -1538,7 +1553,7 @@ function updateAdminSearch(){
  if(raw.length<2&&!/^\d{2,}$/.test(raw)){box.innerHTML='<span class="empty">Tape au moins 2 caractères.</span>';box.hidden=false;return}
  box.innerHTML='<span class="empty">Recherche…</span>';box.hidden=false;
  adminSearchTimer=setTimeout(async()=>{
-   await loadAdminCatalog();if(serial!==adminSearchSerial)return;
+   await Promise.all([loadAdminCatalog(),ensureEpciGeo().catch(()=>null)]);if(serial!==adminSearchSerial)return;
    const found=adminSearchEntries().map(e=>({e,score:scoreAdminSearch(e,raw)})).filter(x=>x.score>=0).sort((a,b)=>b.score-a.score||a.e.name.localeCompare(b.e.name,'fr')).slice(0,12).map(x=>x.e);
    if(serial!==adminSearchSerial)return;
    box.innerHTML=found.length?found.map((e,i)=>'<button type="button" data-admin-search="'+i+'"><strong>'+escape(e.name)+'</strong><small>'+escape(collectivityMeta(e))+'</small></button>').join(''):'<span class="empty">Aucune collectivité</span>';
@@ -1937,17 +1952,17 @@ async function bootCartography(){
  const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
  const results=await Promise.allSettled([
   getJSONFallback([ADMIN_2026_GEOJSON_BASE+'departements-1000m.geojson','./data/admin/departements.geojson','https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson']).then(j=>{deptGeo=j;departmentRenderGeoCache=null;departmentOutlineGeoCache=null}),
-  getJSONFallback([ADMIN_2026_GEOJSON_BASE+'regions-1000m.geojson','./data/admin/regions.geojson','https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson']).then(j=>{regionGeo=j}),
-  getJSONFallback([ADMIN_2026_GEOJSON_BASE+'epci-1000m.geojson','./data/admin/epci.geojson','https://raw.githubusercontent.com/MTES-MCT/otelo/dev/apps/web/public/geojson/epci-1000m.geojson']).then(async j=>{epciGeo=await augmentGrandParisGroups(j)})
+  getJSONFallback([ADMIN_2026_GEOJSON_BASE+'regions-1000m.geojson','./data/admin/regions.geojson','https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson']).then(j=>{regionGeo=j})
  ]);
  await privateConnectPromise;
+ if(mode===1)try{await ensureEpciGeo()}catch{}
  if(cartGithubMode&&hasImportedCartData){
   const privateUnits=Object.fromEntries(Object.entries(units).filter(([key])=>data.some(d=>d.unit===key)));
   try{await validateCartAdminReferences({rows:data,units:privateUnits})}catch(e){$('status').textContent=e.message}
  }
- hydrateOverseasFromCore();seedAdministrativeDemoCoverage();seedEpciDemoCoverage();drawAdmin();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);
+ hydrateOverseasFromCore();seedAdministrativeDemoCoverage();if(epciGeo)seedEpciDemoCoverage();drawAdmin();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);
  const failed=results.filter(r=>r.status==='rejected').length;
- if(!$('status').textContent||$('status').textContent==='Chargement des contours…')$('status').textContent=failed===3?'Impossible de charger les contours administratifs. Recharge la page.':failed?'Une couche administrative secondaire est indisponible.':''
+ if(!$('status').textContent||$('status').textContent==='Chargement des contours…')$('status').textContent=failed===2?'Impossible de charger les contours administratifs. Recharge la page.':failed?'Une couche administrative secondaire est indisponible.':''
 }
 bootCartography();
 if(!compactMapUi()){const warmCatalog=()=>loadAdminCatalog().catch(()=>{});if('requestIdleCallback'in window)requestIdleCallback(warmCatalog,{timeout:5000});else setTimeout(warmCatalog,3500)}
