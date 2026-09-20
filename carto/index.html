@@ -729,9 +729,10 @@ try{const saved=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(saved)applySideW
 const satelliteTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,keepBuffer:matchMedia('(max-width:640px)').matches?0:1,updateWhenIdle:true,updateWhenZooming:false,attribution:'Tiles © Esri'});
 map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.getPane('centersPane').style.pointerEvents='none';map.createPane('groupCenterPane');map.getPane('groupCenterPane').style.zIndex='435';map.getPane('groupCenterPane').style.pointerEvents='none';map.createPane('eventPointPane');map.getPane('eventPointPane').style.zIndex='500';map.getPane('eventPointPane').style.pointerEvents='none';map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('arrondissementPane');map.getPane('arrondissementPane').style.zIndex='412';map.getPane('arrondissementPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('selectedGroupPane');map.getPane('selectedGroupPane').style.zIndex='425';map.getPane('selectedGroupPane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),selectedGroup=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
-const IGN_ADMIN_BASE=cartoAsset('data/ign/2026/');const IGN_GEO_BASE=IGN_ADMIN_BASE+'geographic/';const IGN_OVERVIEW_BASE=IGN_ADMIN_BASE+'overview/';
+const IGN_ADMIN_BASE=cartoAsset('data/ign/2026/');const IGN_GEO_BASE=IGN_ADMIN_BASE+'geographic/';const IGN_OVERVIEW_BASE=IGN_ADMIN_BASE+'overview/';const PACIFIC_ADMIN_BASE=cartoAsset('data/pacific/');
 let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c',ignAdminManifest=null;
 let overviewActive=false,overviewRegionGeo=null,overviewDeptGeo=null,overviewEpciGeo=null,overviewArrGeo=null,overviewCommuneCenters=null,ignOverviewManifest=null,overviewDepartmentRenderGeoCache=null,overviewDepartmentOutlineGeoCache=null,overviewEpciPromise=null,overviewArrPromise=null,overviewBootResolved=false;
+let pacificAdmin={pf:null,nc:null},pacificOverviewCache=new Map(),pacificLoadPromise=null;
 // Must exist before desktop inset maps are initialized below.
 let temporaryPaletteActive=false,temporaryPaletteOpacity=.68;
 
@@ -834,6 +835,58 @@ async function ensureOverviewArrGeo(){
  overviewArrPromise=getJSON(IGN_OVERVIEW_BASE+'arrondissements.geojson').then(j=>{if(!j?.features?.length)throw Error('Arrondissements CARTO PLUS vides');overviewArrGeo=j;return j}).finally(()=>{overviewArrPromise=null});
  return overviewArrPromise
 }
+
+function mergeFeatureCollections(...geos){return{type:'FeatureCollection',features:geos.flatMap(g=>g?.features||[])}}
+function compactName(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'')}
+function replacedCaribbeanSlot(f){
+ const code=featureAdminCode(f),name=compactName(featureAdminName(f));
+ return code==='977'||code==='978'||name.includes('saintbarthelemy')||name==='saintmartin'||name.includes('saintmartin')
+}
+function filteredOverviewGeo(geo){return geo?{type:'FeatureCollection',features:(geo.features||[]).filter(f=>!replacedCaribbeanSlot(f))}:geo}
+function wholeGeoBounds(geo){
+ const b=L.latLngBounds([]);for(const f of geo?.features||[]){const fb=featureBounds(f);if(fb?.isValid?.()){b.extend(fb.getSouthWest());b.extend(fb.getNorthEast())}}return b.isValid()?b:null
+}
+function slotFeature(kind){
+ const all=[...(overviewDeptGeo?.features||[]),...(overviewRegionGeo?.features||[])],want=kind==='pf'?'saintbarthelemy':'saintmartin',code=kind==='pf'?'977':'978';
+ return all.find(f=>featureAdminCode(f)===code)||all.find(f=>compactName(featureAdminName(f)).includes(want))||null
+}
+function transformGeoToOverviewSlot(geo,kind){
+ if(!geo?.features?.length)return null;
+ const cacheKey=kind+':'+(geo===pacificAdmin[kind]?.regions?'r':geo===pacificAdmin[kind]?.departements?'d':geo===pacificAdmin[kind]?.groupements?'g':geo===pacificAdmin[kind]?.communes?'c':'x');
+ if(pacificOverviewCache.has(cacheKey))return pacificOverviewCache.get(cacheKey);
+ const slot=slotFeature(kind),source=wholeGeoBounds(geo);if(!slot||!source)return null;
+ const sb=featureBounds(slot),center=sb.getCenter(),other=slotFeature(kind==='pf'?'nc':'pf'),otherCenter=other?featureBounds(other).getCenter():null,
+       gap=otherCenter?Math.abs(otherCenter.lng-center.lng):2.2,
+       targetW=Math.max(.9,Math.min(2.25,gap*.72)),targetH=kind==='nc'?1.75:1.35,
+       sourceW=Math.max(.000001,source.getEast()-source.getWest()),sourceH=Math.max(.000001,source.getNorth()-source.getSouth()),
+       scale=Math.min(targetW/sourceW,targetH/sourceH),sx=(source.getEast()+source.getWest())/2,sy=(source.getNorth()+source.getSouth())/2;
+ const mapCoords=value=>{
+   if(Array.isArray(value)&&value.length>=2&&Number.isFinite(+value[0])&&Number.isFinite(+value[1]))return[center.lng+(+value[0]-sx)*scale,center.lat+(+value[1]-sy)*scale,...value.slice(2)];
+   return Array.isArray(value)?value.map(mapCoords):value
+ };
+ const features=(geo.features||[]).map(f=>({...f,properties:{...(f.properties||{}),_pacificOverview:true,_territory:kind},geometry:f.geometry?.type==='GeometryCollection'?{...f.geometry,geometries:(f.geometry.geometries||[]).map(g=>({...g,coordinates:mapCoords(g.coordinates)}))}:{...f.geometry,coordinates:mapCoords(f.geometry?.coordinates)}}));
+ const out={type:'FeatureCollection',features};pacificOverviewCache.set(cacheKey,out);return out
+}
+function pacificOverviewLevel(level){
+ const geos=[];for(const kind of ['pf','nc']){const d=pacificAdmin[kind];if(!d)continue;const raw=level===3?d.regions:level===2?d.departements:level===1?d.groupements:d.communes,x=transformGeoToOverviewSlot(raw,kind);if(x)geos.push(x)}
+ return mergeFeatureCollections(...geos)
+}
+function pacificGeoForModeCode(level,code){
+ code=String(code||'');for(const kind of ['pf','nc']){const d=pacificAdmin[kind];if(!d)continue;const geo=level===3?d.regions:level===2?d.departements:level===1?d.groupements:d.communes,features=(geo?.features||[]).filter(f=>featureAdminCode(f)===code);if(features.length)return{type:'FeatureCollection',features}}return null
+}
+function pacificOverviewFeatureCenter(level,code){
+ const geo=pacificOverviewLevel(level),f=geo?.features?.find(x=>featureAdminCode(x)===String(code||''));if(!f)return null;const b=featureBounds(f);return b?.isValid?.()?[b.getCenter().lat,b.getCenter().lng]:null
+}
+async function loadPacificAdmin(){
+ if(pacificLoadPromise)return pacificLoadPromise;
+ pacificLoadPromise=(async()=>{
+  const load=async kind=>{const base=PACIFIC_ADMIN_BASE+kind+'/';const [regions,departements,groupements,communes,centers]=await Promise.all([getJSON(base+'regions.geojson'),getJSON(base+'departements.geojson'),getJSON(base+'groupements.geojson'),getJSON(base+'communes.geojson'),getJSON(base+'commune-centers.json').catch(()=>({}))]);return{regions,departements,groupements,communes,centers}};
+  const [pf,nc]=await Promise.all([load('pf'),load('nc')]);pacificAdmin={pf,nc};pacificOverviewCache.clear();
+  for(const [kind,dept] of [['pf','987'],['nc','988']]){const d=doms.find(x=>String(x.dept)===dept),src=pacificAdmin[kind];if(!d||!src)continue;d.pacific=true;d.geo=src.regions;d.detailGeo=src.communes;d.departmentGeo=src.departements;d.epciGeo=src.groupements;d.epciCodes=new Set((src.groupements.features||[]).map(featureAdminCode).filter(Boolean));d.geoSource='pacific';d.fittedGeo=false}
+  seedPacificDemoCoverage();invalidateGroupCache();return pacificAdmin
+ })().catch(e=>{console.warn('Données administratives Pacifique indisponibles',e);pacificLoadPromise=null;return pacificAdmin});
+ return pacificLoadPromise
+}
 function overviewDepartmentRenderGeo(){if(overviewDepartmentRenderGeoCache)return overviewDepartmentRenderGeoCache;if(!overviewDeptGeo)return null;return overviewDepartmentRenderGeoCache={type:'FeatureCollection',features:(overviewDeptGeo.features||[]).map(recodeDepartmentFeature)}}
 function overviewDepartmentOutlineGeo(){
  if(overviewDepartmentOutlineGeoCache)return overviewDepartmentOutlineGeoCache;
@@ -842,11 +895,11 @@ function overviewDepartmentOutlineGeo(){
  for(const code of ['20R','6AE']){const raw=rawDepartmentCodes(code),parts=(base.features||[]).filter(f=>raw.includes(featureAdminCode(f))),boundary=parts.length?overseasOuterBoundary({type:'FeatureCollection',features:parts}):null;if(boundary)features.push({...boundary,properties:{code,nom:SPECIAL_DEPARTMENT_NAMES[code]}})}
  return overviewDepartmentOutlineGeoCache={type:'FeatureCollection',features}
 }
-function displayRegionGeo(){return overviewActive&&overviewRegionGeo?overviewRegionGeo:regionGeo}
-function displayDepartmentRenderGeo(){return overviewActive&&overviewDeptGeo?overviewDepartmentRenderGeo():departmentRenderGeo()}
-function displayDepartmentOutlineGeo(){return overviewActive&&overviewDeptGeo?overviewDepartmentOutlineGeo():departmentOutlineGeo()}
-function displayEpciGeo(){return overviewActive?overviewEpciGeo:epciGeo}
-function overviewPointForCommune(code,fallback){const at=overviewActive&&overviewCommuneCenters?overviewCommuneCenters[String(code||'')]:null;return Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)?at:fallback}
+function displayRegionGeo(){return overviewActive&&overviewRegionGeo?mergeFeatureCollections(filteredOverviewGeo(overviewRegionGeo),pacificOverviewLevel(3)):regionGeo}
+function displayDepartmentRenderGeo(){return overviewActive&&overviewDeptGeo?mergeFeatureCollections(filteredOverviewGeo(overviewDepartmentRenderGeo()),pacificOverviewLevel(2)):departmentRenderGeo()}
+function displayDepartmentOutlineGeo(){return overviewActive&&overviewDeptGeo?mergeFeatureCollections(filteredOverviewGeo(overviewDepartmentOutlineGeo()),pacificOverviewLevel(2)):departmentOutlineGeo()}
+function displayEpciGeo(){return overviewActive?mergeFeatureCollections(overviewEpciGeo,pacificOverviewLevel(1)):epciGeo}
+function overviewPointForCommune(code,fallback){const p=pacificOverviewFeatureCenter(0,code);if(p)return p;const at=overviewActive&&overviewCommuneCenters?overviewCommuneCenters[String(code||'')]:null;return Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)?at:fallback}
 function overviewFeatureCenter(geo,code,fallback){const f=geo?.features?.find(x=>featureAdminCode(x)===String(code||''));if(!f)return fallback;const b=featureBounds(f);return b?.isValid?.()?[b.getCenter().lat,b.getCenter().lng]:fallback}
 const ADMIN_BOUNDARY_SOURCES=[
  {label:'Etalab 2026',base:'https://etalab-datasets.geo.data.gouv.fr/2026/geojson/'},
