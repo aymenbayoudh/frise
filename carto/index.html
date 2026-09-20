@@ -855,7 +855,7 @@ function transformGeoToOverviewSlot(geo,kind){
  if(!geo?.features?.length)return null;
  const cacheKey=kind+':'+(geo===pacificAdmin[kind]?.regions?'r':geo===pacificAdmin[kind]?.departements?'d':geo===pacificAdmin[kind]?.groupements?'g':geo===pacificAdmin[kind]?.communes?'c':'x');
  if(pacificOverviewCache.has(cacheKey))return pacificOverviewCache.get(cacheKey);
- const slot=slotFeature(kind),source=wholeGeoBounds(geo);if(!slot||!source)return null;
+ const slot=slotFeature(kind),source=wholeGeoBounds(pacificAdmin[kind]?.regions||geo);if(!slot||!source)return null;
  const sb=featureBounds(slot),center=sb.getCenter(),other=slotFeature(kind==='pf'?'nc':'pf'),otherCenter=other?featureBounds(other).getCenter():null,
        gap=otherCenter?Math.abs(otherCenter.lng-center.lng):2.2,
        targetW=Math.max(.9,Math.min(2.25,gap*.72)),targetH=kind==='nc'?1.75:1.35,
