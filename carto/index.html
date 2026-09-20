@@ -1553,12 +1553,11 @@ function applyCartCloudState(state){
 }
 async function loadCartCloudStateFromGitHub(){
  const remote=await cartGithubGetOptional(CART_GITHUB_STATE_FILE),localUpdated=localCartCloudUpdated();
- if(!remote){if(localUpdated)scheduleCartCloudSync(800);return}
+ if(!remote){if(hasLocalCartCloudState()){if(!localUpdated)try{localStorage.setItem(CART_CLOUD_UPDATED_KEY,String(Date.now()))}catch{}scheduleCartCloudSync(800)}return}
  let state;try{state=JSON.parse(remote.text)}catch{return}
  const remoteUpdated=Math.max(0,Number(state?.updatedAt)||0);
  if(remoteUpdated>localUpdated)applyCartCloudState(state);
- else if(localUpdated>remoteUpdated)scheduleCartCloudSync(800);
- else if(!remoteUpdated&&hasLocalCartCloudState()){try{localStorage.setItem(CART_CLOUD_UPDATED_KEY,String(Date.now()))}catch{}scheduleCartCloudSync(800)}
+ else if(localUpdated>remoteUpdated)scheduleCartCloudSync(800)
 }
 async function syncCartCloudStateToGitHub(){
  if(!cartGithubMode||!cartGithubConfig)return;
