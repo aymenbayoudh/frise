@@ -706,6 +706,19 @@ function departmentHasArrondissements(code){
  const overseas=overseasByDepartment(code);
  return !overseas||overseas.departmentArrondissements!==false
 }
+const OVERSEAS_ARRONDISSEMENT_CENTERS={
+ '971':['97105','97120'],
+ '972':['97209','97230','97217','97225'],
+ '973':['97302','97311','97308'],
+ '974':['97411','97416','97410','97415']
+};
+function subprefEntriesForDepartments(meta,wanted,depCapitalByCode,showLabel){
+ const out=[],seen=new Set();
+ const add=(dep,code)=>{dep=String(dep||'');code=String(code||'');if(!dep||!code||!wanted.has(dep)||code===depCapitalByCode.get(dep)||seen.has(code))return;seen.add(code);out.push({code,adminLevel:2,adminCode:dep,rank:'subpref',showLabel})};
+ for(const a of meta.arrondissements||[])add(a.departement??a.codeDepartement??a.dep??'',a.chefLieu);
+ for(const dep of wanted)for(const code of OVERSEAS_ARRONDISSEMENT_CENTERS[dep]||[])add(dep,code);
+ return out
+}
 function itemDisplayAdminCode(d,target=mode){const raw=String(keyOf(d));if(target===3&&d.mode===2)return String(overseasByDepartment(raw)?.region||raw);if(target===2&&d.mode===3)return displayDepartmentCode(String(overseasByRegion(raw)?.dept||raw));return target===2?displayDepartmentCode(raw):raw}
 let departmentRenderGeoCache=null,departmentOutlineGeoCache=null;
 function recodeDepartmentFeature(f){const raw=featureAdminCode(f),code=displayDepartmentCode(raw);if(code===raw)return f;return{...f,properties:{...(f.properties||{}),code,nom:SPECIAL_DEPARTMENT_NAMES[code],_mergedDeptPart:true,_rawDept:raw}}}
@@ -939,8 +952,22 @@ function overseasAtPoint(at){
  }
  return null
 }
+function overseasGeoBounds(d){
+ const geo=d?.geo||d?.detailGeo;if(!geo?.features?.length)return null;
+ const b=L.latLngBounds([]);for(const f of geo.features||[]){const fb=featureBounds(f);if(fb?.isValid?.()){b.extend(fb.getSouthWest());b.extend(fb.getNorthEast())}}
+ return b.isValid()?b:null
+}
+function overseasForView(){
+ const c=map.getCenter(),exact=overseasAtPoint([c.lat,c.lng]);if(exact)return exact;
+ const view=map.getBounds();
+ for(const d of doms){
+   const b=overseasGeoBounds(d);if(!b)continue;
+   if(view.intersects(b)&&(view.contains(b.getCenter())||b.contains(c)))return d
+ }
+ return null
+}
 function ensureFocusedOverseasModeGeometry(){
- const c=map.getCenter(),d=overseasAtPoint([c.lat,c.lng]);
+ const d=overseasForView();
  if(mode===1&&d?.nationalEpci)ensureOverseasEpciGeometry(d).catch(()=>{});
 }
 
@@ -1076,11 +1103,11 @@ function overseasOuterBoundary(geo){
  overseasBoundaryCache.set(geo,out);return out
 }
 function drawOverseasContext(target=contextAdmin){
- if(mode>1)return;
  for(const d of doms){
-   if(d.regionOnly||!d.geo)continue;
-   const boundary=overseasOuterBoundary(d.geo);if(!boundary)continue;
-   L.geoJSON(boundary,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#000000',weight:adminStroke(mode===0?2.15:1.55),opacity:1,fill:false,fillOpacity:0}}).addTo(target)
+   const geo=d.geo||d.detailGeo;if(!geo?.features?.length)continue;
+   const boundary=overseasOuterBoundary(geo);if(!boundary)continue;
+   const weight=mode===0?2.15:mode===1?1.7:mode===2?2.25:2.05;
+   L.geoJSON(boundary,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#000000',weight:adminStroke(weight),opacity:1,fill:false,fillOpacity:0}}).addTo(target)
  }
 }
 function drawContextAdmin(){
@@ -1295,7 +1322,7 @@ async function updateSubdivisions(force=false){
  const z=map.getZoom();
  if(mode===0&&selection&&z>=9&&!epciGeo){try{await ensureEpciGeo()}catch{}if(mode!==0||!selection)return}
 
- const center=map.getCenter(),focusedOverseas=overseasAtPoint([center.lat,center.lng]),
+ const focusedOverseas=overseasForView(),
        overseasArrFocus=(mode===0||mode===2)&&!!focusedOverseas?.departmentArrondissements;
  const showRegionDepartments=mode===3&&z>=6;
  const showArrondissements=(mode===2||mode===0)&&(z>=7||overseasArrFocus);
@@ -1394,18 +1421,20 @@ async function addAdminCenterBatch(entries,token){
  const concurrency=18;for(let i=0;i<uniqueEntries.length;i+=concurrency){if(token!==centerKey)return;await Promise.all(uniqueEntries.slice(i,i+concurrency).map(e=>addAdminCenter(e.code,e,token)))}
 }
 async function updateCenters(force=false){
- const z=map.getZoom(),mobile=compactMapUi(),
+ const z=map.getZoom(),mobile=compactMapUi(),focusedOverseas=overseasForView(),
+       overseasSubprefFocus=(mode===0||mode===1||mode===2)&&!!focusedOverseas?.departmentArrondissements,
        showRegionNames=z>=(mobile&&mode>=2?4.7:mobile?5.85:6.15),
        showDeptNames=z>=(mobile?6.65:7.05),
-       showDeptPref=mode===2&&z>=6,
-       showSubpref=(mode===0||mode===1||mode===2)&&z>=7,
-       showSubprefNames=z>=(mobile?7.35:7.75),
+       showDeptPref=mode===2&&(z>=6||overseasSubprefFocus),
+       showSubpref=(mode===0||mode===1||mode===2)&&(z>=7||overseasSubprefFocus),
+       showSubprefNames=overseasSubprefFocus||z>=(mobile?7.35:7.75),
        showRegionDeptSecondary=mode===3&&z>=6,
        showRegionDeptSecondaryNames=z>=(mobile?6.25:6.6);
  let visibleRegions=[],visibleDepts=[],visibleKey='national';
  if(showRegionDeptSecondary)visibleRegions=selection?[String(selection.code)]:visibleCodesFromGeo(regionGeo).sort();
  if(showDeptPref||showSubpref){
-   if(mode===2&&selection)visibleDepts=rawDepartmentCodes(String(selection.code));
+   if(focusedOverseas?.departmentArrondissements)visibleDepts=[String(focusedOverseas.dept)];
+   else if(mode===2&&selection)visibleDepts=rawDepartmentCodes(String(selection.code));
    else if(mode===0&&selection){
      const u=units[selection.key]||selection,dep=String(u?.dept||'');
      visibleDepts=dep?rawDepartmentCodes(dep):visibleCodesFromGeo(deptGeo).sort()
@@ -1419,19 +1448,17 @@ async function updateCenters(force=false){
    const regions=meta.regions||[],deps=meta.departements||[],regionCapitalCodes=new Set(regions.map(r=>String(r.chefLieu||'')).filter(Boolean));
 
    if(mode<=1){
-     const u=selection?(units[selection.key]||selection):null,selectedDept=String(u?.dept||''),selectedRegion=String(u?.region||'');
-     const regionEntries=(selection&&selectedRegion?regions.filter(r=>String(r.code)===selectedRegion):z>=5.05?regions:[])
-       .map(r=>({code:r.chefLieu,adminLevel:3,adminCode:String(r.code),rank:'region',showLabel:showRegionNames}));
-     const departmentEntries=(selection&&selectedDept?deps.filter(d=>String(d.code)===selectedDept):z>=6.65?deps:[])
+     const u=selection?(units[selection.key]||selection):null,selectedDept=String(u?.dept||''),selectedRegion=String(u?.region||''),
+           overseasRegion=focusedOverseas?String(focusedOverseas.region):'';
+     const regionEntries=(overseasRegion?regions.filter(r=>String(r.code)===overseasRegion):selection&&selectedRegion?regions.filter(r=>String(r.code)===selectedRegion):z>=5.05?regions:[])
+       .map(r=>({code:r.chefLieu,adminLevel:3,adminCode:String(r.code),rank:'region',showLabel:showRegionNames||!!overseasRegion}));
+     const departmentEntries=(focusedOverseas?deps.filter(d=>String(d.code)===String(focusedOverseas.dept)):selection&&selectedDept?deps.filter(d=>String(d.code)===selectedDept):z>=6.65?deps:[])
        .filter(d=>!regionCapitalCodes.has(String(d.chefLieu)))
-       .map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:showDeptNames}));
+       .map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:showDeptNames||!!focusedOverseas}));
      await addAdminCenterBatch([...regionEntries,...departmentEntries],token);
      if(token!==centerKey||!showSubpref)return;
      const wanted=new Set(visibleDepts),depCapitalByCode=new Map(deps.map(d=>[String(d.code),String(d.chefLieu||'')]));
-     const arrs=(meta.arrondissements||[]).filter(a=>wanted.has(String(a.departement??a.codeDepartement??a.dep??'')));
-     await addAdminCenterBatch(arrs.filter(a=>String(a.chefLieu||'')!==depCapitalByCode.get(String(a.departement??a.codeDepartement??a.dep??''))).map(a=>({
-       code:a.chefLieu,adminLevel:2,adminCode:String(a.departement??a.codeDepartement??a.dep??''),rank:'subpref',showLabel:showSubprefNames
-     })),token)
+     await addAdminCenterBatch(subprefEntriesForDepartments(meta,wanted,depCapitalByCode,showSubprefNames),token)
    }else if(mode===3){
      await addAdminCenterBatch(regions.map(r=>({code:r.chefLieu,adminLevel:3,adminCode:String(r.code),rank:'region',showLabel:showRegionNames})),token);
      if(token!==centerKey||!showRegionDeptSecondary)return;
@@ -1440,24 +1467,23 @@ async function updateCenters(force=false){
    }else{
      const regionPrefEntries=[];
      for(const r of regions){
+       if(focusedOverseas&&String(r.code)!==String(focusedOverseas.region))continue;
        const host=deps.find(d=>String(d.chefLieu||'')===String(r.chefLieu||''));
-       regionPrefEntries.push({code:r.chefLieu,adminLevel:2,adminCode:String(host?.code||''),rank:'region',showLabel:showRegionNames})
+       regionPrefEntries.push({code:r.chefLieu,adminLevel:2,adminCode:String(host?.code||''),rank:'region',showLabel:showRegionNames||!!focusedOverseas})
      }
      await addAdminCenterBatch(regionPrefEntries,token);
      if(token!==centerKey||!showDeptPref)return;
 
      const wanted=new Set(visibleDepts),visibleDeps=deps.filter(d=>wanted.has(String(d.code)));
-     await addAdminCenterBatch(visibleDeps.filter(d=>!regionCapitalCodes.has(String(d.chefLieu))).map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:showDeptNames})),token);
+     await addAdminCenterBatch(visibleDeps.filter(d=>!regionCapitalCodes.has(String(d.chefLieu))).map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:showDeptNames||!!focusedOverseas})),token);
      if(token!==centerKey||!showSubpref)return;
 
      const depCapitalByCode=new Map(deps.map(d=>[String(d.code),String(d.chefLieu||'')]));
-     const arrs=(meta.arrondissements||[]).filter(a=>wanted.has(String(a.departement??a.codeDepartement??a.dep??'')));
-     await addAdminCenterBatch(arrs.filter(a=>String(a.chefLieu||'')!==depCapitalByCode.get(String(a.departement??a.codeDepartement??a.dep??''))).map(a=>({code:a.chefLieu,adminLevel:2,adminCode:String(a.departement??a.codeDepartement??a.dep??''),rank:'subpref',showLabel:showSubprefNames})),token)
+     await addAdminCenterBatch(subprefEntriesForDepartments(meta,wanted,depCapitalByCode,showSubprefNames),token)
    }
    if(mode===0&&!selection){renderSide();pointRenderKey='';drawPoints()}
  }catch(e){$('status').textContent='Les contours restent disponibles ; chargement des chefs-lieux à réessayer.'}
 }
-
 let demoAdminSeeded=false,demoEpciSeeded=false,demoNextId=Math.max(0,...data.map(d=>Number(d.id)||0))+1;
 const demoThemes=['Mobilités','Éducation','Patrimoine','Eau','Habitat','Culture','Santé','Action sociale','Politique de la ville','Urbanisme','Réemploi','Nature','Énergie'];
 const demoActions=['un réseau de lieux partagés','un programme de renaturation','un fonds de transformation','un atelier mobile','une plateforme de réemploi','un plan de sobriété','une boucle de mobilités','un observatoire territorial','un dispositif culturel','un programme d’adaptation'];
