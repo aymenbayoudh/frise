@@ -460,6 +460,10 @@ def build_pf_overview(pf, center):
     # A cartogram inspired by the familiar PF archipelago map: each archipelago
     # keeps its internal island pattern, but ocean distances are compressed.
     ty, tx = center
+    # Saint-Barthélemy's CARTO PLUS slot is tiny. Our readable archipelago
+    # cartogram is larger, so lower it slightly to keep every island clear of
+    # the Pyrenean/Mediterranean edge of mainland France.
+    ty -= 0.48
     sub_members = {}
     for f in pf["communes"]:
         key = pf_sub_key(f["properties"].get("subdivision_name", ""))
@@ -549,6 +553,9 @@ def build_pf_overview(pf, center):
 
 def build_nc_overview(nc, center):
     whole = shape(nc["regions"][0]["geometry"])
+    # Same principle as PF: preserve the Saint-Martin horizontal slot while
+    # lowering the enlarged silhouette so it never overlaps mainland France.
+    center = (center[0] - 0.42, center[1])
     tr, tp = uniform_transformer(whole.bounds, center, 1.55, 1.65)
 
     def transform_fc(items):
