@@ -29,11 +29,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependency
-        run: python -m pip install --disable-pip-version-check requests
+      - name: Install dependencies
+        run: |
+          python -m pip install --disable-pip-version-check requests
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends gdal-bin
 
       - name: Download and normalize IGN 2026
-        run: python scripts/update_ign_admin.py
+        run: |
+          python scripts/update_ign_admin.py
+          python scripts/update_ign_carto_plus.py
 
       - name: Commit generated IGN data
         run: |
