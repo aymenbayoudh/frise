@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-09-20T16:37:53.920446+00:00",
+  "geographic": {
+    "counts": {
+      "arrondissements": 333,
+      "centers": 38099,
+      "commune_departments": 102,
+      "communes": 34877,
+      "departements": 101,
+      "epci": 1266,
+      "regions": 18
+    },
+    "layers": {
+      "arrondissements": "ADMINEXPRESS-COG-CARTO-PE.2026:arrondissement",
+      "centers": [
+        "ADMINEXPRESS-COG-CARTO-PE.2026:chef_lieu_d_arrondissement",
+        "ADMINEXPRESS-COG-CARTO-PE.2026:chef_lieu_d_arrondissement_municipal",
+        "ADMINEXPRESS-COG-CARTO-PE.2026:chef_lieu_de_collectivite_territoriale",
+        "ADMINEXPRESS-COG-CARTO-PE.2026:chef_lieu_de_commune",
+        "ADMINEXPRESS-COG-CARTO-PE.2026:chef_lieu_de_commune_associee_ou_deleguee",
+        "ADMINEXPRESS-COG-CARTO-PE.2026:chef_lieu_de_departement",
+        "ADMINEXPRESS-COG-CARTO-PE.2026:chef_lieu_de_region"
+      ],
+      "communes": "ADMINEXPRESS-COG-CARTO-PE.2026:commune",
+      "departements": "ADMINEXPRESS-COG-CARTO-PE.2026:departement",
+      "epci": "ADMINEXPRESS-COG-CARTO-PE.2026:epci",
+      "regions": "ADMINEXPRESS-COG-CARTO-PE.2026:region"
+    }
+  },
+  "license": "Licence Ouverte / Open Licence 2.0",
+  "overview": {
+    "available": false,
+    "counts": {},
+    "layers": {},
+    "reason": "No CARTO PLUS 2026 WFS layer advertised"
+  },
+  "source": "IGN ADMIN EXPRESS COG 2026",
+  "wfs": "https://data.geopf.fr/wfs/ows"
+}
