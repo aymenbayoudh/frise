@@ -843,8 +843,8 @@ function epciCodeAtPoint(at){
 function adminCenterColor(level,code,rank,centerCode='',at=null){
  let base=null;
  if(mode===0){
-   const e=data.find(d=>d.mode===0&&String(keyOf(d))===String(centerCode)&&tagsPass(d)&&decksPass(d));
-   if(e)base=temporaryEventColor(e)
+   const n=data.filter(d=>d.mode===0&&String(keyOf(d))===String(centerCode)&&tagsPass(d)&&decksPass(d)).length;
+   if(n>0)base=densityContinuousColor(n)
  }else if(mode===1){
    const epci=epciCodeAtPoint(at),n=epci?countCode(epci):0;
    if(n>0)base=densityColor(n)
@@ -1294,7 +1294,7 @@ async function communeOutlineGeo(code){
  communeOutlineGeoCache.set(code,p);return p
 }
 function communeDataStyle(code){
- const g=groupByCode(code),selected=!!selection&&String(selection.code)===String(code),color=g?.items?.length?temporaryEventColor(g.items[0]):accent;
+ const g=groupByCode(code),selected=!!selection&&String(selection.code)===String(code),n=g?.items?.length||0,color=n?densityContinuousColor(n):defaultColors[0];
  return{pane:'communeDataPane',color:'#090B0D',weight:selected?2.8:1.25,opacity:1,fillColor:color,fillOpacity:selected?.24:.15}
 }
 async function updateCommuneDataLayer(force=false){
@@ -1313,7 +1313,7 @@ async function departmentCommuneGeo(dept){dept=String(dept||'');if(!dept)return 
 async function epciCommuneGeo(code){code=String(code||'');if(!code)return null;if(epciCommuneGeoCache.has(code))return epciCommuneGeoCache.get(code);const p=getJSON('https://geo.api.gouv.fr/epcis/'+encodeURIComponent(code)+'/communes?fields=nom,code&format=geojson&geometry=contour').catch(()=>null);epciCommuneGeoCache.set(code,p);return p}
 function communeLabelIcon(name){return L.divIcon({className:'commune-name-label',iconSize:null,html:'<span>'+escape(name)+'</span>'})}
 function selectedCommuneCode(){return mode===0&&selection?.code?String(selection.code):''}
-function communeBoundaryStyle(f){const code=featureAdminCode(f),selected=code&&code===selectedCommuneCode();return selected?{pane:'subAdminPane',color:'#000000',weight:3.2,opacity:1,fillColor:unitDisplayColor(code),fillOpacity:.08}:{pane:'subAdminPane',color:'#111820',weight:1.05,opacity:.9,fillOpacity:0}}
+function communeBoundaryStyle(f){const code=featureAdminCode(f),selected=code&&code===selectedCommuneCode(),n=countCode(code);return selected?{pane:'subAdminPane',color:'#000000',weight:3.2,opacity:1,fillColor:n?densityContinuousColor(n):defaultColors[0],fillOpacity:.08}:{pane:'subAdminPane',color:'#111820',weight:1.05,opacity:.9,fillOpacity:0}}
 async function updateCommuneLabels(force=false){
  const z=map.getZoom();if(mode!==0||!selection||z<11.25){communeLabelKey='';communeLabels.clearLayers();return}
  if(!epciGeo){try{await ensureEpciGeo()}catch{return}if(mode!==0||!selection||map.getZoom()<11.25)return}
