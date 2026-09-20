@@ -1585,7 +1585,7 @@ function addCommuneClusterMarker(cluster,z){
  if(memberCount===1){
   const {g,at}=cluster.members[0],
         showLabel=z>=communePermanentLabelZoom()&&!isKnownAdminCenterCommune(String(g.code||''));
-  addMarker(at,g.items,g.name,false,()=>choose(g),points,showLabel);
+  addMarker(at,g.items,g.name,false,()=>chooseCommune(g),points,showLabel);
   return
  }
  const size=communeClusterSize(total,memberCount),color=densityContinuousColor(total),
@@ -1673,7 +1673,15 @@ async function adminCascadeFor(g,level=mode){if(!g)return'';const u=units[g.key]
  }if(level===3){const meta=await loadAdminMeta(),r=(meta.regions||[]).find(x=>String(x.code)===code),pref=r?.chefLieu?await communeNameFromCode(r.chefLieu):'';return pref?'Préfecture · '+pref:''}if(level===2){if(code==='20R')return regionName('94')+' · Préfecture · Ajaccio';if(code==='6AE')return regionName('44')+' · Préfecture · Strasbourg';const meta=await loadAdminMeta(),d=(meta.departements||[]).find(x=>String(x.code)===code),reg=regionName(d?.region??d?.codeRegion??u.region),pref=d?.chefLieu?await communeNameFromCode(d.chefLieu):'';return[reg,pref?'Préfecture · '+pref:''].filter(Boolean).join(' · ')}if(level===1){if(u.fiction||!code){const arr=await arrondissementAt(Array.isArray(u.at)?u.at:g.at);return[regionName(u.region),departmentName(u.dept),arrondissementCaption(arr),u.centerName?'Ville-centre · '+u.centerName:''].filter(Boolean).join(' · ')}const center=await groupCenterCommune(code),rel=center?await communeRelations(center.code):null,dept=String(rel?.codeDepartement||center?.dept||u.dept||''),reg=String(rel?.codeRegion||center?.region||u.region||''),arr=await arrondissementAt(center?.at);return[regionName(reg),departmentName(dept),arrondissementCaption(arr)].filter(Boolean).join(' · ')}const rel=await communeRelations(code),dept=String(rel?.codeDepartement||u.dept||''),reg=String(rel?.codeRegion||u.region||''),arr=await arrondissementAt(Array.isArray(u.at)?u.at:g.at),epciName=rel?.epci?.nom||rel?.epci?.name||'';return[regionName(reg),departmentName(dept),arrondissementCaption(arr),epciName].filter(Boolean).join(' · ')}
 async function updateAdminCascade(g){const token=++adminCascadeToken,box=$('adminCascade');if(!g){box.textContent='';return}box.textContent='…';const text=await adminCascadeFor(g,mode);if(token!==adminCascadeToken||selection!==g)return;box.textContent=text}
 
-function renderSide(){activeItem=null;$('back').hidden=!selection;$('back').textContent='← Tous les territoires';$('heading').textContent=selection?selection.name:modes[mode];$('context').textContent=selection?selection.items.length+' exemple'+(selection.items.length>1?'s':'')+(selection.fiction?' · groupement libre':''):current().length+' exemples · '+groups().length+' territoires';$('adminCascade').textContent='';if(selection){renderCards(selection.items);updateAdminCascade(selection);return;}$('list').innerHTML=groups().map(g=>'<button class="entry" data-unit="'+g.key+'"><span class="num">'+g.items.length+'</span><strong>'+escape(g.name)+'</strong><small>'+escape(g.fiction?'Groupement libre':mode===0?'Commune':mode===1?'Groupement':modes[mode].slice(0,-1))+'</small></button>').join('');$('list').querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>choose(groups().find(g=>g.key===b.dataset.unit)));}
+async function chooseCommune(g,bounds=null){
+ if(!g)return;
+ if(!bounds&&g.code){
+  const f=await communeOutlineGeo(g.code);
+  if(f)bounds=featureBounds(f)
+ }
+ return choose(g,bounds||undefined,{maxZoom:11.75})
+}
+function renderSide(){activeItem=null;$('back').hidden=!selection;$('back').textContent='← Tous les territoires';$('heading').textContent=selection?selection.name:modes[mode];$('context').textContent=selection?selection.items.length+' exemple'+(selection.items.length>1?'s':'')+(selection.fiction?' · groupement libre':''):current().length+' exemples · '+groups().length+' territoires';$('adminCascade').textContent='';if(selection){renderCards(selection.items);updateAdminCascade(selection);return;}$('list').innerHTML=groups().map(g=>'<button class="entry" data-unit="'+g.key+'"><span class="num">'+g.items.length+'</span><strong>'+escape(g.name)+'</strong><small>'+escape(g.fiction?'Groupement libre':mode===0?'Commune':mode===1?'Groupement':modes[mode].slice(0,-1))+'</small></button>').join('');$('list').querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>{const g=groups().find(g=>g.key===b.dataset.unit);mode===0?chooseCommune(g):choose(g)});}
 function overviewSelectionNeedsRealGeography(g){
  if(!g)return false;
  const code=String(g.code||''),u=units[g.key]||g,
@@ -1849,7 +1857,7 @@ async function updateCommuneDataLayer(force=false){
       l.on({
        mouseover:e=>{l.openTooltip(e.latlng);l.setStyle({...communeDataStyle(g.code),weight:3.25,fillOpacity:.44})},
        mouseout:()=>{l.closeTooltip();l.setStyle(communeDataStyle(g.code))},
-       click:e=>{L.DomEvent.stopPropagation(e);choose(g,l.getBounds())}
+       click:e=>{L.DomEvent.stopPropagation(e);chooseCommune(g,l.getBounds())}
       })
     }}).addTo(communeData)
    }
@@ -1952,7 +1960,7 @@ async function updateSubdivisions(force=false){
        l.on({
         mouseover:()=>l.setStyle({color:'#000000',weight:1.55,opacity:1,fillColor:'#ffffff',fillOpacity:.001}),
         mouseout:()=>l.setStyle({color:'#000000',weight:0,opacity:0,fillColor:'#ffffff',fillOpacity:.001}),
-        click:e=>{L.DomEvent.stopPropagation(e);choose(g,l.getBounds())}
+        click:e=>{L.DomEvent.stopPropagation(e);chooseCommune(g,l.getBounds())}
        })
       }
      }).addTo(communeHits);
@@ -2025,7 +2033,7 @@ async function updateSubdivisions(force=false){
          l.on({
            mouseover:()=>l.setStyle({color:'#000000',weight:1.8,opacity:1,fillColor:unitDisplayColor(code),fillOpacity:.08}),
            mouseout:()=>l.setStyle({color:'#000000',weight:0,opacity:0,fillColor:'#ffffff',fillOpacity:.001}),
-           click:e=>{L.DomEvent.stopPropagation(e);choose(g,l.getBounds())}
+           click:e=>{L.DomEvent.stopPropagation(e);chooseCommune(g,l.getBounds())}
          })
        }
      }).addTo(communeHits)
@@ -3121,18 +3129,17 @@ async function focusItemFromNavigation(d){
  if(!d)return;
  setMode(d.mode);
  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
- const u=units[d.unit]||{},code=String(u.code||d.unit);let bounds=null;
- // In commune mode, use exactly the same navigation path as clicking the
- // commune bubble: no special outline fit, same target zoom.
- if(d.mode!==0){
+ const u=units[d.unit]||{},code=String(u.code||d.unit),g=groups().find(g=>g.key===d.unit)||{key:d.unit,...u,code,items:data.filter(x=>x.mode===d.mode&&x.unit===d.unit)};
+ if(d.mode===0){
+  await chooseCommune(g);
+ }else{
   const wanted=d.mode===2?displayDepartmentCode(code):code,
         geo=d.mode===3?regionGeo:d.mode===2?departmentRenderGeo():epciGeo,
-        fs=geo?.features?.filter(f=>featureAdminCode(f)===wanted)||[];
-  if(fs.length)bounds=L.geoJSON({type:'FeatureCollection',features:fs}).getBounds()
+        fs=geo?.features?.filter(f=>featureAdminCode(f)===wanted)||[],
+        bounds=fs.length?L.geoJSON({type:'FeatureCollection',features:fs}).getBounds():null,
+        maxZoom=d.mode===1?7.8:d.mode===2?6.6:5.7;
+  await choose(g,bounds||undefined,{maxZoom})
  }
- const g=groups().find(g=>g.key===d.unit)||{key:d.unit,...u,code,items:data.filter(x=>x.mode===d.mode&&x.unit===d.unit)},
-       maxZoom=d.mode===0?12.25:d.mode===1?7.8:d.mode===2?6.6:5.7;
- await choose(g,bounds||undefined,{maxZoom});
  showItem(d,{recenter:false})
 }
 
