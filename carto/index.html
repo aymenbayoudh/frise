@@ -887,7 +887,7 @@ function overviewDepartmentOutlineGeo(){
 function displayRegionGeo(){return overviewActive&&overviewRegionGeo?mergeFeatureCollections(filteredOverviewGeo(overviewRegionGeo),pacificOverviewLevel(3)):regionGeo}
 function displayDepartmentRenderGeo(){return overviewActive&&overviewDeptGeo?mergeFeatureCollections(filteredOverviewGeo(overviewDepartmentRenderGeo()),pacificOverviewLevel(2)):departmentRenderGeo()}
 function displayDepartmentOutlineGeo(){return overviewActive&&overviewDeptGeo?mergeFeatureCollections(filteredOverviewGeo(overviewDepartmentOutlineGeo()),pacificOverviewLevel(2)):departmentOutlineGeo()}
-function displayEpciGeo(){return overviewActive?mergeFeatureCollections(overviewEpciGeo,pacificOverviewLevel(1)):epciGeo}
+function displayEpciGeo(){return overviewActive?mergeFeatureCollections(filteredOverviewGeo(overviewEpciGeo),pacificOverviewLevel(1)):filteredOverviewGeo(epciGeo)}
 function overviewPointForCommune(code,fallback){const p=pacificOverviewCommunePoint(code)||pacificOverviewFeatureCenter(0,code);if(p)return p;const at=overviewActive&&overviewCommuneCenters?overviewCommuneCenters[String(code||'')]:null;return Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)?at:fallback}
 function overviewFeatureCenter(geo,code,fallback){const f=geo?.features?.find(x=>featureAdminCode(x)===String(code||''));if(!f)return fallback;const b=featureBounds(f);return b?.isValid?.()?[b.getCenter().lat,b.getCenter().lng]:fallback}
 const ADMIN_BOUNDARY_SOURCES=[
@@ -1543,8 +1543,9 @@ async function updateCommuneLabels(force=false){
 async function updateSubdivisions(force=false){
  const z=map.getZoom();
  if(overviewActive){
-  const key='overview:'+mode;subAdmin.clearLayers();communeHits.clearLayers();communeLabelKey='';communeLabels.clearLayers();
-  if(!force&&key===subdivisionKey)return;subdivisionKey=key;
+  const key='overview:'+mode;
+  if(!force&&key===subdivisionKey)return;
+  subdivisionKey=key;subAdmin.clearLayers();communeHits.clearLayers();communeLabelKey='';communeLabels.clearLayers();
   try{
    if(mode===3&&overviewDeptGeo?.features?.length){
     const geo=displayDepartmentOutlineGeo();
