@@ -477,8 +477,8 @@ async function getJSONMerged(urls){
  if(!features.length)throw(last||Error("Aucune source disponible"));
  return{type:'FeatureCollection',features}
 }
-function featureAdminCode(f){const p=f?.properties||{};return String(p.code??p.code_epci??p.epci_code??p.siren??p.SIREN??"")}
-function featureAdminName(f){const p=f?.properties||{};return p.nom||p.name||p.libelle||p.libelle_epci||featureAdminCode(f)}
+function featureAdminCode(f){const p=f?.properties||{};return String(p.code??p.code_epci??p.epci_code??p.code_ept??p.siren??p.SIREN??"")}
+function featureAdminName(f){const p=f?.properties||{};return p.nom||p.name||p.libelle||p.libelle_epci||p.lib_ept||p.territoire||featureAdminCode(f)}
 
 function compactMapUi(){return matchMedia('(max-width:640px)').matches}
 function adminStroke(v){return compactMapUi()?v*.58:v}
@@ -535,9 +535,35 @@ function refreshAdminStyle(){admin.eachLayer(restyleAdminLayer);mainOutline.each
 function pointState(){const z=map.getZoom();return mode+':'+(selection?.key||'')+':'+(mode===0?(z<11?'agg':'pin'):mode===1?'free-interco':selection?'pin':'none')}
 function maybeDrawPoints(){const key=pointState();if(key!==pointRenderKey)drawPoints()}
 function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on({mouseover:e=>{l.openTooltip(e.latlng);const selected=mode>=1&&selection&&String(selection.code)===code,base=adminStyle(f),hoverWeight=mode===1?Math.max(1.15,base.weight+.25):Math.max(2.25,base.weight+.45);l.setStyle(selected?base:{weight:hoverWeight,color:'#000000',opacity:1});l.bringToFront()},mouseout:()=>{l.closeTooltip();l.setStyle(adminStyle(f))},click:()=>{if(mode<1)return;const g=groups().find(g=>String(g.code)===code);choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},l.getBounds());}})}}).addTo(target);}
+const GRAND_PARIS_CODE='200054781',EPT_GEO_URL='https://www.carto-metropolegrandparis.fr/server/rest/services/Limites_administratives_MIL1/MapServer/3/query?where=1%3D1&outFields=code_ept%2Clib_ept%2Cterritoire&returnGeometry=true&outSR=4326&f=geojson';
+async function augmentGrandParisGroups(geo){
+ if(!geo?.features?.length)return geo;
+ const base=geo.features.filter(f=>featureAdminCode(f)!==GRAND_PARIS_CODE),extra=[];
+ try{
+   const ept=await getJSON(EPT_GEO_URL);
+   for(const f of ept?.features||[]){
+     const code=String(f.properties?.code_ept||''),name=String(f.properties?.lib_ept||f.properties?.territoire||code);
+     if(!code||/^T?1$/i.test(code)||/^Paris$/i.test(name))continue;
+     extra.push({...f,properties:{...(f.properties||{}),code,nom:name,_ept:true}})
+   }
+ }catch{}
+ try{
+   const paris=await communeOutlineGeo('75056');
+   if(paris)extra.push({...paris,properties:{...(paris.properties||{}),code:GRAND_PARIS_CODE,nom:'Métropole du Grand Paris',_mgpParis:true}})
+ }catch{}
+ return{type:'FeatureCollection',features:[...base,...extra]}
+}
+
 async function groupCenterCommune(code){
  code=String(code||'');if(!code)return null;if(groupCenterCache.has(code))return groupCenterCache.get(code);
- const p=(async()=>{try{const communes=await getJSON('https://geo.api.gouv.fr/epcis/'+encodeURIComponent(code)+'/communes?fields=nom,code,population,centre,codeDepartement,codeRegion');if(!Array.isArray(communes)||!communes.length)return null;const c=[...communes].sort((a,b)=>(Number(b.population)||0)-(Number(a.population)||0))[0],feature=await communeOutlineGeo(c.code);let at=null;if(Array.isArray(c.centre?.coordinates))at=[c.centre.coordinates[1],c.centre.coordinates[0]];else if(feature){const b=featureBounds(feature),x=b.getCenter();at=[x.lat,x.lng]}return{code:String(c.code),name:String(c.nom||c.code),dept:String(c.codeDepartement||''),region:String(c.codeRegion||''),at,feature}}catch{return null}})();groupCenterCache.set(code,p);return p
+ const p=(async()=>{try{
+   let communes=null;try{communes=await getJSON('https://geo.api.gouv.fr/epcis/'+encodeURIComponent(code)+'/communes?fields=nom,code,population,centre,codeDepartement,codeRegion')}catch{}
+   let c=Array.isArray(communes)&&communes.length?[...communes].sort((a,b)=>(Number(b.population)||0)-(Number(a.population)||0))[0]:null;
+   if(!c){const f=epciGeo?.features?.find(f=>featureAdminCode(f)===code);if(f){const x=featureBounds(f).getCenter();try{const near=await getJSON('https://geo.api.gouv.fr/communes?lat='+encodeURIComponent(x.lat)+'&lon='+encodeURIComponent(x.lng)+'&fields=nom,code,population,centre,codeDepartement,codeRegion');c=Array.isArray(near)?near[0]:null}catch{}}}
+   if(!c)return null;const feature=await communeOutlineGeo(c.code);let at=null;
+   if(Array.isArray(c.centre?.coordinates))at=[c.centre.coordinates[1],c.centre.coordinates[0]];else if(feature){const bb=featureBounds(feature),x=bb.getCenter();at=[x.lat,x.lng]}
+   return{code:String(c.code),name:String(c.nom||c.code),dept:String(c.codeDepartement||''),region:String(c.codeRegion||''),at,feature}
+ }catch{return null}})();groupCenterCache.set(code,p);return p
 }
 function groupCenterLabelIcon(name){return L.divIcon({className:'group-center-label',iconSize:null,html:'<span>'+escape(name)+'</span>'})}
 async function showGroupCenter(code,persistent=false){if(mode!==1||!code)return;clearTimeout(groupCenterHideTimer);const token=++groupCenterToken,info=await groupCenterCommune(code);if(token!==groupCenterToken||mode!==1||!info)return;if(!persistent&&selection&&String(selection.code)!==String(code))return;groupCenter.clearLayers();if(info.feature)L.geoJSON(info.feature,{pane:'groupCenterPane',interactive:false,style:{pane:'groupCenterPane',color:'#050607',weight:adminStroke(1.75),opacity:1,fillColor:'#ffffff',fillOpacity:.07}}).addTo(groupCenter);if(info.at)L.marker(info.at,{icon:groupCenterLabelIcon(info.name),interactive:false,zIndexOffset:120}).addTo(groupCenter)}
@@ -1524,7 +1550,7 @@ async function bootCartography(){
    'https://raw.githubusercontent.com/MTES-MCT/otelo/dev/apps/web/public/geojson/epci-1000m.geojson',
    'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/epci-1000m.geojson',
    'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/latest/geojson/epci-1000m.geojson'
-  ]).then(j=>{epciGeo=j;scheduleAdminDraw();if(mode===1)drawAdmin()})
+  ]).then(async j=>{epciGeo=await augmentGrandParisGroups(j);scheduleAdminDraw();if(mode===1)drawAdmin()})
  ]);
  if(cartGithubMode&&hasImportedCartData){
   const privateUnits=Object.fromEntries(Object.entries(units).filter(([key])=>data.some(d=>d.unit===key)));
