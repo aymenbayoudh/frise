@@ -1537,10 +1537,11 @@ async function updateSubdivisions(force=false){
   if(!force&&key===subdivisionKey)return;subdivisionKey=key;
   try{
    if(mode===3&&overviewDeptGeo?.features?.length){
-    L.geoJSON(overviewDepartmentOutlineGeo(),{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(.82),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
+    const geo=displayDepartmentOutlineGeo();
+    if(geo?.features?.length)L.geoJSON(geo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(.82),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
    }else if(mode===2){
-    const geo=await ensureOverviewArrGeo();if(key!==subdivisionKey||!overviewActive||mode!==2)return;
-    L.geoJSON(geo,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(1.42),opacity:1,fillOpacity:0}}).addTo(subAdmin)
+    const ign=await ensureOverviewArrGeo(),geo=mergeFeatureCollections(ign,pacificOverviewLevel(0));if(key!==subdivisionKey||!overviewActive||mode!==2)return;
+    if(geo?.features?.length)L.geoJSON(geo,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(1.42),opacity:1,fillOpacity:0}}).addTo(subAdmin)
    }
   }catch(e){console.warn('Sous-divisions CARTO PLUS indisponibles',e)}
   return
