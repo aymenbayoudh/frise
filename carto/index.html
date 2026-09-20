@@ -1343,6 +1343,7 @@ function fillCartCommunes(preferredCode=''){
 async function renderCartUnitOptions(preferred='',preserveCoordinates=false){
  const level=+$('cartMode').value,local=level===0,freeGroup=level===1&&$('cartGroupType').value==='free';
  if(level===1&&!freeGroup&&!epciGeo)await ensureEpciGeo().catch(()=>null);
+ if(level>=2&&!adminCatalog)await loadAdminCatalog();
  $('cartGroupTypeLabel').hidden=level!==1;$('cartFreeGroupNameLabel').hidden=!freeGroup;$('cartFreeGroupCenterLabel').hidden=!freeGroup;$('cartUnitLabel').hidden=freeGroup;
  $('cartRegionLabel').hidden=!(local||freeGroup);$('cartDepartmentLabel').hidden=!(local||freeGroup);$('cartUnitText').textContent=local?'Commune':'Territoire';
  if(local||freeGroup){
