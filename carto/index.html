@@ -1971,7 +1971,7 @@ async function updateSubdivisions(force=false){
     if(geo?.features?.length)L.geoJSON(geo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(.82),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
    }else if(mode===2){
     const geo=filteredOverviewGeo(await ensureOverviewArrGeo());if(key!==subdivisionKey||!overviewActive||mode!==2)return;
-    if(geo?.features?.length)L.geoJSON(geo,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(1.42),opacity:1,fillOpacity:0}}).addTo(subAdmin)
+    if(geo?.features?.length)L.geoJSON(geo,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(.9),opacity:1,fillOpacity:0}}).addTo(subAdmin)
    }
   }catch(e){if(subdivisionKey===key)subdivisionKey='';console.warn('Sous-divisions CARTO PLUS indisponibles',e)}
   return
@@ -2015,7 +2015,7 @@ async function updateSubdivisions(force=false){
      if(key!==subdivisionKey)return;
      if(!geo?.features?.length){subdivisionKey='';return}
      const wanted=new Set(arrWanted),filtered={type:'FeatureCollection',features:geo.features.filter(f=>wanted.has(arrondissementDepartmentCode(f)))};
-     if(filtered.features.length)L.geoJSON(filtered,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(mode===0?1.55:1.42),opacity:1,fillOpacity:0}}).addTo(subAdmin);
+     if(filtered.features.length)L.geoJSON(filtered,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(mode===0?1:.9),opacity:1,fillOpacity:0}}).addTo(subAdmin);
      else subdivisionKey=''
    }
    if(epci){
