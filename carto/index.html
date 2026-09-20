@@ -447,7 +447,7 @@ bm:{name:'Bordeaux Métropole',code:'243300316',at:[44.8385,-.5885],dept:'33',re
 d40:{name:'Landes',code:'40',at:[43.894,-.499]},d33:{name:'Gironde',code:'33',at:[44.836,-.59]},d21:{name:'Côte-d’Or',code:'21',at:[47.323,5.044]},d971:{name:'Guadeloupe',code:'971',at:[15.992,-61.727]},d974:{name:'La Réunion',code:'974',at:[-20.879,55.452]},
 r27:{name:'Bourgogne-Franche-Comté',code:'27',at:[47.325,5.043]},r75:{name:'Nouvelle-Aquitaine',code:'75',at:[44.833,-.586]},r84:{name:'Auvergne-Rhône-Alpes',code:'84',at:[45.740,4.820]},r01:{name:'Guadeloupe',code:'01',at:[16.004,-61.722]},r04:{name:'La Réunion',code:'04',at:[-20.892,55.477]},rpf:{name:'Polynésie française',code:'987',at:[-17.55,-149.56],dept:'987',region:'987'},rnc:{name:'Nouvelle-Calédonie',code:'988',at:[-22.275,166.458],dept:'988',region:'988'}
 };
-const ADMIN_LOCATIONS_URL='./admin-locations.json';
+const ADMIN_LOCATIONS_URL='../admin-locations.json';
 let adminCatalog=null;
 function parseAdminCatalog(raw){
  const regions=(raw?.regions||[]).map(([code,name,zone])=>({code:String(code),name:String(name),zone:String(zone||'')})).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
@@ -518,7 +518,7 @@ for(const d of data){d.subtitle=String(d.subtitle||'');d.tags=Array.isArray(d.ta
 let hasImportedCartData=false;try{const saved=JSON.parse(localStorage.getItem(CART_DATA_KEY)||'null');if(saved?.rows?.length){data=saved.rows;Object.assign(units,saved.units||{});hasImportedCartData=true}}catch{};for(const d of data){if(d.generatedDemo)d.deck=demoDeckPaths(d.theme||d.tags?.[0]||'Aménagement',d.mode,d.id||0)}adminCatalogPromise.then(()=>hydrateCommuneUnitsFromCatalog())
 
 if(!window.L){$('status').textContent='Le moteur cartographique ne se charge pas. Vérifiez votre connexion et rechargez la page.';return;}
-const map=L.map('map',{zoomControl:true,minZoom:3,maxZoom:19,zoomSnap:.25,attributionControl:false,preferCanvas:true,fadeAnimation:false,markerZoomAnimation:false});
+const map=L.map('map',{zoomControl:true,minZoom:3,maxZoom:19,zoomSnap:.25,attributionControl:false,preferCanvas:true,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false});
 const SIDE_WIDTH_KEY='cartographie-v3:side-width',MOBILE_SIDE_HEIGHT_KEY='cartographie-v3:mobile-side-height';
 function sideWidthBounds(){return{min:260,max:Math.max(320,Math.min(680,innerWidth*.58))}}
 function applySideWidth(width,persist=false){
@@ -530,7 +530,7 @@ function applySideWidth(width,persist=false){
 }
 try{const saved=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(saved)applySideWidth(saved)}catch{}
 
-const satelliteTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,keepBuffer:2,updateWhenZooming:false,attribution:'Tiles © Esri'});
+const satelliteTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,keepBuffer:1,updateWhenIdle:true,updateWhenZooming:false,attribution:'Tiles © Esri'});
 map.createPane('groupCenterPane');map.getPane('groupCenterPane').style.zIndex='445';map.getPane('groupCenterPane').style.pointerEvents='none';map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('selectedGroupPane');map.getPane('selectedGroupPane').style.zIndex='425';map.getPane('selectedGroupPane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),selectedGroup=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
 let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c';
@@ -762,24 +762,7 @@ function addAdminHitGeo(geo){
    }
  }).addTo(adminHits)
 }
-function drawAdminHits(){
- adminHits.clearLayers();
- if(mode===3)addAdminHitGeo(regionGeo);
- else if(mode===2)addAdminHitGeo(departmentRenderGeo());
- else if(mode===1){
-   if(String(selection?.code||'')===GRAND_PARIS_CODE&&mgpTrueFeature)addAdminHitGeo({type:'FeatureCollection',features:[mgpTrueFeature]});
-   else addAdminHitGeo(epciGeo)
- }
- if(mode>=2){
-   for(const d of doms){
-     if(!d.geo||d.regionOnly)continue;
-     const code=mode===3?d.region:d.dept;
-     if((mode===3&&adminGeoHasCode(regionGeo,code))||(mode===2&&adminGeoHasCode(deptGeo,code)))continue;
-     const mapped={type:'FeatureCollection',features:d.geo.features.map(f=>({...f,properties:{code,nom:d.name}}))};
-     addAdminHitGeo(mapped)
-   }
- }
-}
+function drawAdminHits(){adminHits.clearLayers()}
 function mainOutlineStyle(f){
  const code=featureAdminCode(f),selected=mode>=1&&selection&&String(selection.code)===code,rawBase=mode===3?1.95:mode===2?1.6:mode===1?.54:.85;
  const base=adminStroke(rawBase),selectedWeight=adminStroke(mode===1?2.18:Math.max(4.35,rawBase+2.45));
@@ -789,7 +772,7 @@ function restyleMainOutline(layer){if(layer.feature&&layer.setStyle)layer.setSty
 function drawMainOutline(){
  mainOutline.clearLayers();
  const mgpSelected=mode===1&&String(selection?.code||'')===GRAND_PARIS_CODE&&mgpTrueFeature;
- const geo=mode===3?regionGeo:mode===2?departmentOutlineGeo():mode===1?(mgpSelected?{type:'FeatureCollection',features:[mgpTrueFeature]}:epciGeo):null;
+ const geo=mode===3?regionGeo:mode===2?departmentOutlineGeo():mode===1&&mgpSelected?{type:'FeatureCollection',features:[mgpTrueFeature]}:null;
  if(geo)L.geoJSON(geo,{pane:'mainOutlinePane',interactive:false,style:mainOutlineStyle}).addTo(mainOutline)
 }
 function drawSelectedGroupOverlay(){
@@ -846,7 +829,8 @@ function drawAdmin(){
      const code=mode===3?d.region:d.dept,baseGeo=mode===3?regionGeo:departmentRenderGeo();
      if(!adminGeoHasCode(baseGeo,code)){
        const n=domItems(d).length,boundary=overseasOuterBoundary(d.geo),fillOpacity=temporaryPaletteActive?temporaryPaletteOpacity:(mode===3?.68:.64);
-       L.geoJSON(d.geo,{interactive:false,style:{color:'transparent',weight:0,opacity:0,fillColor:shade(n,code),fillOpacity}}).addTo(admin);
+       const mapped={type:'FeatureCollection',features:(d.geo.features||[]).map(f=>({...f,properties:{...(f.properties||{}),code,nom:d.name}}))};
+       L.geoJSON(mapped,{interactive:true,style:{color:'#111315',weight:adminStroke(1.05),opacity:1,fillColor:shade(n,code),fillOpacity},onEachFeature:(_,l)=>{l.bindTooltip(escape(d.name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on('click',()=>{const g=groupByCode(code);choose(g||{key:'empty-'+code,name:d.name,code,items:[],at:d.at},l.getBounds())})}}).addTo(admin);
        if(boundary)L.geoJSON(boundary,{pane:'mainOutlinePane',interactive:false,style:{pane:'mainOutlinePane',color:'#000000',weight:adminStroke(1.15),opacity:1,fill:false,fillOpacity:0}}).addTo(mainOutline)
      }
    }else if(mode===3&&d.regionOnly){
@@ -944,6 +928,7 @@ function ignAdmin2026Wfs(layer){return 'https://data.geopf.fr/wfs/ows?SERVICE=WF
 async function ensureArrGeo(){
  if(arrGeo)return arrGeo;
  arrGeo=await getJSONFallback([
+  './data/admin/arrondissements.geojson',
   ignAdmin2026Wfs('arrondissement'),
   'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-version-simplifiee.geojson'
  ]);
@@ -1180,6 +1165,54 @@ function seedEpciDemoCoverage(){
 }
 
 function domItems(d){return current().filter(x=>mode<2?units[x.unit]?.dept===d.dept:String(itemDisplayAdminCode(x,mode))===String(mode===2?d.dept:d.region));}
+function featureCollectionOf(features){return{type:'FeatureCollection',features:(features||[]).filter(Boolean)}}
+function hydrateOverseasFromCore(){
+ for(const d of doms){
+   if(d.geo)continue;
+   const deptFeatures=(deptGeo?.features||[]).filter(f=>featureAdminCode(f)===String(d.dept));
+   const regionFeatures=(regionGeo?.features||[]).filter(f=>featureAdminCode(f)===String(d.region));
+   const features=deptFeatures.length?deptFeatures:regionFeatures;
+   if(features.length)d.geo=featureCollectionOf(features)
+ }
+ updateInsets()
+}
+function sqSegDist(p,a,b){let x=a[0],y=a[1],dx=b[0]-x,dy=b[1]-y;if(dx||dy){const t=((p[0]-x)*dx+(p[1]-y)*dy)/(dx*dx+dy*dy);if(t>1){x=b[0];y=b[1]}else if(t>0){x+=dx*t;y+=dy*t}}dx=p[0]-x;dy=p[1]-y;return dx*dx+dy*dy}
+function simplifyLine(points,tol){
+ if(!Array.isArray(points)||points.length<=4)return points;
+ const sq=tol*tol,keep=new Uint8Array(points.length);keep[0]=keep[points.length-1]=1;
+ const stack=[[0,points.length-1]];
+ while(stack.length){const [first,last]=stack.pop();let max=sq,index=0;for(let i=first+1;i<last;i++){const d=sqSegDist(points[i],points[first],points[last]);if(d>max){index=i;max=d}}if(index){keep[index]=1;stack.push([first,index],[index,last])}}
+ const out=[];for(let i=0;i<points.length;i++)if(keep[i])out.push(points[i]);
+ if(out.length<4)return points;
+ const first=out[0],last=out[out.length-1];if(first[0]!==last[0]||first[1]!==last[1])out.push([...first]);
+ return out
+}
+function simplifyGeometry(g,tol){
+ if(!g)return g;
+ if(g.type==='Polygon')return{...g,coordinates:(g.coordinates||[]).map(r=>simplifyLine(r,tol))};
+ if(g.type==='MultiPolygon')return{...g,coordinates:(g.coordinates||[]).map(p=>p.map(r=>simplifyLine(r,tol)))};
+ if(g.type==='LineString')return{...g,coordinates:simplifyLine(g.coordinates||[],tol)};
+ if(g.type==='MultiLineString')return{...g,coordinates:(g.coordinates||[]).map(r=>simplifyLine(r,tol))};
+ return g
+}
+function simplifyFeatureCollection(geo,tol){return featureCollectionOf((geo?.features||[]).map(f=>({...f,geometry:simplifyGeometry(f.geometry,tol)})))}
+async function ensureOverseasGeometry(d){
+ if(d.geo)return d.geo;
+ if(d.loadingGeo)return d.loadingGeo;
+ d.loadingGeo=(async()=>{
+   try{
+     const raw=await getJSON('https://geo.api.gouv.fr/communes?codeDepartement='+encodeURIComponent(d.dept)+'&fields=nom,code&format=geojson&geometry=contour');
+     if(raw?.features?.length){
+       d.geo=simplifyFeatureCollection(raw,d.dept==='987'?.012:d.dept==='988'?.006:.003);
+       const bounds=L.geoJSON(d.geo).getBounds();if(bounds.isValid())d.map.fitBounds(bounds,{padding:[6,6]});
+       updateInsets();if(mode>=2)drawAdmin()
+     }
+   }catch{if(d.count)d.count.title='Contour détaillé indisponible'}
+   finally{d.loadingGeo=null}
+   return d.geo||null
+ })();
+ return d.loadingGeo
+}
 function updateInsets(){
  for(const d of doms){
    d.layer.clearLayers();const items=domItems(d),adminOpacity=temporaryPaletteActive&&mode>=2?temporaryPaletteOpacity:1;if(d.count)d.count.textContent=items.length;
@@ -1194,11 +1227,11 @@ function updateInsets(){
        if(boundary)L.geoJSON(boundary,{interactive:false,style:{color:'#000000',weight:mode===0?2.05:1.5,opacity:1,fill:false,fillOpacity:0}}).addTo(d.layer)
      }
    }
-   if(d.regionOnly)L.circleMarker(d.at,{radius:15,color:mode>=2?'#111315':'#fff',weight:mode>=2?1.15:2,fillColor:mode>=2?shade(items.length,d.region):(items.length?temporaryEventColor(items[0]):'#aeb8c0'),fillOpacity:adminOpacity,interactive:false}).addTo(d.layer);
+   if(!d.geo)L.circleMarker(d.at,{radius:mode>=2?5:4,color:'#fff',weight:1.2,fillColor:mode>=2?shade(items.length,mode===3?d.region:d.dept):(items.length?temporaryEventColor(items[0]):'#aeb8c0'),fillOpacity:.95,interactive:false}).addTo(d.layer);
    else if(mode<2&&items.length)L.circleMarker(d.at,{radius:7,color:'#fff',weight:1,fillColor:temporaryEventColor(items[0]),fillOpacity:1,interactive:false}).addTo(d.layer)
  }
 }
-for(const [i,d] of doms.entries()){const el=document.createElement('div');el.className='inset';el.innerHTML='<div class="mini" id="mini'+i+'"></div><button aria-label="Afficher '+d.name+'"><span>'+d.name+' <b>0</b></span></button>';$('overseas').append(el);d.count=el.querySelector('b');d.map=L.map('mini'+i,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false,preferCanvas:true,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false}).setView(d.at,d.z);d.layer=L.layerGroup().addTo(d.map);el.querySelector('button').onclick=()=>{selection=null;activeItem=null;focus.clearLayers();local.clearLayers();if(d.focusWhole&&d.geo)map.fitBounds(L.geoJSON(d.geo).getBounds(),{padding:[60,60],maxZoom:d.focusZ||8});else map.setView(d.at,d.focusZ||(d.dept==='973'?6:10));renderSide();drawPoints();};}
+for(const [i,d] of doms.entries()){const el=document.createElement('div');el.className='inset';el.innerHTML='<div class="mini" id="mini'+i+'"></div><button aria-label="Afficher '+d.name+'"><span>'+d.name+' <b>0</b></span></button>';$('overseas').append(el);d.count=el.querySelector('b');d.map=L.map('mini'+i,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false,preferCanvas:true,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false}).setView(d.at,d.z);d.layer=L.layerGroup().addTo(d.map);el.querySelector('button').onclick=async()=>{selection=null;activeItem=null;focus.clearLayers();local.clearLayers();if(!d.geo&&(d.dept==='987'||d.dept==='988'))await ensureOverseasGeometry(d);if(d.focusWhole&&d.geo)map.fitBounds(L.geoJSON(d.geo).getBounds(),{padding:[60,60],maxZoom:d.focusZ||8});else map.setView(d.at,d.focusZ||(d.dept==='973'?6:10));renderSide();drawPoints();};}
 
 
 let cartEditedId=null,cartEditing={deck:[],image:[]},cartUndoStack=[],cartGameSummaryReturn=null;
@@ -1404,7 +1437,7 @@ function renameCartDeckPath(oldPath,newValue){let next;try{next=normalizeDeckPat
 function openCartDeckRename(node,wrap){for(const x of $('deckTree').querySelectorAll('.deck-rename'))x.remove();const form=document.createElement('form');form.className='deck-rename';const input=document.createElement('input');input.value=node.path;input.autocomplete='off';const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Annuler';const save=document.createElement('button');save.type='submit';save.textContent='Valider';save.className='primary';const error=document.createElement('div');error.className='deck-rename-error';form.append(input,cancel,save,error);cancel.onclick=()=>form.remove();form.onsubmit=e=>{e.preventDefault();const r=renameCartDeckPath(node.path,input.value);if(!r.ok){error.textContent=r.error;return}if(r.unchanged)form.remove()};wrap.insertBefore(form,wrap.children[1]||null);requestAnimationFrame(()=>{input.focus();input.select()})}
 function renderDeckTree(){const root=deckTreeModel(),box=$('deckTree');box.classList.add('deck-tree');box.innerHTML='';let displayRoot=root;if(root.children.size===1&&root.children.has('ICT'))displayRoot=root.children.get('ICT');const renderNode=node=>{const wrap=document.createElement('div');wrap.className='deck-node';const row=document.createElement('div');row.className='deck-row';const toggle=document.createElement('button');toggle.type='button';toggle.className='deck-toggle'+(node.children.size?'':' placeholder');toggle.textContent=node.children.size?(deckExpandedPaths.has(node.path)?'−':'+'):'+';if(node.children.size)toggle.onclick=e=>{e.stopPropagation();deckExpandedPaths.has(node.path)?deckExpandedPaths.delete(node.path):deckExpandedPaths.add(node.path);renderDeckTree()};const affected=allDeckPaths.filter(p=>p===node.path||p.startsWith(node.path+'::')),checked=affected.length&&affected.every(p=>selectedDeckPaths.has(p)),some=affected.some(p=>selectedDeckPaths.has(p));const label=document.createElement('label');label.className='deck-check';const input=document.createElement('input');input.type='checkbox';input.checked=checked;input.indeterminate=some&&!checked;input.onchange=()=>{for(const p of affected)input.checked?selectedDeckPaths.add(p):selectedDeckPaths.delete(p);saveFilters();renderDeckTree();filterChanged()};const title=document.createElement('span');title.className='deck-label-main';title.textContent=node.name;title.title=node.path;const count=document.createElement('span');count.className='deck-count';count.textContent=String(data.filter(d=>(d.deck||[]).some(p=>p===node.path||p.startsWith(node.path+'::'))).length);label.append(input,title,count);const edit=document.createElement('button');edit.type='button';edit.className='deck-edit';edit.textContent='✎';edit.title='Renommer ou déplacer '+node.path;edit.onclick=e=>{e.preventDefault();e.stopPropagation();openCartDeckRename(node,wrap)};row.append(toggle,label,edit);wrap.append(row);if(node.children.size&&deckExpandedPaths.has(node.path)){const kids=document.createElement('div');kids.className='deck-children';for(const child of [...node.children.values()].sort((a,b)=>a.name.localeCompare(b.name,'fr')))kids.append(renderNode(child));wrap.append(kids)}return wrap};for(const node of [...displayRoot.children.values()].sort((a,b)=>a.name.localeCompare(b.name,'fr')))box.append(renderNode(node));$('toggleDecks').classList.toggle('active',selectedDeckPaths.size<allDeckPaths.length)}
 
-function filterChanged(){invalidateGroupCache();closeMapDetail();selection=null;activeItem=null;local.clearLayers();focus.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;subdivisionKey='';communeLabelKey='';centerKey='';pointRenderKey='';renderSide();draw();updateSubdivisions(true);updateCenters(true);$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'')}
+function filterChanged(){invalidateGroupCache();closeMapDetail();selection=null;activeItem=null;local.clearLayers();focus.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;subdivisionKey='';communeLabelKey='';centerKey='';pointRenderKey='';renderSide();if(mode===1){mainOutline.clearLayers();selectedGroup.clearLayers();refreshAdminStyle();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer(true)}else draw();updateSubdivisions(true);updateCenters(true);$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'')}
 $('checkAllDecks').onclick=()=>{selectedDeckPaths=new Set(allDeckPaths);saveFilters();renderDeckTree();filterChanged()};
 $('uncheckAllDecks').onclick=()=>{selectedDeckPaths.clear();saveFilters();renderDeckTree();filterChanged()};
 
@@ -1735,7 +1768,7 @@ function automaticPaletteColors(style,n){
 function generateAutomaticPalette(style=$("palettePreset")?.value||"surprise"){const n=temporaryPaletteCount,colors=automaticPaletteColors(style,n);temporaryPalette=[...colors,...temporaryPalette.slice(n)];renderTemporaryPaletteInputs();temporaryPaletteActive=true;temporaryPaletteAssignments.clear();refreshPaletteMap()}
 function scalePaletteColor(){if(!temporaryPaletteActive)return accent;const ramp=densityPalette();return ramp[Math.min(ramp.length-1,Math.max(0,Math.round((ramp.length-1)*.66)))]||accent}
 function updateScalePaletteColor(){document.querySelector('.scale-panel')?.style.setProperty('--scale-color',scalePaletteColor())}
-function refreshPaletteMap(){updateScalePaletteColor();drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer(true);centerKey='';updateCenters(true);if(activeItem){$("mapDetail")?.style.setProperty("--event-color",temporaryEventColor(activeItem));focus.eachLayer(l=>{if(l.setStyle)l.setStyle({color:temporaryEventColor(activeItem),fillColor:temporaryEventColor(activeItem)})})}}
+function refreshPaletteMap(){updateScalePaletteColor();if(mode===1){refreshAdminStyle();drawSelectedGroupOverlay()}else drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer(true);centerKey='';updateCenters(true);if(activeItem){$("mapDetail")?.style.setProperty("--event-color",temporaryEventColor(activeItem));focus.eachLayer(l=>{if(l.setStyle)l.setStyle({color:temporaryEventColor(activeItem),fillColor:temporaryEventColor(activeItem)})})}}
 let paletteOpacityFrame=0;
 function refreshPaletteOpacityLive(){
  if(!temporaryPaletteActive)return;
@@ -1855,39 +1888,22 @@ async function bootCartography(){
  renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours…';
  const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
  const results=await Promise.allSettled([
-  getJSONFallback([
-   'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson',
-   'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/departements-1000m.geojson'
-  ]).then(j=>{deptGeo=j;departmentRenderGeoCache=null;departmentOutlineGeoCache=null;scheduleAdminDraw();updateSubdivisions(true);updateCenters(true)}),
-  getJSONFallback([
-   'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson',
-   'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/regions-1000m.geojson'
-  ]).then(j=>{regionGeo=j;scheduleAdminDraw();updateSubdivisions(true);updateCenters(true)}),
-  getJSONFallback([
-   'https://raw.githubusercontent.com/MTES-MCT/otelo/dev/apps/web/public/geojson/epci-1000m.geojson',
-   'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/epci-1000m.geojson',
-   'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/latest/geojson/epci-1000m.geojson'
-  ]).then(async j=>{epciGeo=await augmentGrandParisGroups(j);scheduleAdminDraw();if(mode===1)drawAdmin()})
+  getJSONFallback(['./data/admin/departements.geojson','https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson']).then(j=>{deptGeo=j;departmentRenderGeoCache=null;departmentOutlineGeoCache=null}),
+  getJSONFallback(['./data/admin/regions.geojson','https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson']).then(j=>{regionGeo=j}),
+  getJSONFallback(['./data/admin/epci.geojson','https://raw.githubusercontent.com/MTES-MCT/otelo/dev/apps/web/public/geojson/epci-1000m.geojson']).then(async j=>{epciGeo=await augmentGrandParisGroups(j)})
  ]);
  await privateConnectPromise;
  if(cartGithubMode&&hasImportedCartData){
   const privateUnits=Object.fromEntries(Object.entries(units).filter(([key])=>data.some(d=>d.unit===key)));
   try{await validateCartAdminReferences({rows:data,units:privateUnits})}catch(e){$('status').textContent=e.message}
  }
- seedAdministrativeDemoCoverage();seedEpciDemoCoverage();drawAdmin();refreshAdminStyle();updateCommuneDataLayer(true);
+ hydrateOverseasFromCore();seedAdministrativeDemoCoverage();seedEpciDemoCoverage();drawAdmin();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);
  const failed=results.filter(r=>r.status==='rejected').length;
  if(!$('status').textContent||$('status').textContent==='Chargement des contours…')$('status').textContent=failed===3?'Impossible de charger les contours administratifs. Recharge la page.':failed?'Une couche administrative secondaire est indisponible.':''
 }
 bootCartography();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&cartGithubMode){scheduleCartCloudSync(0);queueCartDataSync()}});
-async function loadOverseasContoursDeferred(){
- for(const d of doms){
-  try{const j=await getJSON('https://geo.api.gouv.fr/communes?codeDepartement='+d.dept+'&fields=nom,code&format=geojson&geometry=contour');if(j?.features?.length){d.geo=j;const bounds=L.geoJSON(j).getBounds();d.map.fitBounds(bounds,{padding:[6,6]});updateInsets();scheduleAdminDraw()}}
-  catch{d.count.title='Contour indisponible ; fond cartographique conservé'}
-  await new Promise(r=>setTimeout(r,0))
- }
-}
-const startOverseasContours=()=>loadOverseasContoursDeferred();
-if('requestIdleCallback'in window)requestIdleCallback(startOverseasContours,{timeout:2500});else setTimeout(startOverseasContours,1200);
+// Detailed Polynésie/Nouvelle-Calédonie geometry is loaded only on demand from the inset.
+
 })();
 </script></body></html>
