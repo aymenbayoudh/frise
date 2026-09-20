@@ -1741,8 +1741,15 @@ function renderInset(d,items=domItems(d)){
  }else L.circleMarker(d.at,{radius:mode>=2?5:4,color:'#fff',weight:1.2,fillColor:mode>=2?shade(items.length,mode===3?d.region:d.dept):(items.length?(mode===0?densityContinuousColor(items.length):densityColor(items.length)):'#aeb8c0'),fillOpacity:.95,interactive:false}).addTo(d.layer);
  if(renderGeo&&mode<2&&items.length)L.circleMarker(d.at,{radius:7,color:'#fff',weight:1,fillColor:mode===0?densityContinuousColor(items.length):densityColor(items.length),fillOpacity:1,interactive:false}).addTo(d.layer)
 }
+function overviewCoversInset(d){if(!overviewActive)return false;return adminGeoHasCode(overviewRegionGeo,d.region)||adminGeoHasCode(overviewDeptGeo,d.dept)}
+function updateInsetVisibility(){
+ let visible=0;
+ for(const d of doms){const show=!overviewCoversInset(d);if(d.el)d.el.style.display=show?'':'none';if(show)visible++}
+ const box=$('overseas');if(box)box.style.display=visible?'':'none'
+}
 function updateInsets(){
- for(const d of doms){const items=domItems(d);if(d.count)d.count.textContent=items.length;renderInset(d,items)}
+ updateInsetVisibility();
+ for(const d of doms){if(overviewCoversInset(d))continue;const items=domItems(d);if(d.count)d.count.textContent=items.length;renderInset(d,items)}
 }
 function initInsetMap(d,i){
  if(d.map)return;
@@ -1752,8 +1759,8 @@ function initInsetMap(d,i){
 }
 const insetObserver=compactMapUi()&&'IntersectionObserver'in window?new IntersectionObserver(entries=>{for(const entry of entries){if(!entry.isIntersecting)continue;const i=+entry.target.dataset.insetIndex;initInsetMap(doms[i],i);insetObserver.unobserve(entry.target)}},{root:$('overseas'),rootMargin:'90px 0px'}):null;
 for(const [i,d] of doms.entries()){
- const el=document.createElement('div');el.className='inset';el.dataset.insetIndex=String(i);el.innerHTML='<div class="mini" id="mini'+i+'"></div><button aria-label="Afficher '+d.name+'"><span>'+d.name+' <b>0</b></span></button>';$('overseas').append(el);d.count=el.querySelector('b');
- el.querySelector('button').onclick=async()=>{initInsetMap(d,i);selection=null;activeItem=null;focus.clearLayers();local.clearLayers();if(!d.geo)await ensureOverseasGeometry(d);if(mode===1&&d.nationalEpci)await ensureOverseasEpciGeometry(d);if((mode===0||mode===2)&&d.departmentArrondissements)await ensureArrGeo(d.dept);const fitGeo=d.geo||d.detailGeo;if(d.focusWhole&&fitGeo)map.fitBounds(L.geoJSON(fitGeo).getBounds(),{padding:[60,60],maxZoom:d.focusZ||8});else map.setView(d.at,d.focusZ||(d.dept==='973'?6:10));renderSide();draw();updateSubdivisions(true);updateCenters(true)};
+ const el=document.createElement('div');el.className='inset';el.dataset.insetIndex=String(i);el.innerHTML='<div class="mini" id="mini'+i+'"></div><button aria-label="Afficher '+d.name+'"><span>'+d.name+' <b>0</b></span></button>';$('overseas').append(el);d.el=el;d.count=el.querySelector('b');
+ el.querySelector('button').onclick=async()=>{initInsetMap(d,i);overviewActive=false;pointRenderKey='';updateInsetVisibility();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();if(!d.geo)await ensureOverseasGeometry(d);if(mode===1&&d.nationalEpci)await ensureOverseasEpciGeometry(d);if((mode===0||mode===2)&&d.departmentArrondissements)await ensureArrGeo(d.dept);const fitGeo=d.geo||d.detailGeo;if(d.focusWhole&&fitGeo)map.fitBounds(L.geoJSON(fitGeo).getBounds(),{padding:[60,60],maxZoom:d.focusZ||8});else map.setView(d.at,d.focusZ||(d.dept==='973'?6:10));renderSide();draw();updateBasemap();updateSubdivisions(true);updateCenters(true)};
  if(insetObserver)insetObserver.observe(el);else initInsetMap(d,i)
 }
 
@@ -2462,20 +2469,21 @@ let mapDetailLayerTimer=null;function scheduleDetailLayers(){clearTimeout(mapDet
 async function bootCartography(){
  const savedWidth=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(savedWidth)applySideWidth(savedWidth);
  updateScaleSelector(mode,false);
- renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours…';
+ renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');const overviewPromise=loadIgnOverview();home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours IGN…';
  const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
  const results=await Promise.allSettled([
   loadAdminBoundaryBundle().then(async bundle=>{deptGeo=bundle.departements;regionGeo=bundle.regions;epciGeo=await augmentGrandParisGroups(bundle.epci);departmentRenderGeoCache=null;departmentOutlineGeoCache=null;invalidateGroupCache()})
  ]);
  await privateConnectPromise;
- if(mode===1)try{await ensureEpciGeo()}catch{}
+ await overviewPromise;
+ if(mode===1)try{if(overviewReady())await ensureOverviewEpciGeo();else await ensureEpciGeo()}catch{}
  if(cartGithubMode&&hasImportedCartData){
   const privateUnits=Object.fromEntries(Object.entries(units).filter(([key])=>data.some(d=>d.unit===key)));
   try{await validateCartAdminReferences({rows:data,units:privateUnits})}catch(e){$('status').textContent=e.message}
  }
- hydrateOverseasFromCore();seedAdministrativeDemoCoverage();if(epciGeo)seedEpciDemoCoverage();drawAdmin();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);
+ hydrateOverseasFromCore();seedAdministrativeDemoCoverage();if(epciGeo)seedEpciDemoCoverage();home();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);
  const failed=results.filter(r=>r.status==='rejected').length;
- if(!$('status').textContent||$('status').textContent==='Chargement des contours…')$('status').textContent=failed?'Impossible de charger le référentiel administratif local. Les sources de secours restent disponibles.':''
+ if(!$('status').textContent||$('status').textContent==='Chargement des contours IGN…'||$('status').textContent==='Chargement des contours…')$('status').textContent=failed?'Impossible de charger le référentiel administratif local. Les sources de secours restent disponibles.':''
 }
 bootCartography();
 if(!compactMapUi()){const warmCatalog=()=>loadAdminCatalog().catch(()=>{});if('requestIdleCallback'in window)requestIdleCallback(warmCatalog,{timeout:5000});else setTimeout(warmCatalog,3500)}
