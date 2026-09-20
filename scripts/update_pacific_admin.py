@@ -124,7 +124,7 @@ NC_GROUPS = [
     ("NC-SIVMSUD", "SIVM Sud", ["Bourail", "Boulouparis", "Farino", "La Foa", "Moindou", "Sarraméa", "Thio"], "La Foa"),
     ("NC-SIVOMVKP", "SIVOM VKP", ["Voh", "Koné", "Pouembout"], "Koné"),
     ("NC-SIVMNORD", "SIVM Nord", ["Kaala-Gomen", "Koumac", "Poum"], "Koumac"),
-    ("NC-SIVUTIPEEP", "SIVU Tipeep", ["Touho", "Poindimié"], "Poindimié"),
+    ("NC-SIVMCOTEEST", "SIVM de la Côte Est", ["Houaïlou", "Ponérihouen", "Poindimié", "Touho", "Hienghène", "Pouébo"], "Poindimié"),
 ]
 
 PF_GROUPS = [
@@ -573,7 +573,7 @@ def main():
         "overview_slots": slots,
         "notes": {
             "nc_departements": "3 provinces",
-            "nc_groupements": "5 syndicats/intercommunalités de gestion des déchets; pas d'EPCI à fiscalité propre.",
+            "nc_groupements": "5 groupements territoriaux principaux affichés (SIGN, SIVM Sud, SIVOM VKP, SIVM Nord, SIVM Côte Est). Le SIVU Tipeep, qui recouvre Touho/Poindimié et chevauche le SIVM Côte Est, n'est pas utilisé comme couche principale afin d'éviter une fausse partition superposée.",
             "pf_departements": "5 subdivisions administratives, rendered as unions of island land polygons.",
             "pf_groupements": "7 communities of communes, rendered as unions of member islands.",
             "pf_overview": "archipelago cartogram preserving each archipelago's internal island pattern while compressing ocean distances.",
