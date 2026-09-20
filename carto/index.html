@@ -460,7 +460,17 @@ function parseAdminCatalog(raw){
  for(const list of communesByDepartment.values())list.sort((a,b)=>a.name.localeCompare(b.name,'fr',{numeric:true,sensitivity:'base'}));
  return{version:raw?.version||'',source:raw?.source||'',regions,departments,communes,communeByCode,regionByCode,departmentByCode,departmentsByRegion,communesByDepartment}
 }
-const adminCatalogPromise=fetch(ADMIN_LOCATIONS_URL,{cache:'force-cache'}).then(r=>{if(!r.ok)throw Error('Référentiel administratif local introuvable');return r.json()}).then(raw=>adminCatalog=parseAdminCatalog(raw)).catch(e=>{console.warn(e);return null});
+let adminCatalogPromise=null;
+function loadAdminCatalog(){
+ if(adminCatalog)return Promise.resolve(adminCatalog);
+ if(adminCatalogPromise)return adminCatalogPromise;
+ const urls=[ADMIN_LOCATIONS_URL,'https://raw.githubusercontent.com/aymenbayoudh/frise/main/admin-locations.json'];
+ adminCatalogPromise=(async()=>{
+   let last=null;for(const url of urls){try{const r=await fetch(url,{cache:'force-cache',signal:AbortSignal.timeout(25000)});if(!r.ok)throw Error(r.status);return await r.json()}catch(e){last=e}}
+   throw(last||Error('Référentiel administratif local introuvable'))
+ })().then(raw=>{adminCatalog=parseAdminCatalog(raw);hydrateCommuneUnitsFromCatalog();invalidateGroupCache();return adminCatalog}).catch(e=>{console.warn(e);adminCatalogPromise=null;return null});
+ return adminCatalogPromise
+}
 function hydrateCommuneUnitsFromCatalog(){
  if(!adminCatalog)return;
  for(const u of Object.values(units)){
@@ -468,7 +478,7 @@ function hydrateCommuneUnitsFromCatalog(){
    u.name=c.name;u.dept=c.dept;u.region=c.region
  }
 }
-adminCatalogPromise.then(cat=>{if(cat)hydrateCommuneUnitsFromCatalog()})
+
 
 let data=[];function add(mode,unit,title,kind='global',at=null,shape=null,theme='Aménagement'){data.push({id:data.length+1,mode,unit,title,kind,at:at||units[unit].at,shape,theme});}
 add(0,'lyon','Des cours d’école ouvertes sur le quartier');add(0,'lyon','Un budget citoyen pour la renaturation');add(0,'lyon','Une tarification solidaire des équipements');add(0,'lyon','Rue Garibaldi : un axe rafraîchi','street',[45.7587,4.8526],[[45.7517,4.8509],[45.7587,4.8526],[45.7646,4.854]] ,'Mobilités');add(0,'lyon','Les Pentes : un quartier à hauteur d’enfant','quarter',[45.774,4.832],[[45.778,4.825],[45.779,4.837],[45.771,4.84],[45.769,4.828]]);add(0,'lyon','Une cour végétalisée à la Guillotière','point',[45.7526,4.8477],null,'Éducation');
@@ -515,7 +525,7 @@ function demoDeckPaths(theme,level,index=0){
  return[...new Set(out)]
 }
 for(const d of data){d.subtitle=String(d.subtitle||'');d.tags=Array.isArray(d.tags)&&d.tags.length?d.tags:[d.theme||'Aménagement',modes[d.mode]];d.deck=Array.isArray(d.deck)&&d.deck.length?d.deck:demoDeckPaths(d.theme||'Aménagement',d.mode,d.id||0);d.color=/^#[0-9A-F]{6}$/i.test(d.color||'')?d.color.toUpperCase():defaultColors[d.mode]||'#315EB6';d.html=String(d.html||'<p>Exemple fictif utilisé pour tester la carte.</p>');d.image=Array.isArray(d.image)?d.image:[];d.shape=null}
-let hasImportedCartData=false;try{const saved=JSON.parse(localStorage.getItem(CART_DATA_KEY)||'null');if(saved?.rows?.length){data=saved.rows;Object.assign(units,saved.units||{});hasImportedCartData=true}}catch{};for(const d of data){if(d.generatedDemo)d.deck=demoDeckPaths(d.theme||d.tags?.[0]||'Aménagement',d.mode,d.id||0)}adminCatalogPromise.then(()=>hydrateCommuneUnitsFromCatalog())
+let hasImportedCartData=false;try{const saved=JSON.parse(localStorage.getItem(CART_DATA_KEY)||'null');if(saved?.rows?.length){data=saved.rows;Object.assign(units,saved.units||{});hasImportedCartData=true}}catch{};for(const d of data){if(d.generatedDemo)d.deck=demoDeckPaths(d.theme||d.tags?.[0]||'Aménagement',d.mode,d.id||0)}
 
 if(!window.L){$('status').textContent='Le moteur cartographique ne se charge pas. Vérifiez votre connexion et rechargez la page.';return;}
 const map=L.map('map',{zoomControl:true,minZoom:3,maxZoom:19,zoomSnap:.25,attributionControl:false,preferCanvas:true,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false});
@@ -534,7 +544,7 @@ const satelliteTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/se
 map.createPane('groupCenterPane');map.getPane('groupCenterPane').style.zIndex='445';map.getPane('groupCenterPane').style.pointerEvents='none';map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('selectedGroupPane');map.getPane('selectedGroupPane').style.zIndex='425';map.getPane('selectedGroupPane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),selectedGroup=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
 let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c';
-adminCatalogPromise.then(cat=>{if(!cat)return;hydrateCommuneUnitsFromCatalog();invalidateGroupCache();if(mode===0){renderSide();pointRenderKey='';drawPoints();updateCommuneDataLayer(true)}})
+
 const communeLabels=L.layerGroup().addTo(map),groupCenterCache=new Map();let groupCenterToken=0,groupCenterHideTimer=null,adminCascadeToken=0;
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stripHtml=html=>{const t=document.createElement('template');t.innerHTML=String(html||'');return t.content.textContent||''},unique=a=>[...new Set((a||[]).filter(Boolean).map(String))];
@@ -980,7 +990,7 @@ function communeDataStyle(code){
 }
 async function updateCommuneDataLayer(force=false){
  if(mode!==0){communeDataKey='';communeData.clearLayers();return}
- const targets=groups().filter(g=>g.items.length&&g.code&&adminCatalog?.communeByCode.has(String(g.code)));
+ const targets=groups().filter(g=>g.items.length&&g.code);
  const key=targets.map(g=>String(g.code)+':'+g.items.length).sort().join(',')+'|'+(selection?.code||'')+'|'+temporaryPaletteActive+':'+temporaryPaletteCount;
  if(!force&&key===communeDataKey)return;communeDataKey=key;communeData.clearLayers();const token=key;
  for(let i=0;i<targets.length;i+=8){
@@ -1322,7 +1332,7 @@ async function renderCartUnitOptions(preferred='',preserveCoordinates=false){
  $('cartGroupTypeLabel').hidden=level!==1;$('cartFreeGroupNameLabel').hidden=!freeGroup;$('cartFreeGroupCenterLabel').hidden=!freeGroup;$('cartUnitLabel').hidden=freeGroup;
  $('cartRegionLabel').hidden=!(local||freeGroup);$('cartDepartmentLabel').hidden=!(local||freeGroup);$('cartUnitText').textContent=local?'Commune':'Territoire';
  if(local||freeGroup){
-   await adminCatalogPromise;
+   await loadAdminCatalog();
    if(adminCatalog){
      hydrateCommuneUnitsFromCatalog();
      const u=units[preferred],code=local?preferredCommuneCode(preferred):'',c=local?adminCatalog.communeByCode.get(code):null,
@@ -1528,7 +1538,7 @@ function updateAdminSearch(){
  if(raw.length<2&&!/^\d{2,}$/.test(raw)){box.innerHTML='<span class="empty">Tape au moins 2 caractères.</span>';box.hidden=false;return}
  box.innerHTML='<span class="empty">Recherche…</span>';box.hidden=false;
  adminSearchTimer=setTimeout(async()=>{
-   await adminCatalogPromise;if(serial!==adminSearchSerial)return;
+   await loadAdminCatalog();if(serial!==adminSearchSerial)return;
    const found=adminSearchEntries().map(e=>({e,score:scoreAdminSearch(e,raw)})).filter(x=>x.score>=0).sort((a,b)=>b.score-a.score||a.e.name.localeCompare(b.e.name,'fr')).slice(0,12).map(x=>x.e);
    if(serial!==adminSearchSerial)return;
    box.innerHTML=found.length?found.map((e,i)=>'<button type="button" data-admin-search="'+i+'"><strong>'+escape(e.name)+'</strong><small>'+escape(collectivityMeta(e))+'</small></button>').join(''):'<span class="empty">Aucune collectivité</span>';
@@ -1572,7 +1582,6 @@ async function cartAdminCodeExistsResolved(level,code){
  })();adminCodeValidationCache.set(key,p);return p
 }
 async function validateCartAdminReferences(parsed){
- await adminCatalogPromise;
  const uniqueUnits=new Map();for(const d of parsed.rows){const u=parsed.units[d.unit]||{},code=String(u.code||''),key=d.mode+':'+code;if(!uniqueUnits.has(key))uniqueUnits.set(key,{level:d.mode,code,label:(u.name||d.unit)+' ['+code+']'})}
  const entries=[...uniqueUnits.values()],invalid=[];
  for(let i=0;i<entries.length;i+=10){const batch=entries.slice(i,i+10),ok=await Promise.all(batch.map(x=>cartAdminCodeExistsResolved(x.level,x.code)));ok.forEach((v,j)=>{if(!v)invalid.push(batch[j].label)})}
@@ -1941,6 +1950,7 @@ async function bootCartography(){
  if(!$('status').textContent||$('status').textContent==='Chargement des contours…')$('status').textContent=failed===3?'Impossible de charger les contours administratifs. Recharge la page.':failed?'Une couche administrative secondaire est indisponible.':''
 }
 bootCartography();
+if(!compactMapUi()){const warmCatalog=()=>loadAdminCatalog().catch(()=>{});if('requestIdleCallback'in window)requestIdleCallback(warmCatalog,{timeout:5000});else setTimeout(warmCatalog,3500)}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&cartGithubMode){scheduleCartCloudSync(0);queueCartDataSync()}});
 // Detailed Polynésie/Nouvelle-Calédonie geometry is loaded only on demand from the inset.
 
