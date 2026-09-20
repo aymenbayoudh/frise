@@ -439,11 +439,11 @@ PF_LAYOUT = {
     "australes": (-0.58, -0.60, 0.34, 0.28),
     "tuamotugambier": (0.35, -0.10, 0.72, 0.61),
 }
-# The Saint-Barthélemy slot is narrow: keep the whole PF cartogram compact
-# enough not to hit Mayotte on the west, mainland France on the north, or NC
-# on the east.  The internal archipelago layout stays identical.
-PF_OVERVIEW_SCALE = 0.30
-PF_OVERVIEW_LAT_SHIFT = -0.28
+# Keep the PF cartogram compact enough for the national overview, but make it
+# slightly larger and place it back near the original Caribbean slot instead
+# of pushing it down toward the bottom edge. The internal layout stays identical.
+PF_OVERVIEW_SCALE = 0.34
+PF_OVERVIEW_LAT_SHIFT = -0.03
 PF_OVERVIEW_LON_SHIFT = 0.04
 
 
@@ -468,10 +468,6 @@ def build_pf_overview(pf, center):
     ty, tx = center
     ty += PF_OVERVIEW_LAT_SHIFT
     tx += PF_OVERVIEW_LON_SHIFT
-    # Saint-Barthélemy's CARTO PLUS slot is tiny. Our readable archipelago
-    # cartogram is larger, so lower it slightly to keep every island clear of
-    # the Pyrenean/Mediterranean edge of mainland France.
-    ty -= 0.48
     sub_members = {}
     for f in pf["communes"]:
         key = pf_sub_key(f["properties"].get("subdivision_name", ""))
