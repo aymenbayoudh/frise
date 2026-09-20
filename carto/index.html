@@ -2118,6 +2118,63 @@ async function seedCommuneDemoCoverageForAnchorEpci(anchorCommuneCode){
   for(let i=existing;i<target;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(code)+i)%demoActions.length]+' dans la commune',units[unit].at||at,demoThemes[(i+4+demoHash(code))%demoThemes.length],i)
  }
 }
+const MAJOR_DEMO_CITIES=[
+ 'Paris','Marseille','Lyon','Toulouse','Nice','Nantes','Montpellier','Strasbourg','Bordeaux','Lille',
+ 'Rennes','Toulon','Reims','Saint-Étienne','Le Havre','Villeurbanne','Dijon','Angers','Grenoble','Nîmes'
+];
+const MEDIUM_DEMO_CITIES=[
+ 'Aix-en-Provence','Clermont-Ferrand','Le Mans','Brest','Tours','Amiens','Limoges','Perpignan','Metz','Besançon',
+ 'Orléans','Rouen','Mulhouse','Caen','Nancy','Avignon','Poitiers','Pau','La Rochelle','Annecy'
+];
+const CITY_OGCT_THEMES=['Mobilités','Urbanisme','Éducation','Habitat','Nature','Eau','Énergie','Santé','Action sociale','Politique de la ville','Réemploi'];
+const CITY_COMPO_THEMES=['Culture','Patrimoine'];
+function catalogCommuneByExactName(name){
+ const key=compactName(name);return adminCatalog?.communes?.find(c=>compactName(c.name)===key)||null
+}
+function cityDemoRows(code){return data.filter(d=>d.mode===0&&String(keyOf(d))===String(code))}
+function cityDeckCount(rows,prefix){return rows.filter(d=>(d.deck||[]).some(p=>String(p).startsWith(prefix))).length}
+async function seedNationalCityDemoCoverage(){
+ if(!adminCatalog)return;
+ const specs=[
+  ...MAJOR_DEMO_CITIES.map(name=>({name,major:true})),
+  ...MEDIUM_DEMO_CITIES.map(name=>({name,major:false}))
+ ];
+ for(const spec of specs){
+  const catalog=catalogCommuneByExactName(spec.name);if(!catalog)continue;
+  let cgeo=null;try{cgeo=await departmentCommuneGeo(catalog.dept)}catch{}
+  const feature=cgeo?.features?.find(f=>featureAdminCode(f)===catalog.code);if(!feature)continue;
+  const code=String(catalog.code),at=demoFeatureCenter(feature),dept=String(catalog.dept||departmentCodeForCommune(code)),
+        region=String(catalog.region||adminCatalog?.departmentByCode.get(dept)?.region||'');
+  let unit=unitKeyForModeCode(0,code);
+  if(!unit){unit='demo-city-'+code;units[unit]={name:catalog.name,code,dept,region,at}}
+  else{units[unit].name=catalog.name;units[unit].dept=dept;units[unit].region=region;if(!units[unit].at)units[unit].at=at}
+
+  let rows=cityDemoRows(code),compo=cityDeckCount(rows,'Compo::Culture::'),ogct=cityDeckCount(rows,'OGCT::'),
+      serial=rows.filter(d=>d.generatedDemo).length,
+      minCompo=spec.major?3:2,minOgct=spec.major?5:3,
+      target=(spec.major?10:6)+(demoHash('city-total:'+code)%(spec.major?5:4));
+
+  while(compo<minCompo){
+   const theme=CITY_COMPO_THEMES[(demoHash(code+'compo')+compo)%CITY_COMPO_THEMES.length],
+         action=theme==='Patrimoine'?'un parcours patrimonial':'un programme culturel hors les murs';
+   addGeneratedDemo(0,unit,action+' · '+catalog.name,units[unit].at||at,theme,serial++);
+   compo++;rows.push(data[data.length-1])
+  }
+  while(ogct<minOgct){
+   const theme=CITY_OGCT_THEMES[(demoHash(code+'ogct')+ogct)%CITY_OGCT_THEMES.length],
+         action=demoActions[(demoHash(code+theme)+ogct)%demoActions.length];
+   addGeneratedDemo(0,unit,action+' · '+catalog.name,units[unit].at||at,theme,serial++);
+   ogct++;rows.push(data[data.length-1])
+  }
+  while(rows.length<target){
+   const useCompo=(rows.length+demoHash(code))%3===0,
+         theme=useCompo?CITY_COMPO_THEMES[(rows.length+demoHash(code+'c'))%CITY_COMPO_THEMES.length]:CITY_OGCT_THEMES[(rows.length+demoHash(code+'o'))%CITY_OGCT_THEMES.length],
+         action=theme==='Culture'?'un dispositif culturel':theme==='Patrimoine'?'un programme de valorisation patrimoniale':demoActions[(rows.length+demoHash(code+theme))%demoActions.length];
+   addGeneratedDemo(0,unit,action+' · '+catalog.name,units[unit].at||at,theme,serial++);
+   rows.push(data[data.length-1])
+  }
+ }
+}
 async function seedAdministrativeDemoCoverage(){
  if(demoAdminSeeded||!regionGeo||!deptGeo)return;
  demoAdminSeeded=true;const meta=await loadAdminMeta(),depMeta=new Map((meta.departements||[]).map(d=>[String(d.code),d]));
@@ -2166,6 +2223,11 @@ async function seedAdministrativeDemoCoverage(){
  // Poitiers coverage is derived from the real EPCI geometry: every commune in
  // the group containing Poitiers receives the same generated examples as other communes.
  try{await seedCommuneDemoCoverageForAnchorEpci('86194')}catch{}
+ // Add a nationwide test set on 20 major and 20 medium-sized cities. Commune
+ // codes and geometries are resolved from the local administrative catalog and
+ // IGN ADMIN EXPRESS extracts; the examples themselves are split between OGCT
+ // and Compo > Culture decks.
+ try{await seedNationalCityDemoCoverage()}catch{}
  if(!hasImportedCartData){
   const selectedDeps=[...(deptGeo.features||[])].filter(f=>demoHash(featureAdminCode(f))%3===0).slice(0,42);
   for(const f of selectedDeps){
