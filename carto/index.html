@@ -612,6 +612,7 @@ async function loadAdminBoundaryBundle(){
  throw(last||Error('Aucun millésime administratif cohérent disponible'))
 }
 async function getJSONFallback(urls){let last=null;for(const url of urls){try{const j=await getJSON(url);if(j?.features?.length)return j}catch(e){last=e}}throw(last||Error("Aucune source disponible"))}
+const ADMIN_2026_GEOJSON_BASE='https://etalab-datasets.geo.data.gouv.fr/2026/geojson/';
 async function getJSONMerged(urls){
  const settled=await Promise.allSettled(urls.map(url=>getJSON(url))),features=[],seen=new Set;let last=null;
  for(const r of settled){
@@ -1535,8 +1536,28 @@ function isFreeIntercoGroup(g){
  const code=String(g?.code||'');
  return mode===1&&(!code||!epciGeo?.features?.some(f=>featureAdminCode(f)===code))
 }
+const adminCodeValidationCache=new Map();
+async function cartAdminCodeExistsResolved(level,code){
+ code=String(code||'');const key=level+':'+code;if(adminCodeValidationCache.has(key))return adminCodeValidationCache.get(key);
+ const p=(async()=>{
+   if(cartAdminCodeExists(level,code))return true;
+   if(level===1)return true;
+   if(level===2&&doms.some(d=>String(d.dept)===code))return true;
+   if(level===3&&doms.some(d=>String(d.region)===code))return true;
+   const path=level===0?'communes/':level===2?'departements/':level===3?'regions/':'';
+   if(!path||!code)return false;
+   try{
+     const r=await fetch('https://geo.api.gouv.fr/'+path+encodeURIComponent(code)+'?fields=nom,code',{cache:'force-cache',signal:AbortSignal.timeout(12000)});
+     if(r.status===404)return false;
+     return r.ok||r.status>=500
+   }catch{return true}
+ })();adminCodeValidationCache.set(key,p);return p
+}
 async function validateCartAdminReferences(parsed){
- await adminCatalogPromise;const invalid=[];for(const d of parsed.rows){const code=String(parsed.units[d.unit]?.code||'');if(!cartAdminCodeExists(d.mode,code))invalid.push((parsed.units[d.unit]?.name||d.unit)+' ['+code+']')}
+ await adminCatalogPromise;
+ const uniqueUnits=new Map();for(const d of parsed.rows){const u=parsed.units[d.unit]||{},code=String(u.code||''),key=d.mode+':'+code;if(!uniqueUnits.has(key))uniqueUnits.set(key,{level:d.mode,code,label:(u.name||d.unit)+' ['+code+']'})}
+ const entries=[...uniqueUnits.values()],invalid=[];
+ for(let i=0;i<entries.length;i+=10){const batch=entries.slice(i,i+10),ok=await Promise.all(batch.map(x=>cartAdminCodeExistsResolved(x.level,x.code)));ok.forEach((v,j)=>{if(!v)invalid.push(batch[j].label)})}
  if(invalid.length)throw Error('Territoire absent du référentiel cartographique : '+invalid.slice(0,5).join(', ')+(invalid.length>5?'…':''));return parsed
 }
 function exportCartCsv(){const blob=new Blob([makeCartCsv()],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='carte-'+new Date().toISOString().slice(0,10)+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
@@ -1888,9 +1909,9 @@ async function bootCartography(){
  renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours…';
  const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
  const results=await Promise.allSettled([
-  getJSONFallback(['./data/admin/departements.geojson','https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson']).then(j=>{deptGeo=j;departmentRenderGeoCache=null;departmentOutlineGeoCache=null}),
-  getJSONFallback(['./data/admin/regions.geojson','https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson']).then(j=>{regionGeo=j}),
-  getJSONFallback(['./data/admin/epci.geojson','https://raw.githubusercontent.com/MTES-MCT/otelo/dev/apps/web/public/geojson/epci-1000m.geojson']).then(async j=>{epciGeo=await augmentGrandParisGroups(j)})
+  getJSONFallback([ADMIN_2026_GEOJSON_BASE+'departements-1000m.geojson','./data/admin/departements.geojson','https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson']).then(j=>{deptGeo=j;departmentRenderGeoCache=null;departmentOutlineGeoCache=null}),
+  getJSONFallback([ADMIN_2026_GEOJSON_BASE+'regions-1000m.geojson','./data/admin/regions.geojson','https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson']).then(j=>{regionGeo=j}),
+  getJSONFallback([ADMIN_2026_GEOJSON_BASE+'epci-1000m.geojson','./data/admin/epci.geojson','https://raw.githubusercontent.com/MTES-MCT/otelo/dev/apps/web/public/geojson/epci-1000m.geojson']).then(async j=>{epciGeo=await augmentGrandParisGroups(j)})
  ]);
  await privateConnectPromise;
  if(cartGithubMode&&hasImportedCartData){
