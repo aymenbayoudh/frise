@@ -122,6 +122,16 @@ def discover_gpkg() -> tuple[str, dict[str, Any]]:
                     }))
 
     if not candidates:
+        # The 2026 delivery contains two GeoPackages. The official IGN news page
+        # documents the exact filename of the "sans échelle" variant; construct
+        # its Download URL from the subresource advertised by the API.
+        sub = next((x for x in subresources if "2026-01-01" in blob(x)), None)
+        if sub:
+            sub_id = next((u for u in links(sub) if "/telechargement/resource/ADMIN-EXPRESS-COG-CARTOPLUS/" in u), "")
+            if sub_id:
+                filename = "ADE-COG-CARTOPLUS-SANS-ECHELLE_4-0_GPKG_LAMB93_FRA-ED2026-01-01.gpkg"
+                url = sub_id.replace("/telechargement/resource/", "/telechargement/download/").split("?", 1)[0] + "/" + filename
+                return url, {"resource_url": resource_url, "subresource": sub, "filename": filename, "constructed": True}
         raise RuntimeError(
             "GeoPackage CARTO PLUS 2026 introuvable. Sous-ressources: "
             + json.dumps(subresources[:8], ensure_ascii=False)[:6000]
