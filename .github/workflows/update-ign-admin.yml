@@ -34,7 +34,7 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check requests
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends gdal-bin
+          sudo apt-get install -y --no-install-recommends gdal-bin p7zip-full
 
       - name: Download and normalize IGN 2026
         run: |
