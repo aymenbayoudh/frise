@@ -1100,7 +1100,14 @@ function shade(n,code=''){
 function countCode(code){return groupByCode(code)?.items?.length||0;}
 function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom(),rawBase=mode===3?1.9:mode===2?1.55:mode===1?.525:.8,mgpSelected=mode===1&&String(selection?.code||'')===GRAND_PARIS_CODE;if(mgpSelected&&(f?.properties?._ept||f?.properties?._mgpParis))return{color:'#000000',weight:0,fillColor:'#ffffff',fillOpacity:0,opacity:0};let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=adminStroke(rawBase),mergedPart=mode===2&&!!f?.properties?._mergedDeptPart;if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));const selectedWeight=adminStroke(mode===1?2.15:Math.max(4.3,rawBase+2.4));return {color:selected?'#000000':'#090B0D',weight:mergedPart?0:(selected?selectedWeight:baseWeight),fillColor:shade(n,code),fillOpacity,opacity:1};}
 const SATELLITE_ZOOM_THRESHOLD=10;
-function updateBasemap(){if(!overviewActive&&map.getZoom()>=SATELLITE_ZOOM_THRESHOLD){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
+function updateBasemap(){
+ // Satellite depends on geographic zoom, not on whether the lightweight
+ // national overview geometry is still active. Otherwise a manual zoom around
+ // a city (e.g. Poitiers) can never reach satellite until a territory is clicked.
+ if(map.getZoom()>=SATELLITE_ZOOM_THRESHOLD){
+  if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)
+ }else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)
+}
 function restyleAdminLayer(layer){if(layer.feature&&layer.setStyle)layer.setStyle(adminStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleAdminLayer)}
 function refreshAdminStyle(){admin.eachLayer(restyleAdminLayer);mainOutline.eachLayer(restyleMainOutline)}
 let adminZoomStyleBand=map.getZoom()>=8?1:0;function refreshAdminStyleForZoom(){const band=map.getZoom()>=8?1:0;if(band===adminZoomStyleBand)return;adminZoomStyleBand=band;refreshAdminStyle()}
