@@ -1855,12 +1855,19 @@ async function bootCartography(){
  renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours…';
  const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
  const results=await Promise.allSettled([
-  loadAdminBoundaryBundle().then(async bundle=>{
-   deptGeo=bundle.departements;regionGeo=bundle.regions;epciGeo=await augmentGrandParisGroups(bundle.epci);
-   departmentRenderGeoCache=null;departmentOutlineGeoCache=null;
-   scheduleAdminDraw();updateSubdivisions(true);updateCenters(true);
-   if(mode===1)drawAdmin()
-  })
+  getJSONFallback([
+   'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/departements-1000m.geojson',
+   'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson'
+  ]).then(j=>{deptGeo=j;departmentRenderGeoCache=null;departmentOutlineGeoCache=null;scheduleAdminDraw();updateSubdivisions(true);updateCenters(true)}),
+  getJSONFallback([
+   'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/regions-1000m.geojson',
+   'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson'
+  ]).then(j=>{regionGeo=j;scheduleAdminDraw();updateSubdivisions(true);updateCenters(true)}),
+  getJSONFallback([
+   'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2025/geojson/epci-1000m.geojson',
+   'https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/latest/geojson/epci-1000m.geojson',
+   'https://raw.githubusercontent.com/MTES-MCT/otelo/dev/apps/web/public/geojson/epci-1000m.geojson'
+  ]).then(async j=>{epciGeo=await augmentGrandParisGroups(j);scheduleAdminDraw();if(mode===1)drawAdmin()})
  ]);
  await privateConnectPromise;
  if(cartGithubMode&&hasImportedCartData){
@@ -1869,7 +1876,7 @@ async function bootCartography(){
  }
  seedAdministrativeDemoCoverage();seedEpciDemoCoverage();drawAdmin();refreshAdminStyle();updateCommuneDataLayer(true);
  const failed=results.filter(r=>r.status==='rejected').length;
- if(!$('status').textContent||$('status').textContent==='Chargement des contours…')$('status').textContent=failed?'Impossible de charger les contours administratifs cohérents. Recharge la page.':''
+ if(!$('status').textContent||$('status').textContent==='Chargement des contours…')$('status').textContent=failed===3?'Impossible de charger les contours administratifs. Recharge la page.':failed?'Une couche administrative secondaire est indisponible.':''
 }
 bootCartography();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&cartGithubMode){scheduleCartCloudSync(0);queueCartDataSync()}});
