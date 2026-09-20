@@ -1,6 +1,24 @@
 {
   "carto_plus_candidates": [],
-  "generated_at": "2026-09-20T16:37:26.484277+00:00",
+  "download_carto_plus": [
+    "2025-01-01",
+    "2026-01-01",
+    "2026-07-07T14:59:00+01:00",
+    "ADMIN EXPRESS COG CARTOPLUS",
+    "href=https://data.geopf.fr/telechargement/resource/ADMIN-EXPRESS-COG-CARTOPLUS",
+    "https://data.geopf.fr/telechargement/resource/ADMIN-EXPRESS-COG-CARTOPLUS",
+    "label=FRA France entière",
+    "label=FXX France métropolitaine",
+    "label=GPKG (GeoPackage)",
+    "label=RGF93 v1 / Lambert-93 -- France",
+    "rel=alternate",
+    "term=FRA",
+    "term=FXX",
+    "term=GPKG",
+    "term=https://www.opengis.net/def/crs/EPSG/0/2154",
+    "type=application/atom+xml"
+  ],
+  "generated_at": "2026-09-20T16:39:49.243723+00:00",
   "matching_2026_admin_layers": [
     "ADMINEXPRESS-COG-CARTO-PE.2026:arrondissement",
     "ADMINEXPRESS-COG-CARTO-PE.2026:arrondissement_municipal",
