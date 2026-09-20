@@ -632,7 +632,7 @@ function eventVisibleAtMode(d,target=mode){
 
 const CART_DATA_KEY='cartographie-v2:data',CART_FILTER_KEY='cartographie-v2:filters',SHARED_GITHUB_KEY='frise-private-github-v1',CART_CLOUD_UPDATED_KEY='cartographie-v3:cloud-state-updated',CART_GITHUB_OWNER='aymenbayoudh',CART_GITHUB_REPO='frise-data',CART_GITHUB_BRANCH='main',CART_GITHUB_FILE='carto.csv',CART_GITHUB_STATE_FILE='carto-user-state.json';
 let cartGithubMode=false,cartGithubConfig=null,cartPrivateDataSha=null,cartGithubSyncChain=Promise.resolve(),cartCloudTimer=null,applyingCartCloudState=false,cartDataDirty=false;
-const modeKeys=['commune','interco','departement','region'],defaultColors=['#21BCFF','#7C86FF','#FE9A37','#46ECD5'];
+const modeKeys=['commune','interco','departement','region'],defaultColors=['#21BCFF','#47C98B','#E56AA6','#4F7FD8'];
 function demoDeckPaths(theme,level,index=0){
  const primary={
   'Santé':'OGCT::Solidarité::Santé',
