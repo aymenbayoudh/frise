@@ -993,12 +993,12 @@ const GRAND_PARIS_CODE='200054781',EPT_GEO_URL='https://www.carto-metropolegrand
 async function augmentGrandParisGroups(geo){
  if(!geo?.features?.length)return geo;
  mgpTrueFeature=geo.features.find(f=>featureAdminCode(f)===GRAND_PARIS_CODE)||null;
- const base=geo.features.filter(f=>featureAdminCode(f)!==GRAND_PARIS_CODE),extra=[];
+ const base=geo.features.filter(f=>featureAdminCode(f)!==GRAND_PARIS_CODE),baseCodes=new Set(base.map(featureAdminCode).filter(Boolean)),extra=[];
  try{
    const ept=await getJSON(EPT_GEO_URL);
    for(const f of ept?.features||[]){
      const code=String(f.properties?.code_ept||''),name=String(f.properties?.lib_ept||f.properties?.territoire||code);
-     if(!code||/^T?1$/i.test(code)||/^Paris$/i.test(name))continue;
+     if(!code||baseCodes.has(code)||/^T?1$/i.test(code)||/^Paris$/i.test(name))continue;
      extra.push({...f,properties:{...(f.properties||{}),code,nom:name,_ept:true}})
    }
  }catch{}
