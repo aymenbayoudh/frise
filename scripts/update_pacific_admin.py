@@ -127,6 +127,8 @@ NC_GROUPS = [
     ("NC-SIVMCOTEEST", "SIVM de la Côte Est", ["Houaïlou", "Ponérihouen", "Poindimié", "Touho", "Hienghène", "Pouébo"], "Poindimié"),
 ]
 
+PF_MEMBER_CODES = {"Taputapuatea": "98750"}
+
 PF_GROUPS = [
     ("200027688", "Communauté de communes des Îles Marquises (CODIM)", ["Fatu Hiva", "Hiva Oa", "Nuku Hiva", "Tahuata", "Ua Huka", "Ua Pou"], "Taiohae"),
     ("200031243", "Communauté de communes Hava'i", ["Huahine", "Maupiti", "Tahaa", "Taputapuatea", "Tumaraa", "Uturoa"], "Uturoa"),
@@ -222,6 +224,8 @@ def build_nc():
         selected, absent = [], []
         for m in members:
             x = find_by_name(communes, m)
+            if not x and m in PF_MEMBER_CODES:
+                x = next((f for f in communes if f["properties"]["code"] == PF_MEMBER_CODES[m]), None)
             selected.append(x) if x else absent.append(m)
         if absent:
             missing[name] = absent
