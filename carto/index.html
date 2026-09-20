@@ -827,13 +827,13 @@ async function loadIgnOverview(){
 async function ensureOverviewEpciGeo(){
  if(overviewEpciGeo?.features?.length)return overviewEpciGeo;
  if(overviewEpciPromise)return overviewEpciPromise;
- overviewEpciPromise=getJSON(IGN_OVERVIEW_BASE+'epci.geojson').then(j=>{if(!j?.features?.length)throw Error('EPCI CARTO PLUS vide');overviewEpciGeo=j;return j}).finally(()=>{overviewEpciPromise=null});
+ overviewEpciPromise=getJSON(IGN_OVERVIEW_BASE+'epci.geojson').then(j=>{if(!j?.features?.length)throw Error('EPCI CARTO PLUS vide');overviewEpciGeo=filteredOverviewGeo(j);return overviewEpciGeo}).finally(()=>{overviewEpciPromise=null});
  return overviewEpciPromise
 }
 async function ensureOverviewArrGeo(){
  if(overviewArrGeo?.features?.length)return overviewArrGeo;
  if(overviewArrPromise)return overviewArrPromise;
- overviewArrPromise=getJSON(IGN_OVERVIEW_BASE+'arrondissements.geojson').then(j=>{if(!j?.features?.length)throw Error('Arrondissements CARTO PLUS vides');overviewArrGeo=j;return j}).finally(()=>{overviewArrPromise=null});
+ overviewArrPromise=getJSON(IGN_OVERVIEW_BASE+'arrondissements.geojson').then(j=>{if(!j?.features?.length)throw Error('Arrondissements CARTO PLUS vides');overviewArrGeo=filteredOverviewGeo(j);return overviewArrGeo}).finally(()=>{overviewArrPromise=null});
  return overviewArrPromise
 }
 
@@ -1600,7 +1600,7 @@ async function updateSubdivisions(force=false){
     const geo=displayDepartmentOutlineGeo();
     if(geo?.features?.length)L.geoJSON(geo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(.82),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
    }else if(mode===2){
-    const ign=await ensureOverviewArrGeo(),geo=mergeFeatureCollections(ign,pacificOverviewLevel(0));if(key!==subdivisionKey||!overviewActive||mode!==2)return;
+    const ign=await ensureOverviewArrGeo(),geo=mergeFeatureCollections(filteredOverviewGeo(ign),pacificOverviewLevel(0));if(key!==subdivisionKey||!overviewActive||mode!==2)return;
     if(geo?.features?.length)L.geoJSON(geo,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(1.42),opacity:1,fillOpacity:0}}).addTo(subAdmin)
    }
   }catch(e){if(subdivisionKey===key)subdivisionKey='';console.warn('Sous-divisions CARTO PLUS indisponibles',e)}
@@ -1826,15 +1826,17 @@ function refreshAfterDemoSeed(){
  invalidateGroupCache();renderTags();renderDeckTree();pointRenderKey='';subdivisionKey='';centerKey='';renderSide();draw();updateSubdivisions(true);updateCenters(true);$('visibleCount').textContent=visibleAll().length+' fiches'
 }
 async function seedAdministrativeDemoCoverage(){
- if(hasImportedCartData||demoAdminSeeded||!regionGeo||!deptGeo)return;
+ if(demoAdminSeeded||!regionGeo||!deptGeo)return;
  demoAdminSeeded=true;const meta=await loadAdminMeta(),depMeta=new Map((meta.departements||[]).map(d=>[String(d.code),d]));
- for(const f of regionGeo.features||[]){
-   const code=featureAdminCode(f);if(!code)continue;let unit=unitKeyForModeCode(3,code);if(!unit){unit='demo-r-'+code;units[unit]={name:featureAdminName(f),code,at:demoFeatureCenter(f)}}
-   const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(code,'region');for(let i=0;i<count;i++)addGeneratedDemo(3,unit,(demoActions[(demoHash(code)+i)%demoActions.length])+' à l’échelle régionale',at,demoThemes[(i+demoHash(code))%demoThemes.length],i)
- }
- for(const f of deptGeo.features||[]){
-   const code=featureAdminCode(f);if(!code)continue;let unit=unitKeyForModeCode(2,code);if(!unit){unit='demo-d-'+code;units[unit]={name:featureAdminName(f),code,at:demoFeatureCenter(f)}}
-   const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(code,'departement');for(let i=0;i<count;i++)addGeneratedDemo(2,unit,(demoActions[(demoHash(code+'d')+i)%demoActions.length])+' à l’échelle départementale',at,demoThemes[(i+2+demoHash(code))%demoThemes.length],i)
+ if(!hasImportedCartData){
+  for(const f of regionGeo.features||[]){
+    const code=featureAdminCode(f);if(!code)continue;let unit=unitKeyForModeCode(3,code);if(!unit){unit='demo-r-'+code;units[unit]={name:featureAdminName(f),code,at:demoFeatureCenter(f)}}
+    const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(code,'region');for(let i=0;i<count;i++)addGeneratedDemo(3,unit,(demoActions[(demoHash(code)+i)%demoActions.length])+' à l’échelle régionale',at,demoThemes[(i+demoHash(code))%demoThemes.length],i)
+  }
+  for(const f of deptGeo.features||[]){
+    const code=featureAdminCode(f);if(!code)continue;let unit=unitKeyForModeCode(2,code);if(!unit){unit='demo-d-'+code;units[unit]={name:featureAdminName(f),code,at:demoFeatureCenter(f)}}
+    const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(code,'departement');for(let i=0;i<count;i++)addGeneratedDemo(2,unit,(demoActions[(demoHash(code+'d')+i)%demoActions.length])+' à l’échelle départementale',at,demoThemes[(i+2+demoHash(code))%demoThemes.length],i)
+  }
  }
  // Guarantee visible demo density on every DROM at department and region scales.
  const overseasDemo=doms.filter(d=>['971','972','973','974','976'].includes(String(d.dept)));
@@ -1868,24 +1870,28 @@ async function seedAdministrativeDemoCoverage(){
    for(let i=existing;i<target;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(code+'om-c')+i)%demoActions.length]+' · '+name,units[unit].at||at,demoThemes[(i+demoHash(code))%demoThemes.length],i)
   }
  }
- const selectedDeps=[...(deptGeo.features||[])].filter(f=>demoHash(featureAdminCode(f))%3===0).slice(0,42);
- for(const f of selectedDeps){
-   const dept=featureAdminCode(f),m=depMeta.get(dept),chef=String(m?.chefLieu||'');if(!chef)continue;
-   let unit=unitKeyForModeCode(0,chef);if(!unit){unit='demo-c-'+chef;units[unit]={name:'Chef-lieu de '+featureAdminName(f),code:chef,dept,region:String(m?.region??m?.codeRegion??''),at:demoFeatureCenter(f),generatedChefLieu:true}}
-   const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(chef,'commune');for(let i=0;i<count;i++)addGeneratedDemo(0,unit,(demoActions[(demoHash(chef)+i)%demoActions.length])+' dans la commune',at,demoThemes[(i+4+demoHash(chef))%demoThemes.length],i)
- }
- const existingCommuneUnits=[...new Set(data.filter(d=>d.mode===0&&!d.generatedDemo).map(d=>d.unit))];
- for(const unit of existingCommuneUnits){
-   const u=units[unit];if(!u?.at)continue;const extra=3+demoHash(unit)%7;for(let i=0;i<extra;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(unit)+i)%demoActions.length]+' · démonstration locale',u.at,demoThemes[(i+demoHash(unit))%demoThemes.length],i)
+ if(!hasImportedCartData){
+  const selectedDeps=[...(deptGeo.features||[])].filter(f=>demoHash(featureAdminCode(f))%3===0).slice(0,42);
+  for(const f of selectedDeps){
+    const dept=featureAdminCode(f),m=depMeta.get(dept),chef=String(m?.chefLieu||'');if(!chef)continue;
+    let unit=unitKeyForModeCode(0,chef);if(!unit){unit='demo-c-'+chef;units[unit]={name:'Chef-lieu de '+featureAdminName(f),code:chef,dept,region:String(m?.region??m?.codeRegion??''),at:demoFeatureCenter(f),generatedChefLieu:true}}
+    const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(chef,'commune');for(let i=0;i<count;i++)addGeneratedDemo(0,unit,(demoActions[(demoHash(chef)+i)%demoActions.length])+' dans la commune',at,demoThemes[(i+4+demoHash(chef))%demoThemes.length],i)
+  }
+  const existingCommuneUnits=[...new Set(data.filter(d=>d.mode===0&&!d.generatedDemo).map(d=>d.unit))];
+  for(const unit of existingCommuneUnits){
+    const u=units[unit];if(!u?.at)continue;const extra=3+demoHash(unit)%7;for(let i=0;i<extra;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(unit)+i)%demoActions.length]+' · démonstration locale',u.at,demoThemes[(i+demoHash(unit))%demoThemes.length],i)
+  }
  }
  refreshAfterDemoSeed()
 }
 function seedEpciDemoCoverage(){
- if(hasImportedCartData||demoEpciSeeded||!epciGeo?.features?.length)return;demoEpciSeeded=true;
- const candidates=epciGeo.features.filter(f=>{const c=featureAdminCode(f);return c&&demoHash(c)%8===0}).slice(0,170);
- for(const f of candidates){
-   const code=featureAdminCode(f);let unit=unitKeyForModeCode(1,code);if(!unit){unit='demo-e-'+code;units[unit]={name:featureAdminName(f),code,at:demoFeatureCenter(f)}}
-   const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(code,'interco');for(let i=0;i<count;i++)addGeneratedDemo(1,unit,demoActions[(demoHash(code)+i)%demoActions.length]+' à l’échelle intercommunale',at,demoThemes[(i+6+demoHash(code))%demoThemes.length],i)
+ if(demoEpciSeeded||!epciGeo?.features?.length)return;demoEpciSeeded=true;
+ if(!hasImportedCartData){
+  const candidates=epciGeo.features.filter(f=>{const c=featureAdminCode(f);return c&&demoHash(c)%8===0}).slice(0,170);
+  for(const f of candidates){
+    const code=featureAdminCode(f);let unit=unitKeyForModeCode(1,code);if(!unit){unit='demo-e-'+code;units[unit]={name:featureAdminName(f),code,at:demoFeatureCenter(f)}}
+    const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(code,'interco');for(let i=0;i<count;i++)addGeneratedDemo(1,unit,demoActions[(demoHash(code)+i)%demoActions.length]+' à l’échelle intercommunale',at,demoThemes[(i+6+demoHash(code))%demoThemes.length],i)
+  }
  }
  // DROM EPCIs are forced into the demo set (the generic hash sample can miss them).
  for(const d of doms.filter(x=>x.nationalEpci&&['971','972','973','974','976'].includes(String(x.dept)))){
@@ -1902,7 +1908,7 @@ function seedEpciDemoCoverage(){
 
 let demoPacificSeeded=false;
 function seedPacificDemoCoverage(){
- if(hasImportedCartData||demoPacificSeeded||!pacificAdmin.pf||!pacificAdmin.nc)return;demoPacificSeeded=true;
+ if(demoPacificSeeded||!pacificAdmin.pf||!pacificAdmin.nc)return;demoPacificSeeded=true;
  const configs=[['pf','987','Polynésie française'],['nc','988','Nouvelle-Calédonie']];
  const targetCount=(code,level,boost=0)=>{
   const kind=level===3?'region':level===2?'departement':level===1?'interco':'commune';
@@ -2046,7 +2052,8 @@ function undoCartLastChange(){
    persistCartData();temporaryPaletteAssignments.clear();selection=null;activeItem=null;closeMapDetail();renderTags();deckStateLoaded=false;renderDeckTree();filterChanged();updateCartUndoButton()
  }catch(e){cartUndoStack.push(last);updateCartUndoButton();$('status').textContent='Annulation impossible : '+e.message}
 }
-function persistCartData(){invalidateGroupCache();const savedUnits={};for(const [k,u] of Object.entries(units))if(data.some(d=>d.unit===k))savedUnits[k]=u;localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:savedUnits}));hasImportedCartData=true;cartDataDirty=true;if(cartGithubMode)queueCartDataSync()}
+function persistentCartRows(){return data.filter(d=>!d.generatedDemo)}
+function persistCartData(){invalidateGroupCache();const rows=persistentCartRows(),savedUnits={};for(const [k,u] of Object.entries(units))if(rows.some(d=>d.unit===k))savedUnits[k]=u;localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows,units:savedUnits}));hasImportedCartData=true;cartDataDirty=true;if(cartGithubMode)queueCartDataSync()}
 function safeCartImage(value){const src=String(value??'').trim();if(/^data:image\/(png|jpeg|webp);base64,/i.test(src)||/^https?:\/\/[^\s<>"']+$/i.test(src)||/^(?:\.\/)?(?:[\w .-]+\/)*[\w .-]+\.(?:png|jpe?g|webp)$/i.test(src)&&!src.includes('..'))return src;return''}
 function cleanCartHtml(html){const t=document.createElement('template');t.innerHTML=String(html||'');const ok=new Set(['P','BR','DIV','B','STRONG','I','EM','U','HR','UL','OL','LI','A','IMG']);function walk(p){for(const el of [...p.children]){if(!ok.has(el.tagName)){el.replaceWith(document.createTextNode(el.textContent));continue}const href=el.getAttribute('href'),src=safeCartImage(el.getAttribute('src')),alt=el.getAttribute('alt');for(const a of [...el.attributes])el.removeAttribute(a.name);if(el.tagName==='A'&&href&&/^https?:\/\//i.test(href)){el.href=href;el.target='_blank';el.rel='noopener noreferrer'}if(el.tagName==='IMG'){if(src){el.src=src;el.alt=alt||'Illustration'}else{el.remove();continue}}walk(el)}}walk(t.content);return t.innerHTML}
 function cleanCartInline(html){const t=document.createElement('template');t.innerHTML=String(html||'');const ok=new Set(['B','STRONG','I','EM','U','BR']);function walk(p){for(const el of [...p.children]){if(!ok.has(el.tagName)){el.replaceWith(document.createTextNode(el.textContent));continue}for(const a of [...el.attributes])el.removeAttribute(a.name);walk(el)}}walk(t.content);return t.innerHTML}
@@ -2335,7 +2342,7 @@ $('adminSearch').onkeydown=e=>{if(e.key==='Enter'){const first=$('adminSearchRes
 
 const cartCsvHeaders=['id','title','subtitle','mode','unit','unitName','unitCode','kind','lat','lng','departmentCode','regionCode','centerName','tags','color','html','deck','image'];
 function csvCell(v){const x=String(v??'');return/[",\r\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x}
-function makeCartCsv(){const lines=[cartCsvHeaders.join(',')];for(const d of data){const u=units[d.unit]||{},v={id:d.id,title:d.title,subtitle:d.subtitle||'',mode:modeKeys[d.mode],unit:d.unit,unitName:u.name||d.unit,unitCode:u.code||'',kind:d.kind,lat:d.at?.[0]??'',lng:d.at?.[1]??'',departmentCode:u.dept||'',regionCode:u.region||'',centerName:u.centerName||'',tags:JSON.stringify(d.tags||[]),color:d.color||'#315EB6',html:d.html||'',deck:JSON.stringify(d.deck||[]),image:JSON.stringify(d.image||[])};lines.push(cartCsvHeaders.map(k=>csvCell(v[k])).join(','))}return'\ufeff'+lines.join('\r\n')}
+function makeCartCsv(){const lines=[cartCsvHeaders.join(',')];for(const d of persistentCartRows()){const u=units[d.unit]||{},v={id:d.id,title:d.title,subtitle:d.subtitle||'',mode:modeKeys[d.mode],unit:d.unit,unitName:u.name||d.unit,unitCode:u.code||'',kind:d.kind,lat:d.at?.[0]??'',lng:d.at?.[1]??'',departmentCode:u.dept||'',regionCode:u.region||'',centerName:u.centerName||'',tags:JSON.stringify(d.tags||[]),color:d.color||'#315EB6',html:d.html||'',deck:JSON.stringify(d.deck||[]),image:JSON.stringify(d.image||[])};lines.push(cartCsvHeaders.map(k=>csvCell(v[k])).join(','))}return'\ufeff'+lines.join('\r\n')}
 function readCartCsv(text){text=String(text).replace(/^\ufeff/,'');const table=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++}else if(c==='"')quoted=false;else cell+=c}else if(c==='"')quoted=true;else if(c===','){row.push(cell);cell=''}else if(c==='\n'){row.push(cell.replace(/\r$/,''));table.push(row);row=[];cell=''}else cell+=c}if(quoted)throw Error('Guillemet non fermé');if(cell||row.length){row.push(cell.replace(/\r$/,''));table.push(row)}if(!table.length)throw Error('CSV vide');const h=table.shift().map(x=>x.trim()),p=Object.fromEntries(h.map((x,i)=>[x,i]));for(const k of ['id','title','mode','unit','unitName','unitCode','kind','lat','lng','tags','deck'])if(!(k in p))throw Error('Colonne manquante : '+k);const newUnits={},rows=[];for(const r of table.filter(r=>r.some(Boolean))){const raw=String(r[p.mode]||'').trim().toLocaleLowerCase('fr'),mi=modeKeys.includes(raw)?modeKeys.indexOf(raw):Number(raw);if(!Number.isInteger(mi)||mi<0||mi>3)throw Error('Mode invalide : '+raw);const unit=String(r[p.unit]||'').trim(),lat=Number(r[p.lat]),lng=Number(r[p.lng]);if(!unit||!Number.isFinite(lat)||!Number.isFinite(lng))throw Error('Unité ou coordonnées invalides');const parseArray=name=>{if(p[name]==null)return[];const raw=String(r[p[name]]||'');try{const x=JSON.parse(raw||'[]');return Array.isArray(x)?x.map(String):[]}catch{return raw.split('|').map(x=>x.trim()).filter(Boolean)}};const tags=parseArray('tags'),deck=parseArray('deck'),image=parseArray('image');const unitCode=p.unitCode==null?'':String(r[p.unitCode]||'').trim();newUnits[unit]={name:String(r[p.unitName]||unit),code:unitCode,at:[lat,lng],dept:p.departmentCode==null?'':String(r[p.departmentCode]||''),region:p.regionCode==null?'':String(r[p.regionCode]||''),centerName:p.centerName==null?'':String(r[p.centerName]||''),fiction:mi===1&&!unitCode};rows.push({id:Number(r[p.id])||rows.length+1,title:String(r[p.title]||'').trim(),subtitle:p.subtitle==null?'':String(r[p.subtitle]||''),mode:mi,unit,kind:String(r[p.kind]||'point'),at:[lat,lng],shape:null,theme:tags[0]||'Exemple',tags:unique(tags),color:p.color!=null&&/^#[0-9A-F]{6}$/i.test(r[p.color]||'')?String(r[p.color]).toUpperCase():'#315EB6',html:p.html==null?'':String(r[p.html]||''),deck:unique(deck.length?deck:['Sans deck']),image:unique(image)})}return{rows,units:newUnits}}
 function cartAdminCodeExists(level,code){
  code=String(code||'');if(level===0)return !!adminCatalog?.communeByCode.has(code);
