@@ -260,6 +260,8 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
  .scale-labels button{height:40px;min-height:40px;padding:0 3px;font-size:10.5px}
 }
 
+.leaflet-eventPointPane-pane{pointer-events:none!important}
+.leaflet-eventPointPane-pane .leaflet-marker-icon{pointer-events:auto!important;cursor:pointer}
 .leaflet-adminHitPane-pane{pointer-events:auto!important}
 .leaflet-adminHitPane-pane .leaflet-interactive{pointer-events:auto!important;cursor:pointer}
 .leaflet-mainOutlinePane-pane,.leaflet-contextAdminPane-pane,.leaflet-subAdminPane-pane{pointer-events:none!important}
@@ -672,7 +674,7 @@ function applySideWidth(width,persist=false){
 try{const saved=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(saved)applySideWidth(saved)}catch{}
 
 const satelliteTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,keepBuffer:matchMedia('(max-width:640px)').matches?0:1,updateWhenIdle:true,updateWhenZooming:false,attribution:'Tiles © Esri'});
-map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.getPane('centersPane').style.pointerEvents='none';map.createPane('groupCenterPane');map.getPane('groupCenterPane').style.zIndex='445';map.getPane('groupCenterPane').style.pointerEvents='none';map.createPane('eventPointPane');map.getPane('eventPointPane').style.zIndex='500';map.getPane('eventPointPane').style.pointerEvents='auto';map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('selectedGroupPane');map.getPane('selectedGroupPane').style.zIndex='425';map.getPane('selectedGroupPane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
+map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.getPane('centersPane').style.pointerEvents='none';map.createPane('groupCenterPane');map.getPane('groupCenterPane').style.zIndex='445';map.getPane('groupCenterPane').style.pointerEvents='none';map.createPane('eventPointPane');map.getPane('eventPointPane').style.zIndex='500';map.getPane('eventPointPane').style.pointerEvents='none';map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('selectedGroupPane');map.getPane('selectedGroupPane').style.zIndex='425';map.getPane('selectedGroupPane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),selectedGroup=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
 let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c';
 
@@ -1063,7 +1065,9 @@ function drawPoints(){
  if(mode===1){
    for(const g of gs){
      if(!g.items.length||!isFreeIntercoGroup(g)||!Array.isArray(g.at))continue;
-     const selected=selection?.key===g.key,color=temporaryPaletteActive?temporaryEventColor(g.items[0]):densityColor(g.items.length),m=L.circleMarker(g.at,{pane:'eventPointPane',radius:selected?7:5.5,color:'#0B0D0F',weight:selected?1.6:1,fillColor:color,fillOpacity:.82}).addTo(points);
+     const selected=selection?.key===g.key,color=temporaryPaletteActive?temporaryEventColor(g.items[0]):densityColor(g.items.length),size=selected?16:13;
+     const dot=L.divIcon({className:'group-event-marker',iconSize:[size,size],iconAnchor:[size/2,size/2],html:'<div style="width:'+size+'px;height:'+size+'px;border:'+(selected?'2px':'1.4px')+' solid #0B0D0F;border-radius:50%;background:'+color+';opacity:.9;box-shadow:0 1px 3px #0003"></div>'});
+     const m=L.marker(g.at,{pane:'eventPointPane',icon:dot,title:g.name,alt:g.name,keyboard:true}).addTo(points);
      m.bindTooltip(escape(g.name)+' · '+g.items.length+' exemple'+(g.items.length>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
      m.on('click',()=>choose(g))
    }
@@ -1303,8 +1307,10 @@ async function addAdminCenter(code,options,token){
  adminCenterRenderSeen.add(code);
  syncGeneratedCommuneFromCenter(code,p);
  const color=adminCenterColor(options.adminLevel,options.adminCode,options.rank,code,p.at);
+ const communeHasVisibleExamples=mode===0&&data.some(d=>d.mode===0&&String(keyOf(d))===code&&tagsPass(d)&&decksPass(d));
+ const showLabel=!!options.showLabel&&!communeHasVisibleExamples;
  const zIndexOffset=options.rank==='region'?220:options.rank==='department'?190:options.rank==='regionSecondary'?160:130;
- L.marker(p.at,{pane:'centersPane',icon:centerIcon(p.name,{rank:options.rank,showLabel:!!options.showLabel,color}),interactive:false,zIndexOffset}).addTo(centers)
+ L.marker(p.at,{pane:'centersPane',icon:centerIcon(p.name,{rank:options.rank,showLabel,color}),interactive:false,zIndexOffset}).addTo(centers)
 }
 async function addAdminCenterBatch(entries,token){
  const uniqueEntries=[],seen=new Set();for(const e of entries){const code=String(e.code||'');if(!code||seen.has(code))continue;seen.add(code);uniqueEntries.push({...e,code})}
