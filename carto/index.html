@@ -546,7 +546,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 </div>
 </section>
 <main class="workspace"><section class="canvas" aria-label="Carte des exemples locaux"><div id="map"></div><div class="scale-panel"><div id="scaleSelector" class="scale-selector" style="--scale-position:0"><div id="scaleGlass" class="scale-glass" role="slider" tabindex="0" aria-label="Échelle territoriale" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" aria-valuetext="Communes"></div><div class="scale-labels"><button data-mode="0" class="active" aria-pressed="true">Communes</button><button data-mode="1" aria-pressed="false">Groupements</button><button data-mode="2" aria-pressed="false">Départements</button><button data-mode="3" aria-pressed="false">Régions</button></div></div></div><button class="home" id="home">↖ France entière</button><div class="overseas" id="overseas" aria-label="Encarts outre-mer"></div><div id="status" class="status" role="status"></div><div class="legend" id="legend"></div><aside id="mapDetail" class="map-detail" hidden aria-label="Détail de la fiche"><div class="map-detail-head"><button id="mapDetailClose" class="close" type="button" aria-label="Fermer">×</button><div class="detail-actions"><button id="mapDetailEdit" type="button">Modifier</button></div></div><h2 id="mapDetailTitle"></h2><p id="mapDetailPlace"></p><p id="mapDetailSubtitle"></p><div id="mapDetailBody"></div></aside></section>
-<aside id="sidePanel"><div id="sideResize" class="side-resize" role="separator" aria-orientation="vertical" aria-label="Redimensionner le panneau"></div><div class="aside-head"><div class="aside-topline"><button id="back" class="back" hidden>← Tous les territoires</button><button id="sideAdd" class="side-add" type="button">＋ Ajouter</button></div><div class="eyebrow" id="eyebrow">Atlas des exemples</div><h1 id="heading">Communes</h1><p id="context"></p><p id="adminCascade" class="admin-cascade"></p></div><div id="list" class="list"></div><div class="foot">Démonstration · aucune donnée Anki importée.<details><summary>Géométrie et sources</summary><p>Contours régions, départements et EPCI : données administratives Etalab. Sélecteur Région → Département → Commune : référentiel open data local <code>admin-locations.json</code>. Contours communaux : <a href="https://geo.api.gouv.fr/decoupage-administratif">API Découpage administratif</a>. Fond satellite au zoom fort : Esri World Imagery.</p><p>Rues et quartiers : point localisé uniquement, sans tracé. Les sièges sont des repères approximatifs. Encarts à des échelles différentes : DROM, Polynésie française et Nouvelle-Calédonie.</p></details></div></aside></main>
+<aside id="sidePanel"><div id="sideResize" class="side-resize" role="separator" aria-orientation="vertical" aria-label="Redimensionner le panneau"></div><div class="aside-head"><div class="aside-topline"><button id="back" class="back" hidden>← Tous les territoires</button><button id="sideAdd" class="side-add" type="button">＋ Ajouter</button></div><div class="eyebrow" id="eyebrow">Atlas des exemples</div><h1 id="heading">Communes</h1><p id="context"></p><p id="adminCascade" class="admin-cascade"></p></div><div id="list" class="list"></div><div class="foot">Démonstration · aucune donnée Anki importée.<details><summary>Géométrie et sources</summary><p>Référentiel principal : IGN ADMIN EXPRESS COG CARTO PE 2026, extrait automatiquement depuis la Géoplateforme et conservé localement dans le site pour régions, départements, EPCI, arrondissements et communes. Les communes sont découpées par département et chargées à la demande. Sélecteur Région → Département → Commune : <code>admin-locations.json</code>. Fond satellite au zoom fort : Esri World Imagery.</p><p>Vue nationale rapprochée : IGN ADMIN EXPRESS COG CARTO PLUS 2026 lorsqu’elle est disponible. Les services externes ne servent plus que de secours. Rues et quartiers : point localisé uniquement, sans tracé.</p></details></div></aside></main>
 <div id="gameScrim" class="game-scrim" hidden></div>
 <section id="gamePanel" class="game-panel" hidden aria-label="Mode jeu">
   <div class="game-panel-head"><div><h2 id="gameModeTitle">Mode jeu</h2><div class="game-stats"><span>Série <strong id="gameScore">0</strong></span><span>Record <strong id="gameBest">0</strong></span><span id="gameStrikes" class="game-strikes" aria-label="Erreurs : 0 sur 3"><i class="game-strike" aria-hidden="true"></i><i class="game-strike" aria-hidden="true"></i><i class="game-strike" aria-hidden="true"></i></span></div><div class="game-progress-row"><div id="gameProgress" class="game-progress-track" role="progressbar" aria-label="Bonnes réponses" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"><span id="gameProgressFill" class="game-progress-fill"></span></div><strong id="gameProgressText" class="game-progress-text">0/0</strong></div></div><div class="game-head-actions"><button id="gameStop" class="game-stop" type="button" aria-label="Terminer la partie" title="Terminer la partie">🏳️</button><button id="gameClose" class="game-close" type="button" aria-label="Fermer">×</button></div></div>
@@ -725,7 +725,8 @@ try{const saved=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(saved)applySideW
 const satelliteTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,keepBuffer:matchMedia('(max-width:640px)').matches?0:1,updateWhenIdle:true,updateWhenZooming:false,attribution:'Tiles © Esri'});
 map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.getPane('centersPane').style.pointerEvents='none';map.createPane('groupCenterPane');map.getPane('groupCenterPane').style.zIndex='435';map.getPane('groupCenterPane').style.pointerEvents='none';map.createPane('eventPointPane');map.getPane('eventPointPane').style.zIndex='500';map.getPane('eventPointPane').style.pointerEvents='none';map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('arrondissementPane');map.getPane('arrondissementPane').style.zIndex='412';map.getPane('arrondissementPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('selectedGroupPane');map.getPane('selectedGroupPane').style.zIndex='425';map.getPane('selectedGroupPane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),selectedGroup=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
-let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c';
+const IGN_ADMIN_BASE='./data/ign/2026/';const IGN_GEO_BASE=IGN_ADMIN_BASE+'geographic/';const IGN_OVERVIEW_BASE=IGN_ADMIN_BASE+'overview/';
+let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c',ignAdminManifest=null;
 
 const communeLabels=L.layerGroup().addTo(map),groupCenterCache=new Map();let groupCenterToken=0,groupCenterHideTimer=null,adminCascadeToken=0;
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -808,6 +809,17 @@ const ADMIN_BOUNDARY_SOURCES=[
 let activeAdminBoundarySource=ADMIN_BOUNDARY_SOURCES[0];
 async function loadAdminBoundaryBundle(){
  let last=null;
+ try{
+   const [manifest,departements,regions,epci]=await Promise.all([
+     getJSON(IGN_ADMIN_BASE+'manifest.json').catch(()=>null),
+     getJSON(IGN_GEO_BASE+'departements.geojson'),
+     getJSON(IGN_GEO_BASE+'regions.geojson'),
+     getJSON(IGN_GEO_BASE+'epci.geojson')
+   ]);
+   if(!departements?.features?.length||!regions?.features?.length||!epci?.features?.length)throw Error('Jeu IGN local incomplet');
+   ignAdminManifest=manifest;activeAdminBoundarySource={label:'IGN ADMIN EXPRESS COG CARTO PE 2026',base:IGN_GEO_BASE};
+   return{source:activeAdminBoundarySource,departements,regions,epci}
+ }catch(e){last=e}
  for(const source of ADMIN_BOUNDARY_SOURCES){
    try{
      const [departements,regions,epci]=await Promise.all([
@@ -967,6 +979,7 @@ async function ensureEpciGeo(){
  if(epciGeo?.features?.length)return epciGeo;
  if(epciLoadPromise)return epciLoadPromise;
  epciLoadPromise=getJSONFallback([
+   IGN_GEO_BASE+'epci.geojson',
    ADMIN_2026_GEOJSON_BASE+'epci-1000m.geojson',
    './data/admin/epci.geojson',
    'https://raw.githubusercontent.com/MTES-MCT/otelo/dev/apps/web/public/geojson/epci-1000m.geojson'
@@ -1306,7 +1319,8 @@ async function ensureArrGeo(requiredDept=''){
  if(!arrGeo||!arrGeoHasDepartment(arrGeo,requiredDept)){
    try{
      const fallback=await getJSONFallback([
-      'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-avec-outre-mer.geojson',
+       IGN_GEO_BASE+'arrondissements.geojson',
+       'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-avec-outre-mer.geojson',
       './data/admin/arrondissements.geojson',
       'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-version-simplifiee.geojson'
      ]);
@@ -1348,10 +1362,20 @@ function contextEpci(){
  }
  return''
 }
+function departmentCodeForCommune(code){
+ code=String(code||'').toUpperCase();
+ const fromCatalog=adminCatalog?.communeByCode.get(code)?.dept;if(fromCatalog)return String(fromCatalog);
+ if(/^97[1-6]/.test(code)||/^98\d/.test(code))return code.slice(0,3);
+ if(/^2[AB]/.test(code))return code.slice(0,2);
+ return code.slice(0,2)
+}
 async function communeOutlineGeo(code){
  code=String(code||'');if(!code)return null;
  if(communeOutlineGeoCache.has(code))return communeOutlineGeoCache.get(code);
- const p=getJSON('https://geo.api.gouv.fr/communes/'+encodeURIComponent(code)+'?fields=nom,code&format=geojson&geometry=contour').then(j=>j?.type==='Feature'?j:j?.features?.[0]||null).catch(()=>null);
+ const p=(async()=>{
+   try{const local=await departmentCommuneGeo(departmentCodeForCommune(code)),found=local?.features?.find(f=>featureAdminCode(f)===code);if(found)return found}catch{}
+   try{const j=await getJSON('https://geo.api.gouv.fr/communes/'+encodeURIComponent(code)+'?fields=nom,code&format=geojson&geometry=contour');return j?.type==='Feature'?j:j?.features?.[0]||null}catch{return null}
+ })();
  communeOutlineGeoCache.set(code,p);return p
 }
 function communeDataStyle(code){
@@ -1370,7 +1394,7 @@ async function updateCommuneDataLayer(force=false){
    await new Promise(r=>requestAnimationFrame(r))
  }
 }
-async function departmentCommuneGeo(dept){dept=String(dept||'');if(!dept)return null;if(departmentCommuneGeoCache.has(dept))return departmentCommuneGeoCache.get(dept);const p=getJSON('https://geo.api.gouv.fr/communes?codeDepartement='+encodeURIComponent(dept)+'&fields=nom,code&format=geojson&geometry=contour').catch(()=>null);departmentCommuneGeoCache.set(dept,p);return p}
+async function departmentCommuneGeo(dept){dept=String(dept||'');if(!dept)return null;if(departmentCommuneGeoCache.has(dept))return departmentCommuneGeoCache.get(dept);const p=getJSON(IGN_GEO_BASE+'communes/'+encodeURIComponent(dept)+'.geojson').catch(()=>getJSON('https://geo.api.gouv.fr/communes?codeDepartement='+encodeURIComponent(dept)+'&fields=nom,code&format=geojson&geometry=contour').catch(()=>null));departmentCommuneGeoCache.set(dept,p);return p}
 async function epciCommuneGeo(code){code=String(code||'');if(!code)return null;if(epciCommuneGeoCache.has(code))return epciCommuneGeoCache.get(code);const p=getJSON('https://geo.api.gouv.fr/epcis/'+encodeURIComponent(code)+'/communes?fields=nom,code&format=geojson&geometry=contour').catch(()=>null);epciCommuneGeoCache.set(code,p);return p}
 function communeLabelIcon(name){return L.divIcon({className:'commune-name-label',iconSize:null,html:'<span>'+escape(name)+'</span>'})}
 function selectedCommuneCode(){return mode===0&&selection?.code?String(selection.code):''}
@@ -2399,8 +2423,7 @@ async function bootCartography(){
  renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours…';
  const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
  const results=await Promise.allSettled([
-  getJSONFallback([ADMIN_2026_GEOJSON_BASE+'departements-1000m.geojson','./data/admin/departements.geojson','https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson']).then(j=>{deptGeo=j;departmentRenderGeoCache=null;departmentOutlineGeoCache=null}),
-  getJSONFallback([ADMIN_2026_GEOJSON_BASE+'regions-1000m.geojson','./data/admin/regions.geojson','https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson']).then(j=>{regionGeo=j})
+  loadAdminBoundaryBundle().then(async bundle=>{deptGeo=bundle.departements;regionGeo=bundle.regions;epciGeo=await augmentGrandParisGroups(bundle.epci);departmentRenderGeoCache=null;departmentOutlineGeoCache=null;invalidateGroupCache()})
  ]);
  await privateConnectPromise;
  if(mode===1)try{await ensureEpciGeo()}catch{}
@@ -2410,7 +2433,7 @@ async function bootCartography(){
  }
  hydrateOverseasFromCore();seedAdministrativeDemoCoverage();if(epciGeo)seedEpciDemoCoverage();drawAdmin();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);
  const failed=results.filter(r=>r.status==='rejected').length;
- if(!$('status').textContent||$('status').textContent==='Chargement des contours…')$('status').textContent=failed===2?'Impossible de charger les contours administratifs. Recharge la page.':failed?'Une couche administrative secondaire est indisponible.':''
+ if(!$('status').textContent||$('status').textContent==='Chargement des contours…')$('status').textContent=failed?'Impossible de charger le référentiel administratif local. Les sources de secours restent disponibles.':''
 }
 bootCartography();
 if(!compactMapUi()){const warmCatalog=()=>loadAdminCatalog().catch(()=>{});if('requestIdleCallback'in window)requestIdleCallback(warmCatalog,{timeout:5000});else setTimeout(warmCatalog,3500)}
