@@ -139,7 +139,7 @@ header{position:relative;z-index:1600}
 .admin-center-dot.major{width:14px!important;height:14px!important;background:#142f43!important;border-width:2px!important;box-shadow:0 1px 7px #0008,0 0 0 1px #0c2233!important}
 .admin-center-dot.secondary{width:8px!important;height:8px!important;background:#788994!important;border-width:1.5px!important}
 .admin-center-dot span{top:100%!important;margin-top:3px;padding:1px 4px!important;background:#fffffff0!important;color:#172b39!important;box-shadow:0 1px 4px #0002;font-size:9px!important;font-weight:750!important}
-.commune-name-label span{background:#fffffff0!important;color:#111820!important;box-shadow:0 1px 4px #0003!important;font-size:9px!important;font-weight:750!important}
+.commune-name-label span{background:#fffffff0!important;color:#111820!important;box-shadow:0 1px 4px #0003!important;font-size:9px!important;font-weight:520!important}
 
 .admin-center-dot{background:var(--center-color,#536875)!important}
 .admin-center-dot.rank-region{width:15px!important;height:15px!important;border:2.5px solid #fff!important;box-shadow:0 1px 8px #0008,0 0 0 1px #102635!important}
@@ -1898,26 +1898,67 @@ async function epciCommuneGeo(code){
 }
 function communeLabelIcon(name){return L.divIcon({className:'commune-name-label',iconSize:null,html:'<span>'+escape(name)+'</span>'})}
 function selectedCommuneCode(){return mode===0&&selection?.code?String(selection.code):''}
-function communeBoundaryStyle(f){const code=featureAdminCode(f),selected=code&&code===selectedCommuneCode(),n=countCode(code);return selected?{pane:'subAdminPane',color:'#000000',weight:3.2,opacity:1,fillColor:n?densityContinuousColor(n):defaultColors[0],fillOpacity:.08}:{pane:'subAdminPane',color:'#111820',weight:1.05,opacity:.9,fillOpacity:0}}
+function communeBoundaryStyle(f){
+ const code=featureAdminCode(f),selected=code&&code===selectedCommuneCode();
+ return{pane:'subAdminPane',color:selected?'#000000':'#111820',weight:selected?2.2:1.05,opacity:selected?1:.9,fillOpacity:0}
+}
+async function selectedCommuneEpciGeo(){
+ if(mode!==0||!selection)return null;
+ if(!epciGeo?.features?.length)try{await ensureEpciGeo()}catch{return null}
+ if(mode!==0||!selection)return null;
+ const epci=contextEpci();if(!epci)return null;
+ const geo=await epciCommuneGeo(epci);return geo?.features?.length?{epci,geo}:null
+}
+function drawCommuneContextLabels(geo,epci,force=false){
+ if(mode!==0||!selection||!geo?.features?.length){communeLabelKey='';communeLabels.clearLayers();return}
+ const view=map.getBounds().pad(.08),selected=selectedCommuneCode(),visible=[];
+ for(const f of geo.features){
+  const code=featureAdminCode(f),at=featureBounds(f).getCenter();
+  if(code!==selected&&view.contains(at))visible.push([code,f,at])
+ }
+ const key='ctx:'+epci+':'+visible.map(x=>x[0]).join(',');
+ if(!force&&key===communeLabelKey)return;
+ communeLabelKey=key;communeLabels.clearLayers();
+ for(const [,f,at] of visible){
+  const name=featureAdminName(f);
+  if(name)L.marker(at,{icon:communeLabelIcon(name),interactive:false,zIndexOffset:-60}).addTo(communeLabels)
+ }
+}
 async function updateCommuneLabels(force=false){
- const z=map.getZoom();if(overviewActive||mode!==0||!selection||z<11.25){communeLabelKey='';communeLabels.clearLayers();return}
- if(!epciGeo){try{await ensureEpciGeo()}catch{return}if(mode!==0||!selection||map.getZoom()<11.25)return}
- const epci=contextEpci();if(!epci){communeLabelKey='';communeLabels.clearLayers();return}
- const geo=await epciCommuneGeo(epci);if(!geo?.features||mode!==0||!selection||map.getZoom()<11.25||contextEpci()!==epci)return;
- const view=map.getBounds().pad(.06),visible=[];
- for(const f of geo.features){const at=featureBounds(f).getCenter();if(view.contains(at))visible.push([featureAdminCode(f),f,at])}
- const key=epci+':'+visible.map(x=>x[0]).join(',');
- if(!force&&key===communeLabelKey)return;communeLabelKey=key;communeLabels.clearLayers();
- for(const [,f,at] of visible){const name=f.properties?.nom||f.properties?.name||'';if(name)L.marker(at,{icon:communeLabelIcon(name),interactive:false,zIndexOffset:-60}).addTo(communeLabels)}
+ if(mode!==0||!selection){communeLabelKey='';communeLabels.clearLayers();return}
+ const ctx=await selectedCommuneEpciGeo();
+ if(!ctx||mode!==0||!selection)return;
+ drawCommuneContextLabels(ctx.geo,ctx.epci,force)
 }
 async function updateSubdivisions(force=false){
  const z=map.getZoom();
  if(overviewActive){
-  const key='overview:'+mode;
-  if(!force&&key===subdivisionKey)return;
+  const key='overview:'+mode+':'+(selection?.code||'');
+  if(!force&&key===subdivisionKey){if(mode===0&&selection)updateCommuneLabels();return}
   subdivisionKey=key;subAdmin.clearLayers();communeHits.clearLayers();communeLabelKey='';communeLabels.clearLayers();
   try{
-   if(mode===3&&overviewDeptGeo?.features?.length){
+   if(mode===0&&selection){
+    const ctx=await selectedCommuneEpciGeo();if(key!==subdivisionKey||!overviewActive||mode!==0||!selection)return;
+    if(ctx?.geo?.features?.length){
+     L.geoJSON(ctx.geo,{pane:'subAdminPane',interactive:false,style:communeBoundaryStyle}).addTo(subAdmin);
+     const byCode=new Map(groups().filter(g=>g.items.length&&g.code!=null).map(g=>[String(g.code),g])),
+           clickable={type:'FeatureCollection',features:ctx.geo.features.filter(f=>byCode.has(featureAdminCode(f)))};
+     L.geoJSON(clickable,{
+      pane:'communeHitPane',interactive:true,
+      style:{pane:'communeHitPane',color:'#000000',weight:0,opacity:0,fillColor:'#ffffff',fillOpacity:.001},
+      onEachFeature:(f,l)=>{
+       const code=featureAdminCode(f),g=byCode.get(code),name=featureAdminName(f);if(!g)return;
+       l.bindTooltip(escape(name)+' · '+g.items.length+' exemple'+(g.items.length>1?'s':''),{sticky:true});
+       l.on({
+        mouseover:()=>l.setStyle({color:'#000000',weight:1.55,opacity:1,fillColor:'#ffffff',fillOpacity:.001}),
+        mouseout:()=>l.setStyle({color:'#000000',weight:0,opacity:0,fillColor:'#ffffff',fillOpacity:.001}),
+        click:e=>{L.DomEvent.stopPropagation(e);choose(g,l.getBounds())}
+       })
+      }
+     }).addTo(communeHits);
+     drawCommuneContextLabels(ctx.geo,ctx.epci,true)
+    }
+   }else if(mode===3&&overviewDeptGeo?.features?.length){
     const geo=displayDepartmentOutlineGeo();
     if(geo?.features?.length)L.geoJSON(geo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(.82),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
    }else if(mode===2){
