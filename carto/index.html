@@ -626,7 +626,7 @@ async function getJSONMerged(urls){
  return{type:'FeatureCollection',features}
 }
 function featureAdminCode(f){const p=f?.properties||{};return String(p.code??p.code_insee??p.CODE_INSEE??p.code_epci??p.epci_code??p.code_siren??p.siren_epci??p.code_ept??p.siren??p.SIREN??"")}
-function featureAdminName(f){const p=f?.properties||{};return p.nom||p.name||p.libelle||p.libelle_epci||p.lib_ept||p.territoire||featureAdminCode(f)}
+function featureAdminName(f){const p=f?.properties||{};return p.nom||p.nom_officiel||p.name||p.libelle||p.libelle_epci||p.lib_ept||p.territoire||featureAdminCode(f)}
 
 function compactMapUi(){return matchMedia('(max-width:640px)').matches}
 function adminStroke(v){return compactMapUi()?v*.52:v}
@@ -940,19 +940,20 @@ function loadAdminMeta(){if(metaPromise)return metaPromise;metaPromise=(async()=
        arrondissements=a.status==='fulfilled'&&Array.isArray(a.value)?a.value:[];
  return{departements,regions,arrondissements}
 })();return metaPromise}
+function ignAdmin2026Wfs(layer){return 'https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&OUTPUTFORMAT=application%2Fjson&SRSNAME=EPSG%3A4326&TYPENAMES=ADMINEXPRESS-COG-CARTO-PE.2026:'+encodeURIComponent(layer)+'&COUNT=1000'}
 async function ensureArrGeo(){
  if(arrGeo)return arrGeo;
- const [arr,dep]=await Promise.all([
-  getJSON('https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-version-simplifiee.geojson'),
-  getJSON('https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson').catch(()=>null)
+ arrGeo=await getJSONFallback([
+  ignAdmin2026Wfs('arrondissement'),
+  'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-version-simplifiee.geojson'
  ]);
- arrGeo=arr;arrDeptGeo=dep;
+ arrDeptGeo=deptGeo;
  if(mode===2)drawMainOutline();
  return arrGeo
 }
 function arrondissementDepartmentCode(value){
  const code=String(value?.properties?.code??value?.code??'');
- const explicit=String(value?.properties?.departement??value?.properties?.codeDepartement??value?.departement??value?.codeDepartement??value?.dep??'');
+ const explicit=String(value?.properties?.departement??value?.properties?.codeDepartement??value?.properties?.code_insee_du_departement??value?.properties?.code_departement??value?.departement??value?.codeDepartement??value?.dep??'');
  if(explicit)return explicit;
  if(/^97[1-6]/.test(code))return code.slice(0,3);
  if(/^2[AB]/i.test(code))return code.slice(0,2).toUpperCase();
