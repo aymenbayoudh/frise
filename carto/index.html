@@ -1415,14 +1415,12 @@ function communeClusterSize(total,members){
  return Math.round(Math.max(base,Math.min(mobile?62:58,base+growth)))
 }
 function clusterCommuneGroups(gs,z){
- const view=map.getBounds().pad(.18),radius=communeClusterRadiusPx(z),cell=Math.max(24,radius),
-       buckets=new Map(),clusters=[];
+ const radius=communeClusterRadiusPx(z),cell=Math.max(24,radius),buckets=new Map(),clusters=[];
  const candidates=[];
  for(const g of gs){
   if(!g?.items?.length||!Array.isArray(g.at))continue;
-  const at=overviewPointForCommune(g.code,g.at),ll=L.latLng(at);
-  if(!view.contains(ll))continue;
-  const p=map.latLngToLayerPoint(ll);candidates.push({g,at,p})
+  const at=overviewPointForCommune(g.code,g.at),ll=L.latLng(at),p=map.latLngToLayerPoint(ll);
+  candidates.push({g,at,p})
  }
  candidates.sort((a,b)=>a.p.x-b.p.x||a.p.y-b.p.y);
  const bucketKey=(x,y)=>x+':'+y;
