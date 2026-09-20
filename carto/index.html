@@ -1482,7 +1482,7 @@ function cartGithubUrl(path,ref=true){
 function decodeCartBase64(value){const binary=atob(String(value||'').replace(/\s/g,'')),bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));return new TextDecoder().decode(bytes)}
 function encodeCartBase64(value){const bytes=new TextEncoder().encode(String(value)),chunk=0x8000;let binary='';for(let i=0;i<bytes.length;i+=chunk)binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));return btoa(binary)}
 async function cartGithubGetOptional(path){
- const r=await fetch(cartGithubUrl(path),{headers:cartGithubHeaders(),cache:'no-store'});
+ const r=await fetch(cartGithubUrl(path),{headers:cartGithubHeaders(),cache:'no-cache'});
  if(r.status===404)return null;
  if(r.status===401||r.status===403)throw Error('Token GitHub refusé.');
  if(!r.ok)throw Error(path+' : GitHub HTTP '+r.status);
