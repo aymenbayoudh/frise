@@ -1227,7 +1227,7 @@ function drawAdminHits(){
  }
  if(!overviewActive&&mode>=2){
    for(const d of doms){
-     if(!d.geo)continue;
+     if(d.pacific||!d.geo)continue;
      const code=mode===3?d.region:d.dept,base=mode===3?rg:dg;
      if(adminGeoHasCode(base,code))continue;
      if(compactMapUi()){const b=L.geoJSON(d.geo).getBounds();if(!b.isValid()||!map.getBounds().pad(.28).intersects(b))continue}
@@ -1300,6 +1300,11 @@ function drawAdmin(){
  else if(mode===2){if(dg)geoLayer(dg,admin,true);else if(rg)geoLayer(rg,admin,false)}
  else if(mode===1){if(eg)geoLayer(eg,admin,true);if(!overviewActive)for(const d of doms)if(d.epciGeo?.features?.length)geoLayer(d.epciGeo,admin,true)}
  if(!overviewActive)for(const d of doms){
+   if(d.pacific){
+     const pgeo=mode===3?d.geo:mode===2?d.departmentGeo:null;
+     if(pgeo?.features?.length)geoLayer(pgeo,admin,true);
+     continue
+   }
    if(d.geo&&mode>=2){
      const code=mode===3?d.region:d.dept,baseGeo=mode===3?rg:dg;
      if(!adminGeoHasCode(baseGeo,code)){
