@@ -353,6 +353,137 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
  #paletteMenu .palette-opacity{margin:0 0 2px!important}
  #paletteMenu .color-library-details{margin:2px 0!important}
 }
+
+/* Palette mobile : mise en page plus équilibrée, sans changement fonctionnel. */
+@media(max-width:640px){
+ #paletteMenu.palette-panel{
+   width:264px!important;
+   max-height:70dvh!important;
+   padding:10px!important;
+   border-radius:12px!important;
+   box-shadow:0 12px 34px #17223626!important;
+ }
+ #paletteMenu .palette-head{
+   min-height:28px!important;
+   gap:8px!important;
+   margin:0 0 7px!important;
+   font-size:10px!important;
+ }
+ #paletteMenu .palette-head>strong{
+   font-size:10px!important;
+   line-height:1.15!important;
+ }
+ #paletteMenu .palette-head label{
+   gap:4px!important;
+   font-size:9px!important;
+   white-space:nowrap!important;
+ }
+ #paletteMenu .palette-head select{
+   min-height:26px!important;
+   height:26px!important;
+   padding:2px 20px 2px 6px!important;
+   border-radius:7px!important;
+   font-size:9px!important;
+ }
+
+ #paletteMenu .palette-colors{
+   grid-template-columns:repeat(4,minmax(0,1fr))!important;
+   justify-content:stretch!important;
+   gap:7px!important;
+   margin:0 0 9px!important;
+ }
+ #paletteMenu .palette-colors input[type="color"]{
+   width:100%!important;
+   height:34px!important;
+   min-width:0!important;
+   padding:2px!important;
+   border-radius:7px!important;
+ }
+
+ #paletteMenu .palette-opacity{
+   display:grid!important;
+   grid-template-columns:auto minmax(0,1fr) 38px!important;
+   align-items:center!important;
+   min-height:38px!important;
+   gap:7px!important;
+   margin:0 0 8px!important;
+   padding:6px 0!important;
+   border-top:1px solid #edf0f3!important;
+   border-bottom:1px solid #edf0f3!important;
+   font-size:9px!important;
+   line-height:1.15!important;
+ }
+ #paletteMenu .palette-opacity input[type="range"]{
+   width:100%!important;
+   height:30px!important;
+   min-height:30px!important;
+   margin:0!important;
+ }
+ #paletteMenu .palette-opacity output{
+   justify-self:end!important;
+   margin:0!important;
+   font-size:9px!important;
+   white-space:nowrap!important;
+ }
+
+ #paletteMenu .color-library-details{
+   max-height:150px!important;
+   margin:0 0 8px!important;
+   padding:1px 0!important;
+ }
+ #paletteMenu .color-library-details summary{
+   padding:3px 0!important;
+   font-size:9px!important;
+   line-height:1.2!important;
+ }
+ #paletteMenu .preset-color-library{
+   gap:5px!important;
+   max-height:126px!important;
+   margin-top:5px!important;
+ }
+ #paletteMenu .swatch-group{
+   grid-template-columns:38px minmax(0,1fr)!important;
+   gap:5px!important;
+ }
+ #paletteMenu .swatch-group-label{
+   font-size:7px!important;
+ }
+ #paletteMenu .swatch-grid{
+   gap:3px!important;
+ }
+ #paletteMenu .swatch-grid button{
+   height:15px!important;
+   min-height:15px!important;
+   border-radius:3px!important;
+ }
+
+ #paletteMenu .palette-auto{
+   display:block!important;
+   margin:0 0 8px!important;
+ }
+ #paletteMenu .palette-auto select{
+   width:100%!important;
+   min-height:34px!important;
+   height:34px!important;
+   padding:4px 8px!important;
+   border-radius:8px!important;
+   font-size:10px!important;
+ }
+ #paletteMenu .palette-actions{
+   display:grid!important;
+   grid-template-columns:1fr 1fr!important;
+   gap:7px!important;
+ }
+ #paletteMenu #applyPalette,
+ #paletteMenu #resetPalette{
+   width:100%!important;
+   min-height:38px!important;
+   height:38px!important;
+   padding:5px 8px!important;
+   border-radius:8px!important;
+   font-size:10px!important;
+ }
+}
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto" aria-current="page">Carte</a></nav><div class="header-actions">
 <button id="randomItem" type="button" aria-label="Exemple au hasard" title="Exemple au hasard">🎲</button>
