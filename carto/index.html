@@ -805,8 +805,15 @@ function adminCenterColor(level,code,rank){
    if(rank==='department')return'#25282B';
    return'#555A5E'
  }
- const n=data.filter(d=>d.mode===level&&String(keyOf(d))===String(code)&&tagsPass(d)&&decksPass(d)).length;
- const base=temporaryPaletteActive&&level>=1?densityColor(n):adminLevelColor(level,code);
+ let effectiveLevel=level,effectiveCode=String(code),n=0,base;
+ if(mode===2){
+   effectiveLevel=2;effectiveCode=displayDepartmentCode(effectiveCode);
+   n=data.filter(d=>d.mode===2&&displayDepartmentCode(String(keyOf(d)))===effectiveCode&&tagsPass(d)&&decksPass(d)).length;
+   base=temporaryPaletteActive?densityColor(n):(adminItemFor(2,effectiveCode)?adminLevelColor(2,effectiveCode):defaultColors[2])
+ }else{
+   n=data.filter(d=>d.mode===effectiveLevel&&String(keyOf(d))===effectiveCode&&tagsPass(d)&&decksPass(d)).length;
+   base=temporaryPaletteActive&&effectiveLevel>=1?densityColor(n):adminLevelColor(effectiveLevel,effectiveCode)
+ }
  if(rank==='region')return mixHex(base,'#111827',.25);
  if(rank==='regionSecondary')return mixHex(base,'#FFFFFF',.22);
  if(rank==='department')return mixHex(base,'#172033',.14);
@@ -1271,17 +1278,18 @@ async function addAdminCenterBatch(entries,token){
 }
 async function updateCenters(force=false){
  const z=map.getZoom(),mobile=compactMapUi(),
-       showRegionNames=z>=(mobile&&mode===3?4.7:mobile?5.85:6.15),
+       showRegionNames=z>=(mobile&&mode===3?4.7:mobile&&mode===2?4.7:mobile?5.85:6.15),
        showDeptNames=z>=(mobile?6.65:7.05),
+       showDeptPref=mode===2&&z>=6,
        showSubpref=mode===2&&z>=7,
        showSubprefNames=z>=(mobile?7.35:7.75),
        showRegionDeptSecondary=mode===3&&z>=6,
        showRegionDeptSecondaryNames=z>=(mobile?6.25:6.6);
  let visibleRegions=[],visibleDepts=[],visibleKey='national';
  if(showRegionDeptSecondary)visibleRegions=selection?[String(selection.code)]:visibleCodesFromGeo(regionGeo).sort();
- if(showSubpref)visibleDepts=selection?rawDepartmentCodes(String(selection.code)):visibleCodesFromGeo(deptGeo).sort();
- if(showRegionDeptSecondary||showSubpref)visibleKey=(showRegionDeptSecondary?visibleRegions:visibleDepts).join(',');
- const key=mode+':'+(showRegionNames?'rN':'rD')+':'+(showDeptNames?'dN':'dD')+':'+(showSubprefNames?'sN':'sD')+':'+(showRegionDeptSecondaryNames?'rdN':'rdD')+':'+visibleKey;
+ if(mode===2&&(showDeptPref||showSubpref))visibleDepts=selection?rawDepartmentCodes(String(selection.code)):visibleCodesFromGeo(deptGeo).sort();
+ if(showRegionDeptSecondary||showDeptPref||showSubpref)visibleKey=(showRegionDeptSecondary?visibleRegions:visibleDepts).join(',');
+ const key=mode+':'+(showRegionNames?'rN':'rD')+':'+(showDeptPref?'dP':'d0')+':'+(showDeptNames?'dN':'dD')+':'+(showSubpref?'sP':'s0')+':'+(showSubprefNames?'sN':'sD')+':'+(showRegionDeptSecondaryNames?'rdN':'rdD')+':'+visibleKey;
  if(!force&&key===centerKey)return;centerKey=key;centers.clearLayers();const token=key;
  try{
    const meta=await loadAdminMeta();if(token!==centerKey)return;
@@ -1300,15 +1308,29 @@ async function updateCenters(force=false){
      const wanted=new Set(visibleRegions),visibleDeps=deps.filter(d=>wanted.has(String(d.region??d.codeRegion)));
      await addAdminCenterBatch(visibleDeps.filter(d=>!regionCapitalCodes.has(String(d.chefLieu))).map(d=>({code:d.chefLieu,adminLevel:3,adminCode:String(d.region??d.codeRegion),rank:'regionSecondary',showLabel:showRegionDeptSecondaryNames})),token)
    }else{
-     await addAdminCenterBatch(deps.map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:showDeptNames})),token);
+     // Mode département : 1) préfectures de région dès le même niveau que le mode Région.
+     const regionPrefEntries=[];
+     for(const r of regions){
+       const host=deps.find(d=>String(d.chefLieu||'')===String(r.chefLieu||''));
+       regionPrefEntries.push({code:r.chefLieu,adminLevel:2,adminCode:String(host?.code||''),rank:'region',showLabel:showRegionNames})
+     }
+     await addAdminCenterBatch(regionPrefEntries,token);
+     if(token!==centerKey||!showDeptPref)return;
+
+     // 2) En se rapprochant : les autres préfectures de département visibles.
+     const wanted=new Set(visibleDepts),visibleDeps=deps.filter(d=>wanted.has(String(d.code)));
+     await addAdminCenterBatch(visibleDeps.filter(d=>!regionCapitalCodes.has(String(d.chefLieu))).map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:showDeptNames})),token);
      if(token!==centerKey||!showSubpref)return;
-     const depCapitalByCode=new Map(deps.map(d=>[String(d.code),String(d.chefLieu||'')])),wanted=new Set(visibleDepts);
+
+     // 3) Puis les sous-préfectures, comme auparavant.
+     const depCapitalByCode=new Map(deps.map(d=>[String(d.code),String(d.chefLieu||'')]));
      const arrs=(meta.arrondissements||[]).filter(a=>wanted.has(String(a.departement??a.codeDepartement??a.dep??'')));
      await addAdminCenterBatch(arrs.filter(a=>String(a.chefLieu||'')!==depCapitalByCode.get(String(a.departement??a.codeDepartement??a.dep??''))).map(a=>({code:a.chefLieu,adminLevel:2,adminCode:String(a.departement??a.codeDepartement??a.dep??''),rank:'subpref',showLabel:showSubprefNames})),token)
    }
    if(mode===0&&!selection){renderSide();pointRenderKey='';drawPoints()}
  }catch(e){$('status').textContent='Les contours restent disponibles ; chargement des chefs-lieux à réessayer.'}
 }
+
 let demoAdminSeeded=false,demoEpciSeeded=false,demoNextId=Math.max(0,...data.map(d=>Number(d.id)||0))+1;
 const demoThemes=['Mobilités','Éducation','Patrimoine','Eau','Habitat','Culture','Santé','Action sociale','Politique de la ville','Urbanisme','Réemploi','Nature','Énergie'];
 const demoActions=['un réseau de lieux partagés','un programme de renaturation','un fonds de transformation','un atelier mobile','une plateforme de réemploi','un plan de sobriété','une boucle de mobilités','un observatoire territorial','un dispositif culturel','un programme d’adaptation'];
