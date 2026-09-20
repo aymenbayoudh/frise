@@ -343,9 +343,15 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 .palette-auto{display:block!important}.palette-auto select{width:100%!important}
 .palette-opacity input[type="range"]{height:26px!important}
 @media(pointer:coarse) and (max-width:760px){
- .palette-opacity{grid-template-columns:auto minmax(120px,1fr) 48px;min-height:48px;gap:10px}
- .palette-opacity input[type="range"]{height:44px!important;min-height:44px;touch-action:pan-x}
+ .palette-opacity{grid-template-columns:auto minmax(120px,1fr) 48px;min-height:34px;gap:6px}
+ .palette-opacity input[type="range"]{height:32px!important;min-height:32px;touch-action:pan-x}
  .palette-opacity output{font-size:12px}
+}
+@media(max-width:640px){
+ #paletteMenu.palette-panel{max-height:68dvh!important}
+ #paletteMenu .palette-colors{margin:4px 0 2px!important}
+ #paletteMenu .palette-opacity{margin:0 0 2px!important}
+ #paletteMenu .color-library-details{margin:2px 0!important}
 }
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto" aria-current="page">Carte</a></nav><div class="header-actions">
