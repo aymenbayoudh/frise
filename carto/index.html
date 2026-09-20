@@ -678,7 +678,7 @@ function eventVisibleAtMode(d,target=mode){
  if(d.mode===target)return true;
  const raw=String(keyOf(d)),u=units[d.unit]||{};
  if(target===3&&d.mode===2)return !!overseasByDepartment(raw)||['987','988'].includes(String(u.region||''));
- if(target===2&&d.mode===3)return !!overseasByRegion(raw);
+ if(target===2&&d.mode===3)return !['987','988'].includes(raw)&&!!overseasByRegion(raw);
  return false
 }
 
