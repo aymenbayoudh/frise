@@ -488,29 +488,45 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
  }
 }
 
-/* Paramètres d’affichage : même grammaire visuelle que le panneau Paramètres de la frise. */
-.cart-settings-panel{position:fixed;z-index:1901;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:min(520px,calc(100vw - 24px));padding:18px;background:#fff;border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow)}
-.cart-settings-panel h2{margin:0 0 14px;font-size:1rem}
-.cart-settings-panel .settings-grid{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
-.cart-settings-panel .settings-grid>span{font-size:.85rem;font-weight:650}
-.settings-color-control{display:grid;grid-template-columns:52px 92px;gap:7px;align-items:center}
-.settings-color-control input[type="color"]{width:52px;height:38px;padding:2px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
-.settings-color-control input[type="text"]{width:92px;min-height:38px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase}
-.cart-settings-panel .settings-hint{margin:14px 0 0;padding-top:10px;border-top:1px solid #edf0f4;color:var(--muted);font-size:.7rem;line-height:1.35}
-.cart-settings-panel .batch-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:14px}
-.cart-settings-panel .batch-actions button{min-height:38px;padding:7px 12px}
+/* Paramètres d’affichage : panneau compact, cohérent avec les autres outils. */
+.cart-settings-panel{position:fixed;z-index:1901;inset:50% auto auto 50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;width:min(620px,calc(100vw - 24px));max-height:min(88dvh,780px);padding:18px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.cart-settings-panel h2{flex:0 0 auto;margin:0 0 12px;font-size:1rem}
+.cart-settings-scroll{min-height:0;overflow:auto;padding:2px 5px 2px 1px}
+.settings-section-title{margin:4px 0 9px;color:var(--ink);font-size:.78rem;font-weight:750;letter-spacing:.01em}
+.settings-section-title:not(:first-child){margin-top:17px;padding-top:14px;border-top:1px solid #edf0f4}
+.cart-settings-panel .settings-grid{display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:9px 14px;align-items:center}
+.cart-settings-panel .settings-grid>span{font-size:.8rem;font-weight:620;line-height:1.2}
+.settings-color-control{display:grid;grid-template-columns:48px 88px;gap:7px;align-items:center}
+.settings-color-control input[type="color"]{width:48px;height:36px;padding:2px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
+.settings-color-control input[type="text"]{width:88px;height:36px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase}
+.settings-mode-block{margin:0 0 9px;padding:9px 10px 10px;border:1px solid #e6ebf0;border-radius:10px;background:#fafbfd}
+.settings-mode-block>strong{display:block;margin:0 0 8px;color:#344451;font-size:.72rem;font-weight:750}
+.settings-stroke-grid{gap:7px 12px!important}
+.settings-stroke-control{display:flex;align-items:center;justify-content:flex-end;gap:5px}
+.settings-stroke-control input{width:72px;height:34px;padding:5px 7px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:right}
+.settings-stroke-control small{width:16px;color:var(--muted);font-size:10px}
+.cart-settings-panel input:focus{outline:2px solid #94aee8;outline-offset:1px}
+.cart-settings-panel .settings-hint{margin:12px 0 2px;padding-top:10px;border-top:1px solid #edf0f4;color:var(--muted);font-size:.68rem;line-height:1.35}
+.cart-settings-panel .batch-actions{flex:0 0 auto;display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:8px;margin:14px -18px -18px;padding:12px 18px;background:#fff;border-top:1px solid #e6ebf0}
+.cart-settings-panel .batch-actions button{height:38px;min-height:38px;padding:0 13px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-size:.78rem;font-weight:650;line-height:1}
+.cart-settings-panel .batch-actions button:hover{background:#f3f6f9}
 .cart-settings-panel .batch-actions .primary{color:#fff;background:var(--ink);border-color:var(--ink)}
-.cart-settings-panel .settings-actions-spacer{flex:1}
-#settingsReset{color:var(--muted)}
+.cart-settings-panel .batch-actions .primary:hover{background:#263846}
+#settingsReset{color:#65727d;background:#f8fafc}
 @media(max-width:640px){
- .cart-settings-panel{width:calc(100vw - 20px);padding:16px;border-radius:13px}
- .cart-settings-panel .settings-grid{gap:10px 8px}
- .cart-settings-panel .settings-grid>span{font-size:.78rem}
- .settings-color-control{grid-template-columns:46px 82px;gap:6px}
- .settings-color-control input[type="color"]{width:46px;height:36px}
- .settings-color-control input[type="text"]{width:82px;min-height:36px;padding:6px;font-size:11px}
- .cart-settings-panel .batch-actions{gap:6px}
- .cart-settings-panel .batch-actions button{min-height:36px;padding:6px 9px;font-size:.75rem}
+ .cart-settings-panel{width:calc(100vw - 16px);max-height:90dvh;padding:14px;border-radius:13px}
+ .cart-settings-panel h2{margin-bottom:10px}
+ .cart-settings-panel .settings-grid{grid-template-columns:minmax(0,1fr) auto;gap:8px 8px}
+ .cart-settings-panel .settings-grid>span{font-size:.74rem}
+ .settings-color-control{grid-template-columns:42px 78px;gap:5px}
+ .settings-color-control input[type="color"]{width:42px;height:34px}
+ .settings-color-control input[type="text"]{width:78px;height:34px;padding:5px 6px;font-size:10px}
+ .settings-mode-block{padding:8px}
+ .settings-stroke-control input{width:64px;height:32px;font-size:11px}
+ .cart-settings-panel .batch-actions{grid-template-columns:1fr 1fr;margin:12px -14px -14px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));gap:7px}
+ .cart-settings-panel .settings-actions-spacer{display:none}
+ .cart-settings-panel .batch-actions button{width:100%;height:36px;min-height:36px;padding:0 8px;font-size:.72rem}
+ #settingsReset{grid-column:1/-1}
 }
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto" aria-current="page">Carte</a></nav><div class="header-actions">
@@ -568,13 +584,42 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 <div id="settingsScrim" class="editor-scrim" hidden></div>
 <section id="cartSettingsPanel" class="cart-settings-panel" hidden aria-label="Paramètres d’affichage">
   <h2>Paramètres d’affichage</h2>
-  <div class="settings-grid base-color-settings">
-    <span>Communes</span><div class="settings-color-control"><input id="settingBaseColor0" type="color" aria-label="Couleur de base des communes"><input id="settingBaseColorCode0" type="text" maxlength="7" aria-label="Code couleur des communes"></div>
-    <span>Groupements</span><div class="settings-color-control"><input id="settingBaseColor1" type="color" aria-label="Couleur de base des groupements"><input id="settingBaseColorCode1" type="text" maxlength="7" aria-label="Code couleur des groupements"></div>
-    <span>Départements</span><div class="settings-color-control"><input id="settingBaseColor2" type="color" aria-label="Couleur de base des départements"><input id="settingBaseColorCode2" type="text" maxlength="7" aria-label="Code couleur des départements"></div>
-    <span>Régions</span><div class="settings-color-control"><input id="settingBaseColor3" type="color" aria-label="Couleur de base des régions"><input id="settingBaseColorCode3" type="text" maxlength="7" aria-label="Code couleur des régions"></div>
+  <div class="settings-scroll">
+    <h3 class="settings-section-title">Couleurs de base</h3>
+    <div class="settings-grid base-color-settings">
+      <span>Communes</span><div class="settings-color-control"><input id="settingBaseColor0" type="color" aria-label="Couleur de base des communes"><input id="settingBaseColorCode0" type="text" maxlength="7" aria-label="Code couleur des communes"></div>
+      <span>Groupements</span><div class="settings-color-control"><input id="settingBaseColor1" type="color" aria-label="Couleur de base des groupements"><input id="settingBaseColorCode1" type="text" maxlength="7" aria-label="Code couleur des groupements"></div>
+      <span>Départements</span><div class="settings-color-control"><input id="settingBaseColor2" type="color" aria-label="Couleur de base des départements"><input id="settingBaseColorCode2" type="text" maxlength="7" aria-label="Code couleur des départements"></div>
+      <span>Régions</span><div class="settings-color-control"><input id="settingBaseColor3" type="color" aria-label="Couleur de base des régions"><input id="settingBaseColorCode3" type="text" maxlength="7" aria-label="Code couleur des régions"></div>
+    </div>
+
+    <h3 class="settings-section-title">Épaisseur des limites</h3>
+    <div class="settings-mode-block"><strong>Mode Communes</strong><div class="settings-grid settings-stroke-grid">
+      <span>Communes avec exemples</span><label class="settings-stroke-control"><input id="settingStrokeCommuneExample" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des communes avec exemples en mode Communes"><small>px</small></label>
+      <span>Communes voisines (EPCI)</span><label class="settings-stroke-control"><input id="settingStrokeCommuneNeighbor" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des communes voisines en mode Communes"><small>px</small></label>
+      <span>Arrondissements</span><label class="settings-stroke-control"><input id="settingStrokeCommuneArrondissement" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des arrondissements en mode Communes"><small>px</small></label>
+      <span>Départements</span><label class="settings-stroke-control"><input id="settingStrokeCommuneDepartement" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des départements en mode Communes"><small>px</small></label>
+      <span>Régions</span><label class="settings-stroke-control"><input id="settingStrokeCommuneRegion" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des régions en mode Communes"><small>px</small></label>
+    </div></div>
+
+    <div class="settings-mode-block"><strong>Mode Groupements</strong><div class="settings-grid settings-stroke-grid">
+      <span>Groupements</span><label class="settings-stroke-control"><input id="settingStrokeIntercoGroupement" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des groupements en mode Groupements"><small>px</small></label>
+      <span>Régions</span><label class="settings-stroke-control"><input id="settingStrokeIntercoRegion" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des régions en mode Groupements"><small>px</small></label>
+    </div></div>
+
+    <div class="settings-mode-block"><strong>Mode Départements</strong><div class="settings-grid settings-stroke-grid">
+      <span>Arrondissements</span><label class="settings-stroke-control"><input id="settingStrokeDepartementArrondissement" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des arrondissements en mode Départements"><small>px</small></label>
+      <span>Départements</span><label class="settings-stroke-control"><input id="settingStrokeDepartementDepartement" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des départements en mode Départements"><small>px</small></label>
+      <span>Régions</span><label class="settings-stroke-control"><input id="settingStrokeDepartementRegion" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des régions en mode Départements"><small>px</small></label>
+    </div></div>
+
+    <div class="settings-mode-block"><strong>Mode Régions</strong><div class="settings-grid settings-stroke-grid">
+      <span>Départements</span><label class="settings-stroke-control"><input id="settingStrokeRegionDepartement" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des départements en mode Régions"><small>px</small></label>
+      <span>Régions</span><label class="settings-stroke-control"><input id="settingStrokeRegionRegion" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des régions en mode Régions"><small>px</small></label>
+    </div></div>
+
+    <p class="settings-hint">Les valeurs correspondent à l’affichage ordinateur. Sur téléphone, elles sont automatiquement réduites selon les coefficients actuels. Couleurs et épaisseurs sont conservées au rechargement et synchronisées avec l’accès privé.</p>
   </div>
-  <p class="settings-hint">Ces couleurs pilotent les dégradés de base, les aplats et les légendes. Elles sont conservées au rechargement et synchronisées avec l’accès privé.</p>
   <div class="batch-actions"><button id="settingsReset" type="button">Valeurs par défaut</button><span class="settings-actions-spacer"></span><button id="settingsCancel" type="button">Annuler</button><button id="settingsApply" class="primary" type="button">Appliquer</button></div>
 </section>
 <div id="editorScrim" class="editor-scrim" hidden></div>
@@ -682,12 +727,30 @@ function eventVisibleAtMode(d,target=mode){
  return false
 }
 
-const CART_DATA_KEY='cartographie-v2:data',CART_FILTER_KEY='cartographie-v2:filters',CART_BASE_COLORS_KEY='cartographie-v4:base-colors',SHARED_GITHUB_KEY='frise-private-github-v1',CART_CLOUD_UPDATED_KEY='cartographie-v3:cloud-state-updated',CART_GITHUB_OWNER='aymenbayoudh',CART_GITHUB_REPO='frise-data',CART_GITHUB_BRANCH='main',CART_GITHUB_FILE='carto.csv',CART_GITHUB_STATE_FILE='carto-user-state.json';
+const CART_DATA_KEY='cartographie-v2:data',CART_FILTER_KEY='cartographie-v2:filters',CART_BASE_COLORS_KEY='cartographie-v4:base-colors',CART_STROKES_KEY='cartographie-v1:boundary-strokes',SHARED_GITHUB_KEY='frise-private-github-v1',CART_CLOUD_UPDATED_KEY='cartographie-v3:cloud-state-updated',CART_GITHUB_OWNER='aymenbayoudh',CART_GITHUB_REPO='frise-data',CART_GITHUB_BRANCH='main',CART_GITHUB_FILE='carto.csv',CART_GITHUB_STATE_FILE='carto-user-state.json';
 let cartGithubMode=false,cartGithubConfig=null,cartPrivateDataSha=null,cartGithubSyncChain=Promise.resolve(),cartCloudTimer=null,applyingCartCloudState=false,cartDataDirty=false;
 const modeKeys=['commune','interco','departement','region'],BASE_COLOR_DEFAULTS=['#A8D93F','#245C3D','#D65A94','#1B83B2'];
+const STROKE_DEFAULTS={
+ commune:{communeExample:1.65,communeNeighbor:1.05,arrondissement:1,departement:1.1,region:1.45},
+ interco:{groupement:.525,region:1.45},
+ departement:{arrondissement:.9,departement:1.4,region:1.8},
+ region:{departement:.72,region:1.4}
+};
+const STROKE_SETTINGS_ROWS=[
+ ['commune','communeExample','settingStrokeCommuneExample'],['commune','communeNeighbor','settingStrokeCommuneNeighbor'],['commune','arrondissement','settingStrokeCommuneArrondissement'],['commune','departement','settingStrokeCommuneDepartement'],['commune','region','settingStrokeCommuneRegion'],
+ ['interco','groupement','settingStrokeIntercoGroupement'],['interco','region','settingStrokeIntercoRegion'],
+ ['departement','arrondissement','settingStrokeDepartementArrondissement'],['departement','departement','settingStrokeDepartementDepartement'],['departement','region','settingStrokeDepartementRegion'],
+ ['region','departement','settingStrokeRegionDepartement'],['region','region','settingStrokeRegionRegion']
+];
 function normalizeBaseColorValue(c,fallback){return /^#[0-9A-F]{6}$/i.test(String(c||''))?String(c).toUpperCase():fallback}
 function normalizeBaseColors(values){return BASE_COLOR_DEFAULTS.map((fallback,i)=>normalizeBaseColorValue(Array.isArray(values)?values[i]:'',fallback))}
+function normalizeStrokeValue(v,fallback){const n=Number(v);return Number.isFinite(n)?Math.max(.1,Math.min(6,Math.round(n*100)/100)):fallback}
+function normalizeBoundaryStrokes(values){
+ const out={};for(const [modeKey,defaults] of Object.entries(STROKE_DEFAULTS)){out[modeKey]={};for(const [kind,fallback] of Object.entries(defaults))out[modeKey][kind]=normalizeStrokeValue(values?.[modeKey]?.[kind],fallback)}return out
+}
 let defaultColors=(()=>{try{return normalizeBaseColors(JSON.parse(localStorage.getItem(CART_BASE_COLORS_KEY)||'null'))}catch{return[...BASE_COLOR_DEFAULTS]}})();
+let boundaryStrokes=(()=>{try{return normalizeBoundaryStrokes(JSON.parse(localStorage.getItem(CART_STROKES_KEY)||'null'))}catch{return normalizeBoundaryStrokes(null)}})();
+function strokeSetting(level,kind){const key=typeof level==='number'?modeKeys[level]:String(level||'');return boundaryStrokes?.[key]?.[kind]??STROKE_DEFAULTS?.[key]?.[kind]??1}
 function demoDeckPaths(theme,level,index=0){
  const primary={
   'Santé':'OGCT::Solidarité::Santé',
@@ -1232,7 +1295,7 @@ function shade(n,code=''){
  return mixHex('#ffffff',unitDisplayColor(code),n===1?.18:n===2?.34:n===3?.5:n<=5?.68:.88)
 }
 function countCode(code){return groupByCode(code)?.items?.length||0;}
-function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom(),rawBase=mode>=2?1.4:mode===1?.525:.8,mgpSelected=mode===1&&String(selection?.code||'')===GRAND_PARIS_CODE;if(mgpSelected&&(f?.properties?._ept||f?.properties?._mgpParis))return{color:'#000000',weight:0,fillColor:'#ffffff',fillOpacity:0,opacity:0};let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=primaryAdminStroke(rawBase),mergedPart=mode===2&&!!f?.properties?._mergedDeptPart;if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));const selectedWeight=primaryAdminStroke(mode===1?2.15:Math.max(4.3,rawBase+2.4));return {color:selected?'#000000':'#090B0D',weight:mergedPart?0:(selected?selectedWeight:baseWeight),fillColor:shade(n,code),fillOpacity,opacity:1};}
+function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom(),rawBase=mode===3?strokeSetting(3,'region'):mode===2?strokeSetting(2,'departement'):mode===1?strokeSetting(1,'groupement'):strokeSetting(0,'communeExample'),mgpSelected=mode===1&&String(selection?.code||'')===GRAND_PARIS_CODE;if(mgpSelected&&(f?.properties?._ept||f?.properties?._mgpParis))return{color:'#000000',weight:0,fillColor:'#ffffff',fillOpacity:0,opacity:0};let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=primaryAdminStroke(rawBase),mergedPart=mode===2&&!!f?.properties?._mergedDeptPart;if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));const selectedWeight=primaryAdminStroke(rawBase*(mode===1?4.1:3.07));return {color:selected?'#000000':'#090B0D',weight:mergedPart?0:(selected?selectedWeight:baseWeight),fillColor:shade(n,code),fillOpacity,opacity:1};}
 const SATELLITE_ZOOM_THRESHOLD=OVERVIEW_OVERSEAS_HANDOFF_ZOOM;
 function updateBasemap(){
  // Satellite depends on geographic zoom, not on whether the lightweight
@@ -1444,8 +1507,8 @@ function drawAdminHits(){
  }
 }
 function mainOutlineStyle(f){
- const code=featureAdminCode(f),selected=mode>=1&&selection&&String(selection.code)===code,rawBase=mode>=2?1.45:mode===1?.54:.85;
- const base=primaryAdminStroke(rawBase),selectedWeight=primaryAdminStroke(mode===1?2.18:Math.max(4.35,rawBase+2.45));
+ const code=featureAdminCode(f),selected=mode>=1&&selection&&String(selection.code)===code,rawBase=mode===3?strokeSetting(3,'region'):mode===2?strokeSetting(2,'departement'):mode===1?strokeSetting(1,'groupement'):strokeSetting(0,'communeExample');
+ const base=primaryAdminStroke(rawBase),selectedWeight=primaryAdminStroke(rawBase*(mode===1?4.1:3.07));
  return {pane:'mainOutlinePane',color:'#000000',weight:selected?selectedWeight:base,opacity:1,fill:false,fillOpacity:0}
 }
 function restyleMainOutline(layer){if(layer.feature&&layer.setStyle)layer.setStyle(mainOutlineStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleMainOutline)}
@@ -1492,14 +1555,14 @@ function drawOverseasContext(target=contextAdmin){
  for(const d of doms){
    const geo=d.geo||d.detailGeo;if(!geo?.features?.length)continue;
    const boundary=overseasOuterBoundary(geo);if(!boundary)continue;
-   const weight=mode===0?2.15:mode===1?1.7:mode===2?2.25:2.05;
+   const weight=strokeSetting(mode,'region');
    L.geoJSON(boundary,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#000000',weight:adminStroke(weight),opacity:1,fill:false,fillOpacity:0}}).addTo(target)
  }
 }
 function drawContextAdmin(){
  contextAdmin.clearLayers();const rg=displayRegionGeo(),dg=displayDepartmentRenderGeo();
- if(mode<=2&&rg)L.geoJSON(rg,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:mode===1?'#000000':mode===2?'#050607':'#090B0D',weight:adminStroke(mode===2?1.8:1.45),opacity:1,fillOpacity:0}}).addTo(contextAdmin);
- if(mode===0&&dg)L.geoJSON(dg,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#0B0D0F',weight:adminStroke(1.1),opacity:1,fillOpacity:0}}).addTo(contextAdmin);
+ if(mode<=2&&rg)L.geoJSON(rg,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:mode===1?'#000000':mode===2?'#050607':'#090B0D',weight:adminStroke(strokeSetting(mode,'region')),opacity:1,fillOpacity:0}}).addTo(contextAdmin);
+ if(mode===0&&dg)L.geoJSON(dg,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#0B0D0F',weight:adminStroke(strokeSetting(0,'departement')),opacity:1,fillOpacity:0}}).addTo(contextAdmin);
  drawOverseasContext(contextAdmin)
 }
 function drawAdmin(){
@@ -1520,12 +1583,12 @@ function drawAdmin(){
        const n=domItems(d).length,boundary=overseasOuterBoundary(d.geo),fillOpacity=temporaryPaletteActive?temporaryPaletteOpacity:(mode===3?.68:.64);
        const mapped={type:'FeatureCollection',features:(d.geo.features||[]).map(f=>({...f,properties:{...(f.properties||{}),code,nom:d.name}}))};
        L.geoJSON(mapped,{interactive:true,style:{color:'transparent',weight:0,opacity:0,fillColor:shade(n,code),fillOpacity},onEachFeature:(_,l)=>{l.bindTooltip(escape(d.name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on('click',()=>{const g=groupByCode(code);choose(g||{key:'empty-'+code,name:d.name,code,items:[],at:d.at},l.getBounds())})}}).addTo(admin);
-       if(boundary)L.geoJSON(boundary,{pane:'mainOutlinePane',interactive:false,style:{pane:'mainOutlinePane',color:'#000000',weight:adminStroke(1.15),opacity:1,fill:false,fillOpacity:0}}).addTo(mainOutline)
+       if(boundary)L.geoJSON(boundary,{pane:'mainOutlinePane',interactive:false,style:{pane:'mainOutlinePane',color:'#000000',weight:primaryAdminStroke(strokeSetting(mode,mode===2?'departement':'region')),opacity:1,fill:false,fillOpacity:0}}).addTo(mainOutline)
      }
    }else if(mode===3&&d.regionOnly){
-     const n=domItems(d).length,c=L.circle(d.at,{radius:d.radius||120000,color:'#111315',weight:adminStroke(1.25),fillColor:shade(n,d.region),fillOpacity:.68}).addTo(admin);
+     const regionWeight=primaryAdminStroke(strokeSetting(3,'region')),n=domItems(d).length,c=L.circle(d.at,{radius:d.radius||120000,color:'#111315',weight:regionWeight,fillColor:shade(n,d.region),fillOpacity:.68}).addTo(admin);
      c.bindTooltip(escape(d.name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
-     c.on({mouseover:e=>{c.openTooltip(e.latlng);c.setStyle({weight:adminStroke(2.5),color:'#000000'})},mouseout:()=>{c.closeTooltip();c.setStyle({weight:adminStroke(1.25),color:'#111315'})},click:()=>{const g=groupByCode(d.region);choose(g||{key:'empty-'+d.region,name:d.name,code:d.region,items:[],at:d.at},c.getBounds())}})
+     c.on({mouseover:e=>{c.openTooltip(e.latlng);c.setStyle({weight:regionWeight*1.8,color:'#000000'})},mouseout:()=>{c.closeTooltip();c.setStyle({weight:regionWeight,color:'#111315'})},click:()=>{const g=groupByCode(d.region);choose(g||{key:'empty-'+d.region,name:d.name,code:d.region,items:[],at:d.at},c.getBounds())}})
    }
  }
  drawMainOutline();drawSelectedGroupOverlay();drawContextAdmin();drawAdminHits()
@@ -1830,8 +1893,8 @@ async function communeOutlineGeo(code){
  communeOutlineGeoCache.set(code,p);return p
 }
 function communeDataStyle(code){
- const g=groupByCode(code),selected=!!selection&&String(selection.code)===String(code),n=g?.items?.length||0,color=n?densityContinuousColor(n):defaultColors[0];
- return{pane:'communeDataPane',color:'#090B0D',weight:selected?3.1:1.65,opacity:1,fillColor:color,fillOpacity:selected?.46:.34}
+ const g=groupByCode(code),selected=!!selection&&String(selection.code)===String(code),n=g?.items?.length||0,color=n?densityContinuousColor(n):defaultColors[0],base=adminStroke(strokeSetting(0,'communeExample'));
+ return{pane:'communeDataPane',color:'#090B0D',weight:selected?base*1.88:base,opacity:1,fillColor:color,fillOpacity:selected?.46:.34}
 }
 function individualizedCommuneTargets(){
  if(mode!==0)return[];
@@ -1858,7 +1921,7 @@ async function updateCommuneDataLayer(force=false){
     L.geoJSON(feature,{pane:'communeDataPane',interactive:true,style:()=>communeDataStyle(g.code),onEachFeature:(_,l)=>{
       l.bindTooltip(escape(g.name)+' · '+g.items.length+' exemple'+(g.items.length>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
       l.on({
-       mouseover:e=>{l.openTooltip(e.latlng);l.setStyle({...communeDataStyle(g.code),weight:3.25,fillOpacity:.44})},
+       mouseover:e=>{l.openTooltip(e.latlng);l.setStyle({...communeDataStyle(g.code),weight:adminStroke(strokeSetting(0,'communeExample'))*1.97,fillOpacity:.44})},
        mouseout:()=>{l.closeTooltip();l.setStyle(communeDataStyle(g.code))},
        click:e=>{L.DomEvent.stopPropagation(e);chooseCommune(g,l.getBounds())}
       })
@@ -1910,8 +1973,8 @@ async function epciCommuneGeo(code){
 function communeLabelIcon(name){return L.divIcon({className:'commune-name-label',iconSize:null,html:'<span>'+escape(name)+'</span>'})}
 function selectedCommuneCode(){return mode===0&&selection?.code?String(selection.code):''}
 function communeBoundaryStyle(f){
- const code=featureAdminCode(f),selected=code&&code===selectedCommuneCode();
- return{pane:'subAdminPane',color:selected?'#000000':'#111820',weight:selected?2.2:1.05,opacity:selected?1:.9,fillOpacity:0}
+ const code=featureAdminCode(f),selected=code&&code===selectedCommuneCode(),base=adminStroke(strokeSetting(0,'communeNeighbor'));
+ return{pane:'subAdminPane',color:selected?'#000000':'#111820',weight:selected?base*2.1:base,opacity:selected?1:.9,fillOpacity:0}
 }
 async function selectedCommuneEpciGeo(){
  if(mode!==0||!selection)return null;
@@ -1971,10 +2034,10 @@ async function updateSubdivisions(force=false){
     }
    }else if(mode===3&&overviewDeptGeo?.features?.length){
     const geo=displayDepartmentOutlineGeo();
-    if(geo?.features?.length)L.geoJSON(geo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(.72),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
+    if(geo?.features?.length)L.geoJSON(geo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(strokeSetting(3,'departement')),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
    }else if(mode===2){
     const geo=filteredOverviewGeo(await ensureOverviewArrGeo());if(key!==subdivisionKey||!overviewActive||mode!==2)return;
-    if(geo?.features?.length)L.geoJSON(geo,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(.9),opacity:1,fillOpacity:0}}).addTo(subAdmin)
+    if(geo?.features?.length)L.geoJSON(geo,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(strokeSetting(2,'arrondissement')),opacity:1,fillOpacity:0}}).addTo(subAdmin)
    }
   }catch(e){if(subdivisionKey===key)subdivisionKey='';console.warn('Sous-divisions CARTO PLUS indisponibles',e)}
   return
@@ -1987,7 +2050,7 @@ async function updateSubdivisions(force=false){
   if(!force&&key===subdivisionKey)return;subdivisionKey=key;subAdmin.clearLayers();communeHits.clearLayers();communeLabelKey='';communeLabels.clearLayers();
   // At department/province scale there is no extra commune mesh: only the
   // department-like subdivisions are shown one level up, in region mode.
-  if(mode===3&&focusedOverseas.departmentGeo?.features?.length)L.geoJSON(focusedOverseas.departmentGeo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#0C1014',weight:adminStroke(.72),opacity:1,fillOpacity:0}}).addTo(subAdmin);
+  if(mode===3&&focusedOverseas.departmentGeo?.features?.length)L.geoJSON(focusedOverseas.departmentGeo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#0C1014',weight:adminStroke(strokeSetting(3,'departement')),opacity:1,fillOpacity:0}}).addTo(subAdmin);
   return
  }
  const overseasArrFocus=(mode===0||mode===2)&&!!focusedOverseas?.departmentArrondissements;
@@ -2010,7 +2073,7 @@ async function updateSubdivisions(force=false){
  subdivisionKey=key;subAdmin.clearLayers();communeHits.clearLayers();
  try{
    if(showRegionDepartments&&deptGeo){
-     L.geoJSON(deptGeo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(.72),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
+     L.geoJSON(deptGeo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(strokeSetting(3,'departement')),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
    }
    if(showArrondissements&&arrWanted.length){
      const requiredDept=overseasArrFocus?String(focusedOverseas.dept):'',
@@ -2018,7 +2081,7 @@ async function updateSubdivisions(force=false){
      if(key!==subdivisionKey)return;
      if(!geo?.features?.length){subdivisionKey='';return}
      const wanted=new Set(arrWanted),filtered={type:'FeatureCollection',features:geo.features.filter(f=>wanted.has(arrondissementDepartmentCode(f)))};
-     if(filtered.features.length)L.geoJSON(filtered,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(mode===0?1:.9),opacity:1,fillOpacity:0}}).addTo(subAdmin);
+     if(filtered.features.length)L.geoJSON(filtered,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(mode===0?strokeSetting(0,'arrondissement'):strokeSetting(2,'arrondissement')),opacity:1,fillOpacity:0}}).addTo(subAdmin);
      else subdivisionKey=''
    }
    if(epci){
@@ -2943,7 +3006,7 @@ function queueCartDataSync(force=false){
 }
 function localCartCloudUpdated(){return Math.max(0,Number(localStorage.getItem(CART_CLOUD_UPDATED_KEY))||0)}
 function hasLocalCartCloudState(){
- return !!(localStorage.getItem(CART_FILTER_KEY)||localStorage.getItem(CART_GAME_ERROR_KEY)||localStorage.getItem(CART_GAME_RECENT_KEY)||localStorage.getItem(CART_GAME_KEY)||localStorage.getItem(SIDE_WIDTH_KEY)||localStorage.getItem(CART_BASE_COLORS_KEY))
+ return !!(localStorage.getItem(CART_FILTER_KEY)||localStorage.getItem(CART_GAME_ERROR_KEY)||localStorage.getItem(CART_GAME_RECENT_KEY)||localStorage.getItem(CART_GAME_KEY)||localStorage.getItem(SIDE_WIDTH_KEY)||localStorage.getItem(CART_BASE_COLORS_KEY)||localStorage.getItem(CART_STROKES_KEY))
 }
 function markCartCloudStateDirty(){
  if(applyingCartCloudState)return;
@@ -2956,7 +3019,7 @@ function scheduleCartCloudSync(delay=7000){
  cartCloudTimer=setTimeout(()=>{cartCloudTimer=null;syncCartCloudStateToGitHub().catch(()=>{})},Math.max(0,delay))
 }
 function collectCartCloudState(){
- return{version:5,updatedAt:localCartCloudUpdated()||Date.now(),filters:{initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors]}
+ return{version:6,updatedAt:localCartCloudUpdated()||Date.now(),filters:{initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors],boundaryStrokes:normalizeBoundaryStrokes(boundaryStrokes)}
 }
 function applyCartCloudState(state){
  if(!state||typeof state!=='object')return;applyingCartCloudState=true;
@@ -2973,6 +3036,7 @@ function applyCartCloudState(state){
   if(Number.isInteger(Number(state.mode)))mode=Math.max(0,Math.min(3,Number(state.mode)));
   if(Number(state.sideWidth))localStorage.setItem(SIDE_WIDTH_KEY,String(state.sideWidth));
   if(Array.isArray(state.baseColors)){defaultColors=normalizeBaseColors(state.baseColors);localStorage.setItem(CART_BASE_COLORS_KEY,JSON.stringify(defaultColors))}
+  if(state.boundaryStrokes){boundaryStrokes=normalizeBoundaryStrokes(state.boundaryStrokes);localStorage.setItem(CART_STROKES_KEY,JSON.stringify(boundaryStrokes))}
   localStorage.setItem(CART_CLOUD_UPDATED_KEY,String(Math.max(0,Number(state.updatedAt)||Date.now())))
  }finally{applyingCartCloudState=false}
 }
@@ -3137,12 +3201,21 @@ function setSettingsColorRow(i,color){
  const value=normalizeBaseColorValue(color,BASE_COLOR_DEFAULTS[i]),picker=$('settingBaseColor'+i),code=$('settingBaseColorCode'+i);
  if(picker)picker.value=value;if(code)code.value=value
 }
+function formatStrokeInput(v){return String(Math.round(Number(v)*100)/100)}
+function setSettingsStrokeRows(values=boundaryStrokes){
+ for(const [modeKey,kind,id] of STROKE_SETTINGS_ROWS){const input=$(id);if(input)input.value=formatStrokeInput(normalizeStrokeValue(values?.[modeKey]?.[kind],STROKE_DEFAULTS[modeKey][kind]))}
+}
+function readSettingsStrokeRows(){
+ const next=normalizeBoundaryStrokes(null);
+ for(const [modeKey,kind,id] of STROKE_SETTINGS_ROWS)next[modeKey][kind]=normalizeStrokeValue($(id)?.value,STROKE_DEFAULTS[modeKey][kind]);
+ return next
+}
 function openCartSettings(){
- closeTools();for(let i=0;i<4;i++)setSettingsColorRow(i,defaultColors[i]);
+ closeTools();for(let i=0;i<4;i++)setSettingsColorRow(i,defaultColors[i]);setSettingsStrokeRows(boundaryStrokes);
  $('settingsScrim').hidden=false;$('cartSettingsPanel').hidden=false
 }
 function closeCartSettings(){$('settingsScrim').hidden=true;$('cartSettingsPanel').hidden=true}
-function refreshBaseColorDisplay(){
+function refreshDisplaySettings(){
  temporaryPaletteActive=false;temporaryPaletteAssignments.clear();pointRenderKey='';communeDataKey='';centerKey='';subdivisionKey='';
  updateScalePaletteColor();drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true)
 }
@@ -3152,13 +3225,16 @@ for(let i=0;i<4;i++){
  code.oninput=()=>{const raw=code.value.trim();if(/^#[0-9A-F]{6}$/i.test(raw))picker.value=raw};
  code.onblur=()=>setSettingsColorRow(i,code.value)
 }
+for(const [modeKey,kind,id] of STROKE_SETTINGS_ROWS){const input=$(id);if(input)input.onblur=()=>{input.value=formatStrokeInput(normalizeStrokeValue(input.value,STROKE_DEFAULTS[modeKey][kind]))}}
 $('openSettingsButton').onclick=openCartSettings;
 $('settingsCancel').onclick=closeCartSettings;
 $('settingsScrim').onclick=closeCartSettings;
-$('settingsReset').onclick=()=>{for(let i=0;i<4;i++)setSettingsColorRow(i,BASE_COLOR_DEFAULTS[i])};
+$('settingsReset').onclick=()=>{for(let i=0;i<4;i++)setSettingsColorRow(i,BASE_COLOR_DEFAULTS[i]);setSettingsStrokeRows(STROKE_DEFAULTS)};
 $('settingsApply').onclick=()=>{
  const next=BASE_COLOR_DEFAULTS.map((fallback,i)=>normalizeBaseColorValue($('settingBaseColorCode'+i).value||$('settingBaseColor'+i).value,fallback));
- defaultColors=next;localStorage.setItem(CART_BASE_COLORS_KEY,JSON.stringify(defaultColors));markCartCloudStateDirty();closeCartSettings();refreshBaseColorDisplay();$('status').textContent='Couleurs de base enregistrées.'
+ defaultColors=next;boundaryStrokes=readSettingsStrokeRows();
+ localStorage.setItem(CART_BASE_COLORS_KEY,JSON.stringify(defaultColors));localStorage.setItem(CART_STROKES_KEY,JSON.stringify(boundaryStrokes));
+ markCartCloudStateDirty();closeCartSettings();refreshDisplaySettings();$('status').textContent='Paramètres d’affichage enregistrés.'
 };
 $('moreButton').onclick=e=>{e.stopPropagation();toggleTool($('moreMenu'))};$('toggleFilters').onclick=e=>{e.stopPropagation();const pop=$('tagFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleFilters').setAttribute('aria-expanded',String(open))};$('toggleDecks').onclick=e=>{e.stopPropagation();toggleTool($('deckMenu'))};$('tagFilters').onclick=e=>e.stopPropagation();$('deckMenu').onclick=e=>e.stopPropagation();$('searchResults').onclick=e=>e.stopPropagation();$('adminSearchResults').onclick=e=>e.stopPropagation();$('adminSearch').onclick=e=>e.stopPropagation();
 async function focusItemFromNavigation(d){
