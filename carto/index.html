@@ -533,8 +533,8 @@ const communeLabels=L.layerGroup().addTo(map),groupCenterCache=new Map();let gro
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stripHtml=html=>{const t=document.createElement('template');t.innerHTML=String(html||'');return t.content.textContent||''},unique=a=>[...new Set((a||[]).filter(Boolean).map(String))];
 let selectedTags=new Set(),selectedDeckPaths=new Set(),allDeckPaths=[],deckStateLoaded=false;
-try{const fs=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');selectedTags=new Set(fs.tags||[]);if(Array.isArray(fs.decks)){selectedDeckPaths=new Set(fs.decks);deckStateLoaded=true}}catch{}
-function saveFilters(){localStorage.setItem(CART_FILTER_KEY,JSON.stringify({tags:[...selectedTags],decks:[...selectedDeckPaths]}));markCartCloudStateDirty()}
+try{const fs=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');selectedTags=new Set(fs.tags||[]);if(Array.isArray(fs.decks)){selectedDeckPaths=new Set(fs.decks);deckStateLoaded=Number(fs.version)>=2}}catch{}
+function saveFilters(){localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:2,tags:[...selectedTags],decks:[...selectedDeckPaths]}));markCartCloudStateDirty()}
 function itemDecks(d){return d.deck?.length?d.deck:['Sans deck']}
 function tagsPass(d){return !selectedTags.size||(d.tags||[]).some(t=>selectedTags.has(t))}
 function decksPass(d){return itemDecks(d).some(p=>selectedDeckPaths.has(p))}
@@ -1501,7 +1501,7 @@ async function loadPrivateCartData(){
  selectedTags=new Set([...previousTags].filter(t=>availableTags.has(t)));
  deckStateLoaded=true;
  localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:parsed.units}));
- localStorage.setItem(CART_FILTER_KEY,JSON.stringify({tags:[...selectedTags],decks:[...selectedDeckPaths]}));
+ localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:2,tags:[...selectedTags],decks:[...selectedDeckPaths]}));
  return true
 }
 async function putPrivateCartData(){
@@ -1533,12 +1533,17 @@ function scheduleCartCloudSync(delay=7000){
  cartCloudTimer=setTimeout(()=>{cartCloudTimer=null;syncCartCloudStateToGitHub().catch(()=>{})},Math.max(0,delay))
 }
 function collectCartCloudState(){
- return{version:1,updatedAt:localCartCloudUpdated()||Date.now(),filters:{tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320}
+ return{version:2,updatedAt:localCartCloudUpdated()||Date.now(),filters:{tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320}
 }
 function applyCartCloudState(state){
  if(!state||typeof state!=='object')return;applyingCartCloudState=true;
  try{
-  if(state.filters){selectedTags=new Set(state.filters.tags||[]);selectedDeckPaths=new Set(state.filters.decks||[]);deckStateLoaded=true;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({tags:[...selectedTags],decks:[...selectedDeckPaths]}))}
+  if(state.filters){
+   const availableDecks=unique(data.flatMap(itemDecks)),availableTags=new Set(unique(data.flatMap(d=>d.tags||[]))),requestedDecks=Array.isArray(state.filters.decks)?state.filters.decks:[];
+   selectedTags=new Set((state.filters.tags||[]).filter(t=>availableTags.has(String(t))));
+   selectedDeckPaths=new Set(Number(state.version)<2&&requestedDecks.length===0&&availableDecks.length?availableDecks:requestedDecks.filter(p=>availableDecks.includes(String(p))));
+   deckStateLoaded=true;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:2,tags:[...selectedTags],decks:[...selectedDeckPaths]}))
+  }
   if(state.gameErrors)localStorage.setItem(CART_GAME_ERROR_KEY,JSON.stringify(state.gameErrors));
   if(Array.isArray(state.gameRecent))localStorage.setItem(CART_GAME_RECENT_KEY,JSON.stringify(state.gameRecent.slice(0,600)));
   if(state.gameBests)localStorage.setItem(CART_GAME_KEY,JSON.stringify(state.gameBests));
