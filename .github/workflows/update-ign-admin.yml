@@ -1,0 +1,44 @@
+name: Update IGN Admin Express 2026
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/update_ign_admin.py"
+      - ".github/workflows/update-ign-admin.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependency
+        run: python -m pip install --disable-pip-version-check requests
+
+      - name: Download and normalize IGN 2026
+        run: python scripts/update_ign_admin.py
+
+      - name: Commit generated IGN data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add carto/data/ign/2026
+          if git diff --cached --quiet; then
+            echo "IGN data already up to date"
+            exit 0
+          fi
+          git commit -m "data(carto): refresh IGN Admin Express COG 2026"
+          git push
