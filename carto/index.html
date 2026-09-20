@@ -843,7 +843,33 @@ function replacedCaribbeanSlot(f){
  const code=featureAdminCode(f),name=compactName(featureAdminName(f));
  return code==='977'||code==='978'||name.includes('saintbarthelemy')||name==='saintmartin'||name.includes('saintmartin')
 }
-function filteredOverviewGeo(geo){return geo?{type:'FeatureCollection',features:(geo.features||[]).filter(f=>!replacedCaribbeanSlot(f))}:geo}
+function replacementSlotBounds(){
+ if(!overviewCollectiviteGeo?.features?.length)return[];
+ return (overviewCollectiviteGeo.features||[]).filter(replacedCaribbeanSlot).map(f=>featureBounds(f)).filter(b=>b?.isValid?.()).map(b=>b.pad(.22))
+}
+function geometryPartInReplacementSlot(coords,slots){
+ const f={type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:coords}},b=featureBounds(f);
+ if(!b?.isValid?.())return false;
+ const c=b.getCenter();return slots.some(s=>s.contains(c))
+}
+function stripReplacementSlots(f,slots){
+ if(replacedCaribbeanSlot(f))return null;
+ if(!slots.length||!f?.geometry)return f;
+ const g=f.geometry;
+ if(g.type==='MultiPolygon'){
+   const coordinates=(g.coordinates||[]).filter(poly=>!geometryPartInReplacementSlot(poly,slots));
+   if(!coordinates.length)return null;
+   return coordinates.length===g.coordinates.length?f:{...f,geometry:{...g,coordinates}}
+ }
+ if(g.type==='Polygon'&&geometryPartInReplacementSlot(g.coordinates||[],slots))return null;
+ return f
+}
+function filteredOverviewGeo(geo){
+ if(!geo)return geo;
+ const slots=replacementSlotBounds(),features=[];
+ for(const f of geo.features||[]){const clean=stripReplacementSlots(f,slots);if(clean)features.push(clean)}
+ return{type:'FeatureCollection',features}
+}
 function pacificOverviewLevel(level){
  const geos=[];for(const kind of ['pf','nc']){const d=pacificAdmin[kind];if(!d?.overview)continue;const g=level===3?d.overview.regions:level===2?d.overview.departements:level===1?d.overview.groupements:d.overview.communes;if(g?.features?.length)geos.push(g)}
  return mergeFeatureCollections(...geos)
@@ -871,7 +897,7 @@ function normalizePacificOverview(kind,payload){
  if(kind!=='pf'||!payload?.regions?.features?.length)return payload;
  const b=L.geoJSON(payload.regions).getBounds();if(!b.isValid())return payload;
  const source=b.getCenter(),sourceWidth=Math.max(.001,b.getEast()-b.getWest()),
-       target={lat:41.76,lng:2.08,width:1.30},scale=target.width/sourceWidth,
+       target={lat:41.34,lng:2.08,width:1.30},scale=target.width/sourceWidth,
        xy=a=>[target.lng+(Number(a[0])-source.lng)*scale,target.lat+(Number(a[1])-source.lat)*scale,...a.slice(2)],
        ll=a=>[target.lat+(Number(a[0])-source.lat)*scale,target.lng+(Number(a[1])-source.lng)*scale];
  for(const k of ['regions','departements','groupements','communes'])transformOverviewGeo(payload[k],xy);
