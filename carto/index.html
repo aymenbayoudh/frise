@@ -871,7 +871,7 @@ function normalizePacificOverview(kind,payload){
  if(kind!=='pf'||!payload?.regions?.features?.length)return payload;
  const b=L.geoJSON(payload.regions).getBounds();if(!b.isValid())return payload;
  const source=b.getCenter(),sourceWidth=Math.max(.001,b.getEast()-b.getWest()),
-       target={lat:42.05,lng:2.08,width:1.30},scale=target.width/sourceWidth,
+       target={lat:41.76,lng:2.08,width:1.30},scale=target.width/sourceWidth,
        xy=a=>[target.lng+(Number(a[0])-source.lng)*scale,target.lat+(Number(a[1])-source.lat)*scale,...a.slice(2)],
        ll=a=>[target.lat+(Number(a[0])-source.lat)*scale,target.lng+(Number(a[1])-source.lng)*scale];
  for(const k of ['regions','departements','groupements','communes'])transformOverviewGeo(payload[k],xy);
@@ -2699,13 +2699,13 @@ let mapDetailLayerTimer=null;function scheduleDetailLayers(){clearTimeout(mapDet
 async function bootCartography(){
  const savedWidth=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(savedWidth)applySideWidth(savedWidth);
  updateScaleSelector(mode,false);
- renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');const overviewPromise=loadIgnOverview(),pacificPromise=loadPacificAdmin();home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours administratifs…';
+ renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');const overviewPromise=loadIgnOverview(),pacificPromise=loadPacificAdmin(),catalogPromise=loadAdminCatalog();home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours administratifs…';
  const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
  const results=await Promise.allSettled([
   loadAdminBoundaryBundle().then(async bundle=>{deptGeo=bundle.departements;regionGeo=bundle.regions;epciGeo=await augmentGrandParisGroups(bundle.epci);departmentRenderGeoCache=null;departmentOutlineGeoCache=null;invalidateGroupCache()})
  ]);
  await privateConnectPromise;
- await Promise.allSettled([overviewPromise,pacificPromise]);
+ await Promise.allSettled([overviewPromise,pacificPromise,catalogPromise]);
  overviewBootResolved=true;updateInsetVisibility();
  if(mode===1)try{if(overviewReady())await ensureOverviewEpciGeo();else await ensureEpciGeo()}catch{}
  if(cartGithubMode&&hasImportedCartData){
@@ -2717,7 +2717,6 @@ async function bootCartography(){
  if(!$('status').textContent||$('status').textContent==='Chargement des contours administratifs…'||$('status').textContent==='Chargement des contours IGN…'||$('status').textContent==='Chargement des contours…')$('status').textContent=failed?'Impossible de charger le référentiel administratif local. Les sources de secours restent disponibles.':''
 }
 bootCartography();
-if(!compactMapUi()){const warmCatalog=()=>loadAdminCatalog().catch(()=>{});if('requestIdleCallback'in window)requestIdleCallback(warmCatalog,{timeout:5000});else setTimeout(warmCatalog,3500)}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&cartGithubMode){scheduleCartCloudSync(0);queueCartDataSync()}});
 // Polynésie française et Nouvelle-Calédonie : référentiels locaux chargés au démarrage.
 
