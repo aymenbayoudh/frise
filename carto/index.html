@@ -1076,8 +1076,31 @@ function autoEnterOverseasOverview(){
  finishOverviewHandoff();
  return true
 }
-function autoSwitchOverseasOverview(){
- return overviewActive?autoExitOverseasOverview():autoEnterOverseasOverview()
+const METRO_OVERVIEW_RETURN_ZOOM=6.5;
+function metropolitanOverviewRegionAtCenter(){
+ if(!overviewRegionGeo?.features?.length)return null;
+ const overseasRegions=new Set(doms.map(d=>String(d.region||'')));
+ const center=map.getCenter(),candidates=overviewRegionGeo.features.filter(f=>!overseasRegions.has(featureAdminCode(f))&&featureBounds(f).contains(center));
+ return candidates.find(f=>pointInFeature(center.lat,center.lng,f))||candidates[0]||null
+}
+function autoEnterMetropolitanOverview(){
+ if(overviewOverseasHandoffBusy||overviewActive||map.getZoom()>METRO_OVERVIEW_RETURN_ZOOM||!overviewReady())return false;
+ if(overseasForView())return false;
+ if(!metropolitanOverviewRegionAtCenter())return false;
+
+ overviewOverseasHandoffBusy=true;
+ overviewActive=true;selection=null;activeItem=null;closeMapDetail();focus.clearLayers();local.clearLayers();
+ resetLayersForOverviewHandoff();updateInsetVisibility();
+
+ // Metropolitan coordinates are already the real ones, so the return to the
+ // France-entire overview is just a layer/state switch: no visible map jump.
+ map.setView(map.getCenter(),map.getZoom(),{animate:false});
+ finishOverviewHandoff();
+ return true
+}
+function autoSwitchOverview(){
+ if(overviewActive)return autoExitOverseasOverview();
+ return autoEnterOverseasOverview()||autoEnterMetropolitanOverview()
 }
 const ADMIN_BOUNDARY_SOURCES=[
  {label:'Etalab 2026',base:'https://etalab-datasets.geo.data.gouv.fr/2026/geojson/'},
@@ -3116,7 +3139,7 @@ function finishScaleDrag(e){if(!scaleDrag||scaleDrag.id!==e.pointerId)return;con
 scaleGlass.onpointerup=finishScaleDrag;scaleGlass.onpointercancel=e=>{if(!scaleDrag)return;scaleDrag=null;scaleGlass.classList.remove('dragging');updateScaleSelector(mode,true)};
 scaleGlass.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowDown'){e.preventDefault();setMode(Math.max(0,mode-1))}else if(e.key==='ArrowRight'||e.key==='ArrowUp'){e.preventDefault();setMode(Math.min(3,mode+1))}else if(e.key==='Home'){e.preventDefault();setMode(0)}else if(e.key==='End'){e.preventDefault();setMode(3)}};
 document.querySelectorAll('.scale-labels [data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));$('home').onclick=home;$('back').onclick=()=>{if(activeItem){activeItem=null;focus.clearLayers();renderSide();}else{selection=null;local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;subdivisionKey='';communeLabelKey='';centerKey='';renderSide();drawPoints();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);}};document.addEventListener('keydown',e=>{const ae=document.activeElement,tag=(ae?.tagName||'').toLowerCase(),editing=tag==='input'||tag==='textarea'||tag==='select'||ae?.isContentEditable;if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'&&!editing){e.preventDefault();undoCartLastChange();return}if(e.key==='Escape'){$('back').click();}});
-let mapDetailLayerTimer=null;function scheduleDetailLayers(){clearTimeout(mapDetailLayerTimer);mapDetailLayerTimer=setTimeout(()=>{updateSubdivisions(true);updateCommuneLabels();updateCenters();updateCommuneDataLayer();if(mode>=1&&compactMapUi())drawAdminHits()},120)}map.on('zoomend',()=>{if(autoSwitchOverseasOverview())return;updateBasemap();refreshAdminStyleForZoom();maybeDrawPoints();scheduleDetailLayers()});map.on('moveend',()=>{if(autoSwitchOverseasOverview())return;scheduleDetailLayers()});
+let mapDetailLayerTimer=null;function scheduleDetailLayers(){clearTimeout(mapDetailLayerTimer);mapDetailLayerTimer=setTimeout(()=>{updateSubdivisions(true);updateCommuneLabels();updateCenters();updateCommuneDataLayer();if(mode>=1&&compactMapUi())drawAdminHits()},120)}map.on('zoomend',()=>{if(autoSwitchOverview())return;updateBasemap();refreshAdminStyleForZoom();maybeDrawPoints();scheduleDetailLayers()});map.on('moveend',()=>{if(autoSwitchOverview())return;scheduleDetailLayers()});
 async function bootCartography(){
  const savedWidth=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(savedWidth)applySideWidth(savedWidth);
  updateScaleSelector(mode,false);
