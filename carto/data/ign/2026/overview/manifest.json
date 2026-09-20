@@ -23,8 +23,11 @@
   ],
   "counts": {
     "arrondissements": 336,
+    "arrondissements_municipaux": 45,
+    "centers": 41355,
     "collectivites": 103,
-    "commune_centers": 0,
+    "commune_centers": 34878,
+    "communes_associees_deleguees": 2565,
     "departements": 104,
     "epci": 1267,
     "regions": 21
@@ -99,8 +102,22 @@
   "geopackage_file": "ADE-COG-CARTOPLUS-SANS-ECHELLE_4-0_GPKG_LAMB93_FRA-ED2026-01-01.gpkg",
   "selected_layers": {
     "arrondissements": "arrondissement",
+    "arrondissements_municipaux": "arrondissement_municipal",
+    "centers": [
+      "chef_lieu_d_arrondissement",
+      "chef_lieu_d_arrondissement_municipal",
+      "chef_lieu_de_canton",
+      "chef_lieu_de_collectivite_territoriale",
+      "chef_lieu_de_commune",
+      "chef_lieu_de_commune_associee_ou_deleguee",
+      "chef_lieu_de_departement",
+      "chef_lieu_d_epci",
+      "chef_lieu_de_region"
+    ],
     "collectivites": "collectivite_territoriale",
     "commune_centers": "chef_lieu_de_commune",
+    "commune_centers_fallback": "commune",
+    "communes_associees_deleguees": "commune_associee_ou_deleguee",
     "departements": "departement",
     "epci": "epci",
     "regions": "region"
