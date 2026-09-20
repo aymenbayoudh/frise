@@ -228,7 +228,7 @@ def build_nc():
         u = union_features(selected, code, name, region="988", dept="988", territory="NC", kind="syndicat_intercommunal")
         if u:
             groups.append(u)
-            group_centres[code] = centre
+            group_centres[code] = {"name": centre, "at": POINTS.get(centre)}
 
     region = union_features(provinces or communes, "988", "Nouvelle-Calédonie", region="988", territory="NC")
     province_codes = {fold(f["properties"]["nom"]): f["properties"]["code"] for f in provinces}
