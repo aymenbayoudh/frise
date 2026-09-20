@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - "scripts/update_ign_admin.py"
+      - "scripts/update_ign_carto_plus.py"
       - ".github/workflows/update-ign-admin.yml"
 
 permissions:
