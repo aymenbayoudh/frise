@@ -1892,7 +1892,11 @@ function updateInsetVisibility(){
  const box=$('overseas');
  if(!overviewBootResolved){if(box)box.style.display='none';for(const d of doms)if(d.el)d.el.style.display='none';return}
  let visible=0;
- for(const d of doms){const show=!overviewCoversInset(d);if(d.el)d.el.style.display=show?'':'none';if(show)visible++}
+ for(const [i,d] of doms.entries()){
+  const show=!overviewCoversInset(d);if(d.el)d.el.style.display=show?'':'none';
+  if(show){visible++;if(!d.map){if(insetObserver)insetObserver.observe(d.el);else initInsetMap(d,i)}}
+  else if(insetObserver&&d.el)insetObserver.unobserve(d.el)
+ }
  if(box)box.style.display=visible?'':'none'
 }
 function updateInsets(){
@@ -1909,7 +1913,8 @@ const insetObserver=compactMapUi()&&'IntersectionObserver'in window?new Intersec
 for(const [i,d] of doms.entries()){
  const el=document.createElement('div');el.className='inset';el.dataset.insetIndex=String(i);el.innerHTML='<div class="mini" id="mini'+i+'"></div><button aria-label="Afficher '+d.name+'"><span>'+d.name+' <b>0</b></span></button>';$('overseas').append(el);d.el=el;d.count=el.querySelector('b');
  el.querySelector('button').onclick=async()=>{initInsetMap(d,i);overviewActive=false;pointRenderKey='';updateInsetVisibility();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();if(!d.geo)await ensureOverseasGeometry(d);if(mode===1&&d.nationalEpci)await ensureOverseasEpciGeometry(d);if((mode===0||mode===2)&&d.departmentArrondissements)await ensureArrGeo(d.dept);const fitGeo=d.geo||d.detailGeo;if(d.focusWhole&&fitGeo)map.fitBounds(L.geoJSON(fitGeo).getBounds(),{padding:[60,60],maxZoom:d.focusZ||8});else map.setView(d.at,d.focusZ||(d.dept==='973'?6:10));renderSide();draw();updateBasemap();updateSubdivisions(true);updateCenters(true)};
- if(insetObserver)insetObserver.observe(el);else initInsetMap(d,i)
+ // Deliberately do not initialize legacy inset maps here: the compact
+ // CARTO PLUS/Pacific overview normally replaces them after boot.
 }
 
 
