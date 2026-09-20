@@ -114,13 +114,16 @@ def pf_commune_code(props):
         s=re.sub(r"\D","",str(raw));return ("987"+s.zfill(2)) if s and len(s)<=2 else s
 
 def build_pf():
-    raw=get_geojson(PF_LAYER);communes=[];subs=[]
+    raw=get_geojson(PF_LAYER);communes=[];commune_fallbacks=[];subs=[]
     for f in raw.get("features",[]):
         p=f.get("properties") or {};nature=fold(first(p,"nature_administrative"))
         if not f.get("geometry"):continue
         if nature=="commune":
             name=first(p,"com_nom","nom","label");code=pf_commune_code(p)
             if name and code:communes.append(feature(code,name,f["geometry"],region="987",territory="PF"))
+        elif nature in {"commniles","commune300m"}:
+            name=first(p,"com_nom","nom","label");code=pf_commune_code(p)
+            if name and code:commune_fallbacks.append(feature(code,name,f["geometry"],region="987",territory="PF"))
         elif nature=="subdivision":
             name=first(p,"subdi_nom","nom","label");sid=first(p,"subdi_id","id","OBJECTID")
             if name:subs.append(feature(f"987-S{sid}",name,f["geometry"],region="987",territory="PF"))
@@ -132,7 +135,10 @@ def build_pf():
             u=union_features(parts,code,parts[0]["properties"]["nom"],region="987",territory="PF")
             if u:out.append(u)
         return out
-    communes=merge_same(communes);subs=merge_same(subs)
+    communes=merge_same(communes);fallbacks=merge_same(commune_fallbacks)
+    existing_codes={f["properties"]["code"] for f in communes}
+    communes.extend(f for f in fallbacks if f["properties"]["code"] not in existing_codes)
+    subs=merge_same(subs)
     by={fold(f["properties"]["nom"]):f for f in communes};groups=[];missing={}
     for code,name,members in PF_GROUPS:
         selected=[];absent=[]
