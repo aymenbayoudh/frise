@@ -643,7 +643,7 @@ function eventVisibleAtMode(d,target=mode){
 
 const CART_DATA_KEY='cartographie-v2:data',CART_FILTER_KEY='cartographie-v2:filters',SHARED_GITHUB_KEY='frise-private-github-v1',CART_CLOUD_UPDATED_KEY='cartographie-v3:cloud-state-updated',CART_GITHUB_OWNER='aymenbayoudh',CART_GITHUB_REPO='frise-data',CART_GITHUB_BRANCH='main',CART_GITHUB_FILE='carto.csv',CART_GITHUB_STATE_FILE='carto-user-state.json';
 let cartGithubMode=false,cartGithubConfig=null,cartPrivateDataSha=null,cartGithubSyncChain=Promise.resolve(),cartCloudTimer=null,applyingCartCloudState=false,cartDataDirty=false;
-const modeKeys=['commune','interco','departement','region'],defaultColors=['#21BCFF','#8BCB45','#E56AA6','#258DBB'];
+const modeKeys=['commune','interco','departement','region'],defaultColors=['#E99A3C','#8BCB45','#E56AA6','#258DBB'];
 function demoDeckPaths(theme,level,index=0){
  const primary={
   'Santé':'OGCT::Solidarité::Santé',
@@ -814,6 +814,7 @@ function baseDensityColor(){
  return first?validColor(first.color||accent):validColor(accent)
 }
 const defaultDensityRamps={
+ 0:['#FFF3DA','#FFDDA6','#F6BF69','#E99A3C','#C96C24'],
  1:['#F4F8C9','#DCEB79','#ADD84E','#72BF43','#328C4C'],
  2:['#FCE6F0','#F5B9D1','#E98AAF','#D75D96','#B43A78'],
  3:['#E1F3FA','#A9DDEE','#69BBDD','#2E91C0','#0E6598']
