@@ -453,7 +453,7 @@ def build_pf_overview(pf, center):
         g = tr[0](shape(f["geometry"]))
         # Tiny atolls disappear at national scale. Add a very small visual
         # minimum while preserving their actual island position.
-        min_width = 0.016
+        min_width = 0.045
         minx, miny, maxx, maxy = g.bounds
         if max(maxx - minx, maxy - miny) < min_width:
             g = g.buffer(min_width / 2)
