@@ -86,12 +86,15 @@ def product_score(name: str, *, overview: bool) -> int:
         if "PE" in p:
             score += 80
     else:
-        if "ADMINEXPRESS-COG.2026" in p or "ADMIN-EXPRESS-COG.2026" in p:
-            score += 400
-        if "COG-CARTO.2026" in p:
-            score += 300
+        # Browser display: prefer the official small-scale COG CARTO PE geometry.
+        # It is much lighter than the full-detail COG while remaining the same
+        # 2026 IGN administrative reference. Full-detail COG is only a fallback.
         if "COG-CARTO-PE.2026" in p:
-            score += 220
+            score += 500
+        if "COG-CARTO.2026" in p:
+            score += 420
+        if "ADMINEXPRESS-COG.2026" in p or "ADMIN-EXPRESS-COG.2026" in p:
+            score += 300
         if "LATEST" in p:
             score += 20
     return score
