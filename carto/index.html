@@ -1766,7 +1766,7 @@ function seedEpciDemoCoverage(){
  refreshAfterDemoSeed()
 }
 
-function domItems(d){return current().filter(x=>mode<2?units[x.unit]?.dept===d.dept:String(itemDisplayAdminCode(x,mode))===String(mode===2?d.dept:d.region));}
+function domItems(d){return current().filter(x=>{const u=units[x.unit]||{};if(d.pacific)return String(u.region||'')===String(d.region);return mode<2?u.dept===d.dept:String(itemDisplayAdminCode(x,mode))===String(mode===2?d.dept:d.region)});}
 function featureCollectionOf(features){return{type:'FeatureCollection',features:(features||[]).filter(Boolean)}}
 function hydrateOverseasEntryFromCore(d){
  if(!d)return null;
@@ -1829,7 +1829,7 @@ async function ensureOverseasGeometry(d){
 function renderInset(d,items=domItems(d)){
  if(!d.layer)return;
  d.layer.clearLayers();const adminOpacity=temporaryPaletteActive&&mode>=2?temporaryPaletteOpacity:1,
-       renderGeo=mode===1&&d.epciGeo?.features?.length?d.epciGeo:(mode>=2?(d.geo||d.detailGeo):(d.detailGeo||d.geo));
+       renderGeo=mode===1&&d.epciGeo?.features?.length?d.epciGeo:(mode===2&&d.departmentGeo?.features?.length?d.departmentGeo:(mode>=3?(d.geo||d.detailGeo):(d.detailGeo||d.geo)));
  if(renderGeo){
    if(d.map&&!d.fittedGeo){const bounds=L.geoJSON(renderGeo).getBounds();if(bounds.isValid()){d.map.fitBounds(bounds,{padding:[6,6]});d.fittedGeo=true}}
    const boundary=overseasOuterBoundary(renderGeo);
@@ -1844,7 +1844,7 @@ function renderInset(d,items=domItems(d)){
  }else L.circleMarker(d.at,{radius:mode>=2?5:4,color:'#fff',weight:1.2,fillColor:mode>=2?shade(items.length,mode===3?d.region:d.dept):(items.length?(mode===0?densityContinuousColor(items.length):densityColor(items.length)):'#aeb8c0'),fillOpacity:.95,interactive:false}).addTo(d.layer);
  if(renderGeo&&mode<2&&items.length)L.circleMarker(d.at,{radius:7,color:'#fff',weight:1,fillColor:mode===0?densityContinuousColor(items.length):densityColor(items.length),fillOpacity:1,interactive:false}).addTo(d.layer)
 }
-function overviewCoversInset(d){if(!overviewActive)return false;return adminGeoHasCode(overviewRegionGeo,d.region)||adminGeoHasCode(overviewDeptGeo,d.dept)}
+function overviewCoversInset(d){if(!overviewActive)return false;return adminGeoHasCode(displayRegionGeo(),d.region)||adminGeoHasCode(displayDepartmentRenderGeo(),d.dept)||!!(d.pacific&&pacificAdmin[d.dept==='987'?'pf':'nc'])}
 function updateInsetVisibility(){
  const box=$('overseas');
  if(!overviewBootResolved){if(box)box.style.display='none';for(const d of doms)if(d.el)d.el.style.display='none';return}
