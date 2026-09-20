@@ -1492,8 +1492,16 @@ async function cartGithubGetOptional(path){
 async function loadPrivateCartData(){
  const remote=await cartGithubGetOptional(CART_GITHUB_FILE);if(!remote)return false;
  cartPrivateDataSha=remote.sha;const parsed=readCartCsv(remote.text);if(!parsed.rows.length)return false;
+ const previousDeckSelection=new Set(selectedDeckPaths),previousTags=new Set(selectedTags);
  data=parsed.rows;Object.assign(units,parsed.units);hasImportedCartData=true;
+ const availableDecks=unique(data.flatMap(itemDecks)),availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));
+ const matchingDecks=[...previousDeckSelection].filter(p=>availableDecks.includes(p));
+ if(previousDeckSelection.size&&availableDecks.length&&!matchingDecks.length)selectedDeckPaths=new Set(availableDecks);
+ else selectedDeckPaths=new Set(matchingDecks);
+ selectedTags=new Set([...previousTags].filter(t=>availableTags.has(t)));
+ deckStateLoaded=true;
  localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:parsed.units}));
+ localStorage.setItem(CART_FILTER_KEY,JSON.stringify({tags:[...selectedTags],decks:[...selectedDeckPaths]}));
  return true
 }
 async function putPrivateCartData(){
