@@ -1137,6 +1137,7 @@ function ensureFocusedOverseasModeGeometry(){
 
 async function groupCenterCommune(code){
  code=String(code||'');if(!code)return null;if(groupCenterCache.has(code))return groupCenterCache.get(code);
+ for(const kind of ['pf','nc']){const src=pacificAdmin[kind],gc=src?.groupCenters?.[code];if(gc?.at){const p={code,name:String(gc.name||code),dept:kind==='pf'?'987':'988',region:kind==='pf'?'987':'988',at:gc.at,feature:null};groupCenterCache.set(code,Promise.resolve(p));return p}}
  const pac=pacificGeoForModeCode(1,code);
  if(pac?.features?.length){const f=pac.features[0],b=featureBounds(f),p={code,name:featureAdminName(f),dept:String(f.properties?.dept||''),region:String(f.properties?.region||''),at:b?.isValid?.()?[b.getCenter().lat,b.getCenter().lng]:null,feature:null};groupCenterCache.set(code,Promise.resolve(p));return p}
  const p=(async()=>{try{
@@ -1593,6 +1594,7 @@ let persistedAdminCenters={};try{persistedAdminCenters=JSON.parse(localStorage.g
 function saveAdminCenterCache(){try{localStorage.setItem(ADMIN_CENTER_CACHE_KEY,JSON.stringify(persistedAdminCenters))}catch{}}
 async function communeCenter(code){
  code=String(code||'');if(!code)return null;
+ for(const kind of ['pf','nc']){const src=pacificAdmin[kind],at=overviewActive?src?.overviewCommuneCenters?.[code]:src?.communeCenters?.[code];if(Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)){const f=src?.communes?.features?.find(x=>featureAdminCode(x)===code);return{name:featureAdminName(f)||code,at:[Number(at[0]),Number(at[1])]}}}
  if(overviewActive&&overviewCommuneCenters){const at=overviewCommuneCenters[code];if(Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)){const name=adminCatalog?.communeByCode.get(code)?.name||code;return{name,at:[Number(at[0]),Number(at[1])]}}}
  if(communePointCache.has(code))return communePointCache.get(code);
  if(persistedAdminCenters[code]){const p=Promise.resolve(persistedAdminCenters[code]);communePointCache.set(code,p);return p}
@@ -1634,6 +1636,27 @@ async function addAdminCenterBatch(entries,token){
  const uniqueEntries=[],seen=new Set();for(const e of entries){const code=String(e.code||'');if(!code||seen.has(code))continue;seen.add(code);uniqueEntries.push({...e,code})}
  const concurrency=18;for(let i=0;i<uniqueEntries.length;i+=concurrency){if(token!==centerKey)return;await Promise.all(uniqueEntries.slice(i,i+concurrency).map(e=>addAdminCenter(e.code,e,token)))}
 }
+
+function addPacificCenterMarkers(token,z,mobile){
+ if(token!==centerKey)return;
+ const view=map.getBounds().pad(.22),seen=new Set();
+ for(const kind of ['pf','nc']){
+  const src=pacificAdmin[kind],entries=overviewActive?src?.overviewCenters:src?.centers;if(!Array.isArray(entries))continue;
+  for(const e of entries){
+   const at=overviewActive?(e.overview_at||e.at):e.at;if(!Array.isArray(at)||at.length<2||!at.every(Number.isFinite)||!view.contains(L.latLng(at)))continue;
+   const rank=String(e.rank||'department'),isRegion=rank==='region',isDepartment=rank==='department',isSubpref=rank==='subpref';
+   let show=false,showLabel=false;
+   if(mode===3){show=isRegion||isDepartment;showLabel=isRegion||isDepartment}
+   else if(mode===2){show=isRegion||isDepartment||isSubpref;showLabel=isRegion||isDepartment||overviewActive||z>=6.8}
+   else{show=isRegion||isDepartment||isSubpref;showLabel=isRegion||isDepartment||overviewActive||z>=7.2}
+   if(!show)continue;
+   const k=Math.round(at[0]*1e4)+':'+Math.round(at[1]*1e4);if(seen.has(k))continue;seen.add(k);
+   const visualRank=isRegion?'region':mode===3&&isDepartment?'regionSecondary':rank;
+   const color=adminCenterColor(Number(e.level)||2,String(e.code||''),visualRank,'',at),zIndexOffset=isRegion?235:isDepartment?195:145;
+   L.marker(at,{pane:'centersPane',icon:centerIcon(String(e.name||''),{rank:visualRank,showLabel,color}),interactive:false,zIndexOffset}).addTo(centers)
+  }
+ }
+}
 async function updateCenters(force=false){
  const z=map.getZoom(),mobile=compactMapUi(),focusedOverseas=overviewActive?null:overseasForView(),
        overseasSubprefFocus=(mode===0||mode===1||mode===2)&&!!focusedOverseas?.departmentArrondissements,
@@ -1657,6 +1680,7 @@ async function updateCenters(force=false){
  if(showRegionDeptSecondary||showDeptPref||showSubpref)visibleKey=(showRegionDeptSecondary?visibleRegions:visibleDepts).join(',');
  const key=(overviewActive?'overview:':'geo:')+mode+':'+(showRegionNames?'rN':'rD')+':'+(showDeptPref?'dP':'d0')+':'+(showDeptNames?'dN':'dD')+':'+(showSubpref?'sP':'s0')+':'+(showSubprefNames?'sN':'sD')+':'+(showRegionDeptSecondaryNames?'rdN':'rdD')+':'+visibleKey;
  if(!force&&key===centerKey)return;centerKey=key;centers.clearLayers();adminCenterRenderSeen=new Set();const token=key;
+ addPacificCenterMarkers(token,z,mobile);
  try{
    const meta=await loadAdminMeta();if(token!==centerKey)return;
    const regions=meta.regions||[],deps=meta.departements||[],regionCapitalCodes=new Set(regions.map(r=>String(r.chefLieu||'')).filter(Boolean));
