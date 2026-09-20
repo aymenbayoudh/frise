@@ -442,8 +442,8 @@ PF_LAYOUT = {
 # The Saint-Barthélemy slot is narrow: keep the whole PF cartogram compact
 # enough not to hit Mayotte on the west, mainland France on the north, or NC
 # on the east.  The internal archipelago layout stays identical.
-PF_OVERVIEW_SCALE = 0.52
-PF_OVERVIEW_LAT_SHIFT = -0.10
+PF_OVERVIEW_SCALE = 0.30
+PF_OVERVIEW_LAT_SHIFT = -0.28
 PF_OVERVIEW_LON_SHIFT = 0.04
 
 
