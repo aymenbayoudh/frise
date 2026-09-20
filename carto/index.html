@@ -1142,8 +1142,8 @@ function drawAdmin(){
 function densityProgress(n){const max=densityMaxCount();return max<=1?1:Math.max(0,Math.min(1,Math.log1p(n)/Math.log1p(max)))}
 function densityContinuousColor(n){const ramp=densityPalette();if(!ramp.length)return accent;if(ramp.length===1)return ramp[0];const x=densityProgress(n)*(ramp.length-1),i=Math.floor(x),j=Math.min(ramp.length-1,i+1);return mixHex(ramp[i],ramp[j],x-i)}
 function communeBubbleSize(n){const t=densityProgress(n);return compactMapUi()?Math.round(14+20*t):Math.round(22+36*t)}
-function icon(items,label,pin=false){const n=items.length,global=items.every(x=>x.kind==='global'),s=pin?(global?35:26):communeBubbleSize(n),c=pin?temporaryEventColor(items[0]):densityContinuousColor(n);return L.divIcon({className:pin?'pin-wrap':'bubble',iconSize:[s,s],iconAnchor:[s/2,pin?s:s/2],html:pin?'<div class="pin-body '+(global?'global':'')+'" style="--unit-color:'+c+'"><span>'+(n>1?n:global?'◆':'')+'</span></div>':'<div class="bubble-body" style="--unit-color:'+c+';width:'+s+'px;height:'+s+'px">'+n+'</div><span class="bubble-label">'+escape(label)+'</span>'});}
-function addMarker(at,items,label,pin,fn,target=points){const marker=L.marker(at,{pane:'eventPointPane',icon:icon(items,label,pin),title:label,alt:label,keyboard:true}).addTo(target);marker.bindTooltip(escape(label)+' · '+items.length+' exemple'+(items.length>1?'s':''));marker.on('click',fn);}
+function icon(items,label,pin=false,showLabel=true){const n=items.length,global=items.every(x=>x.kind==='global'),s=pin?(global?35:26):communeBubbleSize(n),c=pin?temporaryEventColor(items[0]):densityContinuousColor(n),bubbleLabel=showLabel?'<span class="bubble-label">'+escape(label)+'</span>':'';return L.divIcon({className:pin?'pin-wrap':'bubble',iconSize:[s,s],iconAnchor:[s/2,pin?s:s/2],html:pin?'<div class="pin-body '+(global?'global':'')+'" style="--unit-color:'+c+'"><span>'+(n>1?n:global?'◆':'')+'</span></div>':'<div class="bubble-body" style="--unit-color:'+c+';width:'+s+'px;height:'+s+'px">'+n+'</div>'+bubbleLabel});}
+function addMarker(at,items,label,pin,fn,target=points,showLabel=true){const marker=L.marker(at,{pane:'eventPointPane',icon:icon(items,label,pin,showLabel),title:label,alt:label,keyboard:true}).addTo(target);marker.bindTooltip(escape(label)+' · '+items.length+' exemple'+(items.length>1?'s':''));marker.on('click',fn);}
 function locationBuckets(items){const b=new Map();items.forEach(d=>{const k=d.at.join(',');if(!b.has(k))b.set(k,[]);b.get(k).push(d)});return [...b.values()];}
 function openBucket(items){if(items.length===1){showItem(items[0]);return;}activeItem=null;focus.clearLayers();$('heading').textContent='Au siège · '+units[items[0].unit].name;$('context').textContent=items.length+' initiatives à portée générale';$('back').hidden=false;renderCards(items);}
 function drawPoints(){
@@ -1162,7 +1162,7 @@ function drawPoints(){
  }
  if(mode>=2)return;
  const z=map.getZoom();
- for(const g of gs){if(!g.items.length)continue;if(z<11){addMarker(g.at,g.items,g.name,false,()=>choose(g));continue}for(const bucket of locationBuckets(g.items)){const label=bucket.length>1?'Siège · '+g.name:bucket[0].title;addMarker(bucket[0].at,bucket,label,true,()=>{if(!selection||selection.key!==g.key){selection=g;renderSide()}openBucket(bucket)})}}
+ for(const g of gs){if(!g.items.length)continue;if(z<11){const showCommuneLabel=!adminCenterCommuneCodes.has(String(g.code||''));addMarker(g.at,g.items,g.name,false,()=>choose(g),points,showCommuneLabel);continue}for(const bucket of locationBuckets(g.items)){const label=bucket.length>1?'Siège · '+g.name:bucket[0].title;addMarker(bucket[0].at,bucket,label,true,()=>{if(!selection||selection.key!==g.key){selection=g;renderSide()}openBucket(bucket)})}}
 }
 function densityLegendGradient(){const ramp=densityPalette();if(!ramp.length)return'linear-gradient(90deg,#fff,'+accent+')';if(ramp.length===1)return ramp[0];return'linear-gradient(90deg,'+ramp.map((c,i)=>c+' '+Math.round(i/(ramp.length-1)*100)+'%').join(',')+')'}
 function densityLegendOpacity(){return temporaryPaletteActive?temporaryPaletteOpacity:1}
@@ -1211,7 +1211,7 @@ function updateScaleSelector(value=mode,animate=true){
 }
 function setMode(n){closeMapDetail();mode=Math.max(0,Math.min(3,+n));invalidateGroupCache();epoch++;markCartCloudStateDirty();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();selectedGroup.clearLayers();adminHits.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;if(mode!==0){communeData.clearLayers();communeDataKey=''}subdivisionKey='';communeLabelKey='';centerKey='';updateScaleSelector(mode,true);renderSide();draw();updateSubdivisions(true);updateCenters(true);ensureFocusedOverseasModeGeometry();if(mode===1&&!epciGeo){$('status').textContent='Chargement des groupements…';ensureEpciGeo().then(()=>{if(mode!==1)return;renderSide();draw();ensureFocusedOverseasModeGeometry();updateCenters(true);$('status').textContent=''}).catch(()=>{if(mode===1)$('status').textContent='Contours des groupements indisponibles.'})}}
 
-let metaPromise=null;
+let metaPromise=null,adminCenterCommuneCodes=new Set();
 async function loadJsonAny(urls){let last=null;for(const url of urls){try{return await getJSON(url)}catch(e){last=e}}throw last||Error('Source indisponible')}
 function loadAdminMeta(){if(metaPromise)return metaPromise;metaPromise=(async()=>{
  const [d,r,a]=await Promise.allSettled([
@@ -1222,6 +1222,12 @@ function loadAdminMeta(){if(metaPromise)return metaPromise;metaPromise=(async()=
  const departements=d.status==='fulfilled'&&Array.isArray(d.value)?d.value.map(x=>({...x,region:x.region??x.codeRegion})):[],
        regions=r.status==='fulfilled'&&Array.isArray(r.value)?r.value:[],
        arrondissements=a.status==='fulfilled'&&Array.isArray(a.value)?a.value:[];
+ adminCenterCommuneCodes=new Set([
+   ...regions.map(x=>String(x.chefLieu||'')),
+   ...departements.map(x=>String(x.chefLieu||'')),
+   ...arrondissements.map(x=>String(x.chefLieu||'')),
+   ...Object.values(OVERSEAS_ARRONDISSEMENT_CENTERS).flat().map(String)
+ ].filter(Boolean));
  return{departements,regions,arrondissements}
 })();return metaPromise}
 function ignAdmin2026Wfs(layer){return 'https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&OUTPUTFORMAT=application%2Fjson&SRSNAME=EPSG%3A4326&TYPENAMES=ADMINEXPRESS-COG-CARTO-PE.2026:'+encodeURIComponent(layer)+'&COUNT=1000'}
@@ -1412,8 +1418,7 @@ async function addAdminCenter(code,options,token){
  adminCenterRenderSeen.add(code);
  syncGeneratedCommuneFromCenter(code,p);
  const color=adminCenterColor(options.adminLevel,options.adminCode,options.rank,code,p.at);
- const communeHasVisibleExamples=mode===0&&data.some(d=>d.mode===0&&String(keyOf(d))===code&&tagsPass(d)&&decksPass(d));
- const showLabel=!!options.showLabel&&!communeHasVisibleExamples;
+ const showLabel=!!options.showLabel;
  const zIndexOffset=options.rank==='region'?220:options.rank==='department'?190:options.rank==='regionSecondary'?160:130;
  L.marker(p.at,{pane:'centersPane',icon:centerIcon(p.name,{rank:options.rank,showLabel,color}),interactive:false,zIndexOffset}).addTo(centers)
 }
@@ -1606,8 +1611,8 @@ function renderInset(d,items=domItems(d)){
      L.geoJSON(renderGeo,{interactive:false,style:{color:'#606A72',weight:.38,fillColor:'#e2eaf0',fillOpacity:1}}).addTo(d.layer);
      if(boundary)L.geoJSON(boundary,{interactive:false,style:{color:'#000000',weight:mode===0?2.05:1.5,opacity:1,fill:false,fillOpacity:0}}).addTo(d.layer)
    }
- }else L.circleMarker(d.at,{radius:mode>=2?5:4,color:'#fff',weight:1.2,fillColor:mode>=2?shade(items.length,mode===3?d.region:d.dept):(items.length?temporaryEventColor(items[0]):'#aeb8c0'),fillOpacity:.95,interactive:false}).addTo(d.layer);
- if(renderGeo&&mode<2&&items.length)L.circleMarker(d.at,{radius:7,color:'#fff',weight:1,fillColor:temporaryEventColor(items[0]),fillOpacity:1,interactive:false}).addTo(d.layer)
+ }else L.circleMarker(d.at,{radius:mode>=2?5:4,color:'#fff',weight:1.2,fillColor:mode>=2?shade(items.length,mode===3?d.region:d.dept):(items.length?(mode===0?densityContinuousColor(items.length):densityColor(items.length)):'#aeb8c0'),fillOpacity:.95,interactive:false}).addTo(d.layer);
+ if(renderGeo&&mode<2&&items.length)L.circleMarker(d.at,{radius:7,color:'#fff',weight:1,fillColor:mode===0?densityContinuousColor(items.length):densityColor(items.length),fillOpacity:1,interactive:false}).addTo(d.layer)
 }
 function updateInsets(){
  for(const d of doms){const items=domItems(d);if(d.count)d.count.textContent=items.length;renderInset(d,items)}
