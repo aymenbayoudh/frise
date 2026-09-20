@@ -1766,6 +1766,33 @@ function seedEpciDemoCoverage(){
  refreshAfterDemoSeed()
 }
 
+let demoPacificSeeded=false;
+function seedPacificDemoCoverage(){
+ if(hasImportedCartData||demoPacificSeeded||!pacificAdmin.pf||!pacificAdmin.nc)return;demoPacificSeeded=true;
+ const configs=[['pf','987','Polynésie française'],['nc','988','Nouvelle-Calédonie']];
+ for(const [kind,regionCode,territoryName] of configs){
+  const src=pacificAdmin[kind];
+  for(const f of src.regions?.features||[]){
+   const code=featureAdminCode(f),at=demoFeatureCenter(f),unit='demo-pac-r-'+code;units[unit]={name:featureAdminName(f)||territoryName,code,region:regionCode,dept:regionCode,at};
+   for(let i=0;i<4;i++)addGeneratedDemo(3,unit,demoActions[(demoHash(code+'pac-r')+i)%demoActions.length]+' en '+territoryName,at,demoThemes[(i+demoHash(code))%demoThemes.length],i)
+  }
+  for(const f of src.departements?.features||[]){
+   const code=featureAdminCode(f),at=demoFeatureCenter(f),unit='demo-pac-d-'+code;units[unit]={name:featureAdminName(f),code,region:regionCode,dept:code,at};
+   for(let i=0;i<3;i++)addGeneratedDemo(2,unit,demoActions[(demoHash(code+'pac-d')+i)%demoActions.length]+' · '+featureAdminName(f),at,demoThemes[(i+2+demoHash(code))%demoThemes.length],i)
+  }
+  for(const f of src.groupements?.features||[]){
+   const code=featureAdminCode(f),at=demoFeatureCenter(f),unit='demo-pac-g-'+code;units[unit]={name:featureAdminName(f),code,region:regionCode,dept:regionCode,at};
+   for(let i=0;i<3;i++)addGeneratedDemo(1,unit,demoActions[(demoHash(code+'pac-g')+i)%demoActions.length]+' · '+featureAdminName(f),at,demoThemes[(i+5+demoHash(code))%demoThemes.length],i)
+  }
+  for(const f of src.communes?.features||[]){
+   const code=featureAdminCode(f),name=featureAdminName(f),must=/noum|papeete/i.test(name),take=must||demoHash(code+'pac-c')%4===0;if(!take)continue;
+   const at=demoFeatureCenter(f),unit='demo-pac-c-'+code;units[unit]={name,code,region:regionCode,dept:regionCode,at};
+   const count=must?4:2;for(let i=0;i<count;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(code+'pac-c')+i)%demoActions.length]+' · '+name,at,demoThemes[(i+7+demoHash(code))%demoThemes.length],i)
+  }
+ }
+ refreshAfterDemoSeed()
+}
+
 function domItems(d){return current().filter(x=>{const u=units[x.unit]||{};if(d.pacific)return String(u.region||'')===String(d.region);return mode<2?u.dept===d.dept:String(itemDisplayAdminCode(x,mode))===String(mode===2?d.dept:d.region)});}
 function featureCollectionOf(features){return{type:'FeatureCollection',features:(features||[]).filter(Boolean)}}
 function hydrateOverseasEntryFromCore(d){
