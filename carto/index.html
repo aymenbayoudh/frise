@@ -676,8 +676,8 @@ function overseasByDepartment(code){code=String(code||'');return doms.find(d=>St
 function overseasByRegion(code){code=String(code||'');return doms.find(d=>String(d.region)===code)||null}
 function eventVisibleAtMode(d,target=mode){
  if(d.mode===target)return true;
- const raw=String(keyOf(d));
- if(target===3&&d.mode===2)return !!overseasByDepartment(raw);
+ const raw=String(keyOf(d)),u=units[d.unit]||{};
+ if(target===3&&d.mode===2)return !!overseasByDepartment(raw)||['987','988'].includes(String(u.region||''));
  if(target===2&&d.mode===3)return !!overseasByRegion(raw);
  return false
 }
@@ -768,7 +768,7 @@ function subprefEntriesForDepartments(meta,wanted,depCapitalByCode,showLabel){
  for(const dep of wanted)for(const code of OVERSEAS_ARRONDISSEMENT_CENTERS[dep]||[])add(dep,code);
  return out
 }
-function itemDisplayAdminCode(d,target=mode){const raw=String(keyOf(d));if(target===3&&d.mode===2)return String(overseasByDepartment(raw)?.region||raw);if(target===2&&d.mode===3)return displayDepartmentCode(String(overseasByRegion(raw)?.dept||raw));return target===2?displayDepartmentCode(raw):raw}
+function itemDisplayAdminCode(d,target=mode){const raw=String(keyOf(d)),u=units[d.unit]||{};if(target===3&&d.mode===2)return String(overseasByDepartment(raw)?.region||(['987','988'].includes(String(u.region||''))?u.region:raw));if(target===2&&d.mode===3)return displayDepartmentCode(String(overseasByRegion(raw)?.dept||raw));return target===2?displayDepartmentCode(raw):raw}
 let departmentRenderGeoCache=null,departmentOutlineGeoCache=null;
 function recodeDepartmentFeature(f){const raw=featureAdminCode(f),code=displayDepartmentCode(raw);if(code===raw)return f;return{...f,properties:{...(f.properties||{}),code,nom:SPECIAL_DEPARTMENT_NAMES[code],_mergedDeptPart:true,_rawDept:raw}}}
 function departmentRenderGeo(){if(departmentRenderGeoCache)return departmentRenderGeoCache;if(!deptGeo)return null;return departmentRenderGeoCache={type:'FeatureCollection',features:(deptGeo.features||[]).map(recodeDepartmentFeature)}}
