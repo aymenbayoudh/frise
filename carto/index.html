@@ -1201,7 +1201,7 @@ async function ensureOverseasGeometry(d){
  if(d.loadingGeo)return d.loadingGeo;
  d.loadingGeo=(async()=>{
    try{
-     const raw=await getJSON('https://geo.api.gouv.fr/communes?codeDepartement='+encodeURIComponent(d.dept)+'&fields=nom,code&format=geojson&geometry=contour');
+     const url='https://geo.api.gouv.fr/communes?codeDepartement='+encodeURIComponent(d.dept)+'&fields=nom,code&format=geojson&geometry=contour',response=await fetch(url,{cache:'force-cache',signal:AbortSignal.timeout(25000)});if(!response.ok)throw Error(response.status);const raw=await response.json();
      if(raw?.features?.length){
        d.geo=simplifyFeatureCollection(raw,d.dept==='987'?.012:d.dept==='988'?.006:.003);
        const bounds=L.geoJSON(d.geo).getBounds();if(bounds.isValid())d.map.fitBounds(bounds,{padding:[6,6]});
