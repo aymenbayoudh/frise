@@ -1149,6 +1149,8 @@ function ensureFocusedOverseasModeGeometry(){
 
 async function groupCenterCommune(code){
  code=String(code||'');if(!code)return null;if(groupCenterCache.has(code))return groupCenterCache.get(code);
+ const pac=pacificGeoForModeCode(1,code);
+ if(pac?.features?.length){const f=pac.features[0],b=featureBounds(f),p={code,name:featureAdminName(f),dept:String(f.properties?.dept||''),region:String(f.properties?.region||''),at:b?.isValid?.()?[b.getCenter().lat,b.getCenter().lng]:null,feature:null};groupCenterCache.set(code,Promise.resolve(p));return p}
  const p=(async()=>{try{
    let communes=null;try{communes=await getJSON('https://geo.api.gouv.fr/epcis/'+encodeURIComponent(code)+'/communes?fields=nom,code,population,centre,codeDepartement,codeRegion')}catch{}
    let c=Array.isArray(communes)&&communes.length?[...communes].sort((a,b)=>(Number(b.population)||0)-(Number(a.population)||0))[0]:null;
