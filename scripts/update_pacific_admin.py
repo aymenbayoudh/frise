@@ -369,11 +369,13 @@ def build_pf():
 
     centres = [
         {"name": "Papeete", "at": POINTS["Papeete"], "rank": "region", "level": 3, "code": "987", "territory": "pf"},
-        {"name": "Papeete", "at": POINTS["Papeete"], "rank": "department", "level": 2, "code": scode("ilesduvent"), "territory": "pf"},
-        {"name": "Uturoa", "at": POINTS["Uturoa"], "rank": "department", "level": 2, "code": scode("ilessouslevent"), "territory": "pf"},
-        {"name": "Taiohae", "at": POINTS["Taiohae"], "rank": "department", "level": 2, "code": scode("marquises"), "territory": "pf"},
-        {"name": "Tubuai", "at": POINTS["Tubuai"], "rank": "department", "level": 2, "code": scode("australes"), "territory": "pf", "note": "centre administratif de l'archipel"},
-        {"name": "Papeete", "at": POINTS["Papeete"], "rank": "department", "level": 2, "code": scode("tuamotugambier"), "territory": "pf", "note": "siège de la subdivision Tuamotu-Gambier"},
+        {"name": "Papeete", "at": POINTS["Papeete"], "rank": "department", "level": 2, "code": scode("ilesduvent"), "territory": "pf", "note": "siège de la subdivision administrative des îles du Vent"},
+        {"name": "Uturoa", "at": POINTS["Uturoa"], "rank": "department", "level": 2, "code": scode("ilessouslevent"), "territory": "pf", "note": "siège de la subdivision administrative des îles Sous-le-Vent"},
+        {"name": "Taiohae", "at": POINTS["Taiohae"], "rank": "department", "level": 2, "code": scode("marquises"), "territory": "pf", "note": "siège de la subdivision administrative des îles Marquises"},
+        {"name": "Tubuai", "at": POINTS["Tubuai"], "rank": "department", "level": 2, "code": scode("australes"), "territory": "pf", "note": "centre administratif de l'archipel des Australes"},
+        {"name": "Papeete", "at": POINTS["Papeete"], "rank": "subpref", "level": 2, "code": scode("australes"), "territory": "pf", "note": "siège de la subdivision administrative des îles Australes"},
+        {"name": "Hao", "at": POINTS["Hao"], "rank": "department", "level": 2, "code": scode("tuamotugambier"), "territory": "pf", "note": "chef-lieu de l'archipel des Tuamotu-Gambier"},
+        {"name": "Papeete", "at": POINTS["Papeete"], "rank": "subpref", "level": 2, "code": scode("tuamotugambier"), "territory": "pf", "note": "siège de la subdivision administrative des îles Tuamotu-Gambier"},
     ]
 
     base = OUT / "pf"
