@@ -493,20 +493,24 @@ def build_pf_overview(pf, center):
         # Choose an archipelago from the department code when possible, else
         # use the city/locality itself.
         code = x.get("code", "")
-        dep = next((d for d in pf["departements"] if d["properties"]["code"] == code), None)
-        key = pf_sub_key(dep["properties"]["nom"]) if dep else ""
+        city = fold(x["name"])
+        # Physical locality wins over the administrative unit: the
+        # Tuamotu-Gambier subdivision office is in Papeete, so its marker must
+        # stay with Tahiti rather than be projected into the Tuamotu cluster.
+        key = ""
+        if city in {fold("Papeete"), fold("Taravao")}:
+            key = "ilesduvent"
+        elif city == fold("Uturoa"):
+            key = "ilessouslevent"
+        elif city == fold("Taiohae"):
+            key = "marquises"
+        elif city == fold("Tubuai"):
+            key = "australes"
+        elif city in {fold("Rangiroa"), fold("Hao")}:
+            key = "tuamotugambier"
         if not key:
-            city = fold(x["name"])
-            if city in {fold("Papeete"), fold("Taravao")}:
-                key = "ilesduvent"
-            elif city == fold("Uturoa"):
-                key = "ilessouslevent"
-            elif city == fold("Taiohae"):
-                key = "marquises"
-            elif city == fold("Tubuai"):
-                key = "australes"
-            elif city in {fold("Rangiroa"), fold("Hao")}:
-                key = "tuamotugambier"
+            dep = next((d for d in pf["departements"] if d["properties"]["code"] == code), None)
+            key = pf_sub_key(dep["properties"]["nom"]) if dep else ""
         tr = transforms.get(key)
         if tr:
             overview_centers.append({**x, "overview_at": tr[1](x["at"])})
