@@ -2184,15 +2184,20 @@ let demoAdminSeeded=false,demoEpciSeeded=false,demoNextId=Math.max(0,...data.map
 const demoThemes=['Mobilités','Éducation','Patrimoine','Eau','Habitat','Culture','Santé','Action sociale','Politique de la ville','Urbanisme','Réemploi','Nature','Énergie'];
 const demoActions=['un réseau de lieux partagés','un programme de renaturation','un fonds de transformation','un atelier mobile','une plateforme de réemploi','un plan de sobriété','une boucle de mobilités','un observatoire territorial','un dispositif culturel','un programme d’adaptation'];
 function demoHash(v){let h=2166136261;for(const c of String(v)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
+function deterministicScaledCount(raw,fraction,seed){
+ raw=Math.max(0,Number(raw)||0);fraction=Math.max(0,Math.min(1,Number(fraction)||0));
+ const exact=raw*fraction,whole=Math.floor(exact),rest=exact-whole;
+ return whole+(rest>0&&(demoHash('thin:'+seed)%10000)<Math.round(rest*10000)?1:0)
+}
 function demoSkew(code,level){
  const h=demoHash(level+':'+code);
  if(level==='region')return h%7===0?8:h%4===0?5:1+h%3;
  if(level==='departement')return h%13===0?8:h%5===0?5:1+h%3;
  if(level==='commune'){
-  // Metropolitan commune demos: keep roughly one quarter of the former
-  // density, uniformly per commune while preserving at least one example.
-  const former=h%5===0?10:5+h%5;
-  return Math.max(1,Math.ceil(former/4))
+  // Previous state was already ~1/4 of the original density. Keep another
+  // 40% of that current state (= remove another 60%), deterministically.
+  const former=h%5===0?10:5+h%5,current=Math.max(1,Math.ceil(former/4));
+  return deterministicScaledCount(current,.40,'metro-commune:'+code)
  }
  return h%9===0?5:1+h%3
 }
@@ -2204,9 +2209,11 @@ function overseasDemoTarget(code,level){
   commune:[1,1,2,3,5,8,13]
  },r=ramps[level]||ramps.commune,h=demoHash('outremer:'+level+':'+String(code)),
     raw=r[h%r.length];
- // Overseas commune demos: keep roughly one fifth of the former density,
- // uniformly per commune, but retain at least one example everywhere.
- return level==='commune'?Math.max(1,Math.ceil(raw/5)):raw
+ if(level!=='commune')return raw;
+ // Previous state was already ~1/5 of the original density. Keep another
+ // 10% of that current state (= remove another 90%). Zero is now allowed.
+ const current=Math.max(1,Math.ceil(raw/5));
+ return deterministicScaledCount(current,.10,'overseas-commune:'+code)
 }
 function demoFeatureCenter(feature){const c=featureBounds(feature).getCenter();return[c.lat,c.lng]}
 function unitKeyForModeCode(level,code){const d=data.find(x=>x.mode===level&&String(keyOf(x))===String(code));return d?.unit||null}
@@ -2234,9 +2241,24 @@ async function seedCommuneDemoCoverageForAnchorEpci(anchorCommuneCode){
   let unit=unitKeyForModeCode(0,code);
   if(!unit){unit='demo-c-'+code;units[unit]={name,code,dept:communeDept,region:communeRegion,at}}
   else{units[unit].name=name;units[unit].dept=communeDept;units[unit].region=communeRegion;if(!units[unit].at)units[unit].at=at}
-  const existing=data.filter(x=>x.mode===0&&String(keyOf(x))===code).length,target=demoSkew(code,'commune');
+  // Grand Poitiers special test cloud: keep only ~1% of the already-reduced
+  // commune demo density. Most surrounding communes therefore get no demo.
+  const existing=data.filter(x=>x.mode===0&&String(keyOf(x))===code).length,
+        base=demoSkew(code,'commune'),
+        target=deterministicScaledCount(base,.01,'poitiers-epci:'+code);
   for(let i=existing;i<target;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(code)+i)%demoActions.length]+' dans la commune',units[unit].at||at,demoThemes[(i+4+demoHash(code))%demoThemes.length],i)
  }
+}
+async function pruneGrandPoitiersGeneratedDemos(anchorCommuneCode='86194'){
+ if(!epciGeo?.features?.length)return;
+ const dept=departmentCodeForCommune(anchorCommuneCode),cgeo=await departmentCommuneGeo(dept);if(!cgeo?.features?.length)return;
+ const anchor=cgeo.features.find(f=>featureAdminCode(f)===String(anchorCommuneCode));if(!anchor)return;
+ const anchorAt=demoFeatureCenter(anchor),epciFeature=(epciGeo.features||[]).find(f=>featureBounds(f).contains(L.latLng(anchorAt))&&pointInFeature(anchorAt[0],anchorAt[1],f));if(!epciFeature)return;
+ const codes=new Set((cgeo.features||[]).filter(f=>{const at=demoFeatureCenter(f);return pointInFeature(at[0],at[1],epciFeature)}).map(featureAdminCode));
+ const candidates=data.filter(d=>d.generatedDemo&&d.mode===0&&codes.has(String(keyOf(d)))).sort((a,b)=>a.id-b.id);
+ const keepCount=deterministicScaledCount(candidates.length,.01,'grand-poitiers-all');
+ const keep=new Set(candidates.slice(0,keepCount).map(d=>d.id));
+ data=data.filter(d=>!d.generatedDemo||d.mode!==0||!codes.has(String(keyOf(d)))||keep.has(d.id))
 }
 const MAJOR_DEMO_CITIES=[
  'Paris','Marseille','Lyon','Toulouse','Nice','Nantes','Montpellier','Strasbourg','Bordeaux','Lille',
@@ -2269,27 +2291,13 @@ async function seedNationalCityDemoCoverage(){
   if(!unit){unit='demo-city-'+code;units[unit]={name:catalog.name,code,dept,region,at}}
   else{units[unit].name=catalog.name;units[unit].dept=dept;units[unit].region=region;if(!units[unit].at)units[unit].at=at}
 
-  let rows=cityDemoRows(code),compo=cityDeckCount(rows,'Compo::Culture::'),ogct=cityDeckCount(rows,'OGCT::'),
-      serial=rows.filter(d=>d.generatedDemo).length,
-      // After the global 3/4 reduction in metropolitan commune examples,
-      // keep both deck families represented without recreating the old density.
-      minCompo=1,minOgct=1,
-      target=(spec.major?3:2)+(demoHash('city-total:'+code)%(spec.major?2:2));
-
-  while(compo<minCompo){
-   const theme=CITY_COMPO_THEMES[(demoHash(code+'compo')+compo)%CITY_COMPO_THEMES.length],
-         action=theme==='Patrimoine'?'un parcours patrimonial':'un programme culturel hors les murs';
-   addGeneratedDemo(0,unit,action+' · '+catalog.name,units[unit].at||at,theme,serial++);
-   compo++;rows.push(data[data.length-1])
-  }
-  while(ogct<minOgct){
-   const theme=CITY_OGCT_THEMES[(demoHash(code+'ogct')+ogct)%CITY_OGCT_THEMES.length],
-         action=demoActions[(demoHash(code+theme)+ogct)%demoActions.length];
-   addGeneratedDemo(0,unit,action+' · '+catalog.name,units[unit].at||at,theme,serial++);
-   ogct++;rows.push(data[data.length-1])
-  }
+  let rows=cityDemoRows(code),serial=rows.filter(d=>d.generatedDemo).length,
+      currentTarget=(spec.major?3:2)+(demoHash('city-total:'+code)%2),
+      target=deterministicScaledCount(currentTarget,.40,'city:'+code);
+  // Poitiers is governed by the much stronger Grand-Poitiers thinning below.
+  if(code==='86194')target=0;
   while(rows.length<target){
-   const useCompo=(rows.length+demoHash(code))%3===0,
+   const useCompo=(rows.length+demoHash(code))%2===0,
          theme=useCompo?CITY_COMPO_THEMES[(rows.length+demoHash(code+'c'))%CITY_COMPO_THEMES.length]:CITY_OGCT_THEMES[(rows.length+demoHash(code+'o'))%CITY_OGCT_THEMES.length],
          action=theme==='Culture'?'un dispositif culturel':theme==='Patrimoine'?'un programme de valorisation patrimoniale':demoActions[(rows.length+demoHash(code+theme))%demoActions.length];
    addGeneratedDemo(0,unit,action+' · '+catalog.name,units[unit].at||at,theme,serial++);
@@ -2351,7 +2359,8 @@ async function seedAdministrativeDemoCoverage(){
  // and Compo > Culture decks.
  try{await seedNationalCityDemoCoverage()}catch{}
  if(!hasImportedCartData){
-  const selectedDeps=[...(deptGeo.features||[])].filter(f=>demoHash(featureAdminCode(f))%3===0).slice(0,42);
+  const overseasDeptCodes=new Set(doms.map(d=>String(d.dept||'')));
+  const selectedDeps=[...(deptGeo.features||[])].filter(f=>!overseasDeptCodes.has(featureAdminCode(f))&&demoHash(featureAdminCode(f))%3===0).slice(0,42);
   for(const f of selectedDeps){
     const dept=featureAdminCode(f),m=depMeta.get(dept),chef=String(m?.chefLieu||'');if(!chef)continue;
     let unit=unitKeyForModeCode(0,chef);if(!unit){unit='demo-c-'+chef;units[unit]={name:'Chef-lieu de '+featureAdminName(f),code:chef,dept,region:String(m?.region??m?.codeRegion??''),at:demoFeatureCenter(f),generatedChefLieu:true}}
@@ -2359,9 +2368,14 @@ async function seedAdministrativeDemoCoverage(){
   }
   const existingCommuneUnits=[...new Set(data.filter(d=>d.mode===0&&!d.generatedDemo).map(d=>d.unit))];
   for(const unit of existingCommuneUnits){
-    const u=units[unit];if(!u?.at)continue;const formerExtra=3+demoHash(unit)%7,extra=Math.max(1,Math.ceil(formerExtra/4));for(let i=0;i<extra;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(unit)+i)%demoActions.length]+' · démonstration locale',u.at,demoThemes[(i+demoHash(unit))%demoThemes.length],i)
+    const u=units[unit];if(!u?.at||overseasDeptCodes.has(String(u.dept||'')))continue;
+    const formerExtra=3+demoHash(unit)%7,current=Math.max(1,Math.ceil(formerExtra/4)),extra=deterministicScaledCount(current,.40,'metro-extra:'+unit);
+    for(let i=0;i<extra;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(unit)+i)%demoActions.length]+' · démonstration locale',u.at,demoThemes[(i+demoHash(unit))%demoThemes.length],i)
   }
  }
+ // Catch every generated source that may have touched Poitiers or another
+ // Grand-Poitiers commune (city seed, chef-lieu seed, local extras, etc.).
+ try{await pruneGrandPoitiersGeneratedDemos('86194')}catch{}
  refreshAfterDemoSeed()
 }
 function seedEpciDemoCoverage(){
@@ -2412,7 +2426,10 @@ function seedPacificDemoCoverage(){
   // strongly so the density ramps can be checked visually.
   for(const f of src.communes?.features||[]){
    const code=featureAdminCode(f),name=featureAdminName(f),at=demoFeatureCenter(f),unit='demo-pac-c-'+code;units[unit]={name,code,region:regionCode,dept:regionCode,at};
-   let count=targetCount(code,0);if(/noum|papeete/i.test(name))count+=1;if(demoHash(code)%17===0)count+=1;
+   let count=targetCount(code,0);
+   // Pacific commune boosts are subject to the same additional 90% cut.
+   if(/noum|papeete/i.test(name))count+=deterministicScaledCount(1,.10,'pac-capital:'+code);
+   if(demoHash(code)%17===0)count+=deterministicScaledCount(1,.10,'pac-boost:'+code);
    for(let i=0;i<count;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(code+'pac-c')+i)%demoActions.length]+' · '+name,at,demoThemes[(i+7+demoHash(code))%demoThemes.length],i)
   }
  }
