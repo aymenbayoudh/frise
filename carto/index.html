@@ -727,6 +727,7 @@ map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),selectedGroup=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
 const IGN_ADMIN_BASE='./data/ign/2026/';const IGN_GEO_BASE=IGN_ADMIN_BASE+'geographic/';const IGN_OVERVIEW_BASE=IGN_ADMIN_BASE+'overview/';
 let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c',ignAdminManifest=null;
+let overviewActive=false,overviewRegionGeo=null,overviewDeptGeo=null,overviewEpciGeo=null,overviewCommuneCenters=null,ignOverviewManifest=null,overviewDepartmentRenderGeoCache=null,overviewDepartmentOutlineGeoCache=null,overviewEpciPromise=null;
 
 const communeLabels=L.layerGroup().addTo(map),groupCenterCache=new Map();let groupCenterToken=0,groupCenterHideTimer=null,adminCascadeToken=0;
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -800,8 +801,41 @@ function groups(list){
 }
 function groupByCode(code){groups();return groupByCodeCache.get(String(code))||null}
 let adminDrawTimer;function scheduleAdminDraw(){clearTimeout(adminDrawTimer);adminDrawTimer=setTimeout(()=>drawAdmin(),120)}
-function home(){closeMapDetail();selection=null;local.clearLayers();focus.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;subdivisionKey='';communeLabelKey='';centerKey='';map.fitBounds([[41.3,-5.3],[51.2,9.8]],{paddingTopLeft:[innerWidth<640?10:125,85],paddingBottomRight:[25,innerWidth<640?100:45]});renderSide();draw();requestAnimationFrame(()=>{updateSubdivisions(true);updateCenters(true)})}
+function home(){closeMapDetail();selection=null;local.clearLayers();focus.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;subdivisionKey='';communeLabelKey='';centerKey='';overviewActive=overviewReady();pointRenderKey='';updateInsetVisibility();const overview=overviewActive?(overviewDeptGeo||overviewRegionGeo):null;if(overview?.features?.length){const b=L.geoJSON(overview).getBounds();if(b.isValid())map.fitBounds(b,{paddingTopLeft:[innerWidth<640?8:125,55],paddingBottomRight:[25,innerWidth<640?82:35],maxZoom:6})}else map.fitBounds([[41.3,-5.3],[51.2,9.8]],{paddingTopLeft:[innerWidth<640?10:125,85],paddingBottomRight:[25,innerWidth<640?100:45]});updateBasemap();renderSide();draw();if(mode===1&&overviewActive&&!overviewEpciGeo)ensureOverviewEpciGeo().then(()=>{if(overviewActive&&mode===1){draw();updateCenters(true)}}).catch(()=>{});requestAnimationFrame(()=>{updateSubdivisions(true);updateCenters(true)})}
 function getJSON(url){if(!cache.has(url))cache.set(url,fetch(url,{signal:AbortSignal.timeout(25000)}).then(r=>{if(!r.ok)throw Error(r.status);return r.json()}).catch(e=>{cache.delete(url);throw e}));return cache.get(url)}
+function overviewReady(){return !!(overviewRegionGeo?.features?.length&&overviewDeptGeo?.features?.length)}
+async function loadIgnOverview(){
+ try{
+  const [manifest,regions,departements,centers]=await Promise.all([
+   getJSON(IGN_OVERVIEW_BASE+'manifest.json'),
+   getJSON(IGN_OVERVIEW_BASE+'regions.geojson'),
+   getJSON(IGN_OVERVIEW_BASE+'departements.geojson'),
+   getJSON(IGN_OVERVIEW_BASE+'commune-centers.json').catch(()=>({}))
+  ]);
+  if(!regions?.features?.length||!departements?.features?.length)throw Error('Vue CARTO PLUS incomplète');
+  ignOverviewManifest=manifest;overviewRegionGeo=regions;overviewDeptGeo=departements;overviewCommuneCenters=centers||{};overviewDepartmentRenderGeoCache=null;overviewDepartmentOutlineGeoCache=null;return true
+ }catch(e){console.warn('IGN CARTO PLUS indisponible',e);return false}
+}
+async function ensureOverviewEpciGeo(){
+ if(overviewEpciGeo?.features?.length)return overviewEpciGeo;
+ if(overviewEpciPromise)return overviewEpciPromise;
+ overviewEpciPromise=getJSON(IGN_OVERVIEW_BASE+'epci.geojson').then(j=>{if(!j?.features?.length)throw Error('EPCI CARTO PLUS vide');overviewEpciGeo=j;return j}).finally(()=>{overviewEpciPromise=null});
+ return overviewEpciPromise
+}
+function overviewDepartmentRenderGeo(){if(overviewDepartmentRenderGeoCache)return overviewDepartmentRenderGeoCache;if(!overviewDeptGeo)return null;return overviewDepartmentRenderGeoCache={type:'FeatureCollection',features:(overviewDeptGeo.features||[]).map(recodeDepartmentFeature)}}
+function overviewDepartmentOutlineGeo(){
+ if(overviewDepartmentOutlineGeoCache)return overviewDepartmentOutlineGeoCache;
+ const base=overviewDeptGeo;if(!base)return null;const features=[];
+ for(const f of base.features||[]){const raw=featureAdminCode(f);if(!SPECIAL_DEPARTMENTS[raw])features.push(f)}
+ for(const code of ['20R','6AE']){const raw=rawDepartmentCodes(code),parts=(base.features||[]).filter(f=>raw.includes(featureAdminCode(f))),boundary=parts.length?overseasOuterBoundary({type:'FeatureCollection',features:parts}):null;if(boundary)features.push({...boundary,properties:{code,nom:SPECIAL_DEPARTMENT_NAMES[code]}})}
+ return overviewDepartmentOutlineGeoCache={type:'FeatureCollection',features}
+}
+function displayRegionGeo(){return overviewActive&&overviewRegionGeo?overviewRegionGeo:regionGeo}
+function displayDepartmentRenderGeo(){return overviewActive&&overviewDeptGeo?overviewDepartmentRenderGeo():departmentRenderGeo()}
+function displayDepartmentOutlineGeo(){return overviewActive&&overviewDeptGeo?overviewDepartmentOutlineGeo():departmentOutlineGeo()}
+function displayEpciGeo(){return overviewActive?overviewEpciGeo:epciGeo}
+function overviewPointForCommune(code,fallback){const at=overviewActive&&overviewCommuneCenters?overviewCommuneCenters[String(code||'')]:null;return Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)?at:fallback}
+function overviewFeatureCenter(geo,code,fallback){const f=geo?.features?.find(x=>featureAdminCode(x)===String(code||''));if(!f)return fallback;const b=featureBounds(f);return b?.isValid?.()?[b.getCenter().lat,b.getCenter().lng]:fallback}
 const ADMIN_BOUNDARY_SOURCES=[
  {label:'Etalab 2026',base:'https://etalab-datasets.geo.data.gouv.fr/2026/geojson/'},
  {label:'Etalab 2025',base:'https://etalab-datasets.geo.data.gouv.fr/2025/geojson/'}
@@ -948,13 +982,13 @@ function shade(n,code=''){
 function countCode(code){return groupByCode(code)?.items?.length||0;}
 function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom(),rawBase=mode===3?1.9:mode===2?1.55:mode===1?.525:.8,mgpSelected=mode===1&&String(selection?.code||'')===GRAND_PARIS_CODE;if(mgpSelected&&(f?.properties?._ept||f?.properties?._mgpParis))return{color:'#000000',weight:0,fillColor:'#ffffff',fillOpacity:0,opacity:0};let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=adminStroke(rawBase),mergedPart=mode===2&&!!f?.properties?._mergedDeptPart;if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));const selectedWeight=adminStroke(mode===1?2.15:Math.max(4.3,rawBase+2.4));return {color:selected?'#000000':'#090B0D',weight:mergedPart?0:(selected?selectedWeight:baseWeight),fillColor:shade(n,code),fillOpacity,opacity:1};}
 const SATELLITE_ZOOM_THRESHOLD=11;
-function updateBasemap(){if(map.getZoom()>=SATELLITE_ZOOM_THRESHOLD){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
+function updateBasemap(){if(!overviewActive&&map.getZoom()>=SATELLITE_ZOOM_THRESHOLD){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
 function restyleAdminLayer(layer){if(layer.feature&&layer.setStyle)layer.setStyle(adminStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleAdminLayer)}
 function refreshAdminStyle(){admin.eachLayer(restyleAdminLayer);mainOutline.eachLayer(restyleMainOutline)}
 let adminZoomStyleBand=map.getZoom()>=8?1:0;function refreshAdminStyleForZoom(){const band=map.getZoom()>=8?1:0;if(band===adminZoomStyleBand)return;adminZoomStyleBand=band;refreshAdminStyle()}
-function pointState(){const z=map.getZoom();return mode+':'+(selection?.key||'')+':'+(mode===0?(z<11?'agg':'pin'):mode===1?'free-interco':selection?'pin':'none')}
+function pointState(){const z=map.getZoom();return(overviewActive?'overview:':'geo:')+mode+':'+(selection?.key||'')+':'+(mode===0?(z<11?'agg':'pin'):mode===1?'free-interco':selection?'pin':'none')}
 function maybeDrawPoints(){const key=pointState();if(key!==pointRenderKey)drawPoints()}
-function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on({mouseover:e=>{l.openTooltip(e.latlng);const selected=mode>=1&&selection&&String(selection.code)===code,base=adminStyle(f),hoverWeight=mode===1?Math.max(1.15,base.weight+.25):Math.max(2.25,base.weight+.45);l.setStyle(selected?base:{weight:hoverWeight,color:'#000000',opacity:1});l.bringToFront()},mouseout:()=>{l.closeTooltip();l.setStyle(adminStyle(f))},click:()=>{if(mode<1)return;const g=groupByCode(code);choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},l.getBounds());}})}}).addTo(target);}
+function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on({mouseover:e=>{l.openTooltip(e.latlng);const selected=mode>=1&&selection&&String(selection.code)===code,base=adminStyle(f),hoverWeight=mode===1?Math.max(1.15,base.weight+.25):Math.max(2.25,base.weight+.45);l.setStyle(selected?base:{weight:hoverWeight,color:'#000000',opacity:1});l.bringToFront()},mouseout:()=>{l.closeTooltip();l.setStyle(adminStyle(f))},click:()=>{if(mode<1)return;const g=groupByCode(code),fromOverview=overviewActive;choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},fromOverview?null:l.getBounds(),{fromOverview});}})}}).addTo(target);}
 const GRAND_PARIS_CODE='200054781',EPT_GEO_URL='https://www.carto-metropolegrandparis.fr/server/rest/services/Limites_administratives_MIL1/MapServer/3/query?where=1%3D1&outFields=code_ept%2Clib_ept%2Cterritoire&returnGeometry=true&outSR=4326&f=geojson';
 async function augmentGrandParisGroups(geo){
  if(!geo?.features?.length)return geo;
@@ -1033,6 +1067,7 @@ function overseasGeoBounds(d){
  return b.isValid()?b:null
 }
 function overseasForView(){
+ if(overviewActive)return null;
  const c=map.getCenter(),exact=overseasAtPoint([c.lat,c.lng]);if(exact)return exact;
  const view=map.getBounds();
  for(const d of doms){
