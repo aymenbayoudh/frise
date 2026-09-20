@@ -2181,6 +2181,14 @@ function adminSearchEntries(){
    for(const c of adminCatalog.communes)out.push({mode:0,type:'Commune',code:c.code,name:c.name,dept:c.dept,region:c.region})
  }
  const knownAdmin=new Set(out.map(e=>e.mode+':'+String(e.code)));for(const d of doms){for(const e of [{mode:2,type:'Département',code:d.dept,name:d.name,region:d.region},{mode:3,type:'Région',code:d.region,name:d.name,region:d.region}]){const k=e.mode+':'+String(e.code);if(!knownAdmin.has(k)){out.push(e);knownAdmin.add(k)}}}
+ for(const kind of ['pf','nc']){
+  const src=pacificAdmin[kind];if(!src)continue;
+  const addGeo=(geo,m,type)=>{for(const f of geo?.features||[]){const code=featureAdminCode(f),name=featureAdminName(f),k=m+':'+code;if(code&&name&&!knownAdmin.has(k)){out.push({mode:m,type,code,name,feature:f,pacific:true});knownAdmin.add(k)}}};
+  addGeo(src.regions,3,kind==='pf'?'Collectivité':'Collectivité');
+  addGeo(src.departements,2,kind==='pf'?'Subdivision':'Province');
+  addGeo(src.groupements,1,'Groupement');
+  addGeo(src.communes,0,'Commune')
+ }
  if(epciGeo?.features?.length){
    for(const f of epciGeo.features){const code=featureAdminCode(f),name=featureAdminName(f);if(code&&name)out.push({mode:1,type:'Groupement',code,name,feature:f})}
  }
@@ -2219,9 +2227,9 @@ async function navigateToCollectivity(entry){
    choose(g,bounds||undefined,{maxZoom:9.25});
    return
  }
- const geo=entry.mode===3?regionGeo:entry.mode===2?departmentRenderGeo():epciGeo;
+ const pacGeo=entry.pacific?pacificGeoForModeCode(entry.mode,entry.code):null,geo=entry.mode===3?regionGeo:entry.mode===2?departmentRenderGeo():epciGeo;
  const overseas=entry.mode===3?overseasByRegion(entry.code):entry.mode===2?overseasByDepartment(entry.code):null;if(overseas&&!overseas.geo)await ensureOverseasGeometry(overseas);
- const features=entry.feature?[entry.feature]:(geo?.features?.filter(f=>featureAdminCode(f)===String(entry.code))||[]),fallbackGeo=!features.length&&overseas?.geo?overseas.geo:null;
+ const features=pacGeo?.features?.length?pacGeo.features:entry.feature?[entry.feature]:(geo?.features?.filter(f=>featureAdminCode(f)===String(entry.code))||[]),fallbackGeo=!features.length&&overseas?.geo?overseas.geo:null;
  const bounds=features.length?L.geoJSON({type:'FeatureCollection',features}).getBounds():fallbackGeo?L.geoJSON(fallbackGeo).getBounds():null;
  const existing=groupByCode(entry.code);
  const at=bounds?bounds.getCenter():overseas?.at?L.latLng(overseas.at):map.getCenter();
