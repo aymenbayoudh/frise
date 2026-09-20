@@ -51,4 +51,8 @@ jobs:
             exit 0
           fi
           git commit -m "data(carto): refresh IGN Admin Express COG 2026"
-          git push
+          # A manual edit can land while the download job is running (the IGN
+          # extraction takes several minutes). Rebase the generated commit
+          # instead of failing with a non-fast-forward push.
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
