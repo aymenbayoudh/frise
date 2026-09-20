@@ -1,0 +1,127 @@
+{
+  "available_layers": [
+    "canton",
+    "arrondissement",
+    "arrondissement_municipal",
+    "chef_lieu_d_arrondissement",
+    "chef_lieu_d_arrondissement_municipal",
+    "chef_lieu_de_canton",
+    "chef_lieu_de_collectivite_territoriale",
+    "chef_lieu_de_commune",
+    "chef_lieu_de_commune_associee_ou_deleguee",
+    "chef_lieu_de_departement",
+    "chef_lieu_d_epci",
+    "chef_lieu_de_region",
+    "collectivite_territoriale",
+    "commune",
+    "commune_associee_ou_deleguee",
+    "departement",
+    "epci",
+    "region",
+    "info_metadonnees",
+    "layer_styles"
+  ],
+  "counts": {
+    "arrondissements": 336,
+    "arrondissements_municipaux": 45,
+    "centers": 41355,
+    "collectivites": 103,
+    "commune_centers": 34878,
+    "communes_associees_deleguees": 2565,
+    "departements": 104,
+    "epci": 1267,
+    "regions": 21
+  },
+  "download_discovery": {
+    "file": {
+      "category": [
+        {
+          "label": "RGF93 v1 / Lambert-93 -- France",
+          "term": "https://www.opengis.net/def/crs/EPSG/0/2154"
+        }
+      ],
+      "content": "7e78b727d6be295c486602fb74612074",
+      "id": "https://data.geopf.fr/telechargement/download/ADMIN-EXPRESS-COG-CARTOPLUS/ADMIN-EXPRESS-COG-CARTOPLUS_4-0__GPKG_LAMB93_FRA_2026-01-01/ADMIN-EXPRESS-COG-CARTOPLUS_4-0__GPKG_LAMB93_FRA_2026-01-01.7z",
+      "link": [
+        {
+          "bbox": null,
+          "href": "https://data.geopf.fr/telechargement/download/ADMIN-EXPRESS-COG-CARTOPLUS/ADMIN-EXPRESS-COG-CARTOPLUS_4-0__GPKG_LAMB93_FRA_2026-01-01/ADMIN-EXPRESS-COG-CARTOPLUS_4-0__GPKG_LAMB93_FRA_2026-01-01.7z",
+          "length": 21683337,
+          "rel": "alternate",
+          "type": "application/x-7z-compressed"
+        }
+      ],
+      "mime_type": [
+        "application/geopackage+sqlite3",
+        "application/octet-stream",
+        "application/pdf",
+        "application/x-shapefile",
+        "image/x-cpg",
+        "image/x-prj",
+        "text/plain"
+      ]
+    },
+    "resource_url": "https://data.geopf.fr/telechargement/resource/ADMIN-EXPRESS-COG-CARTOPLUS",
+    "subresource": {
+      "category": [
+        {
+          "label": "RGF93 v1 / Lambert-93 -- France",
+          "term": "https://www.opengis.net/def/crs/EPSG/0/2154"
+        }
+      ],
+      "content": "ADMIN-EXPRESS-COG-CARTOPLUS_4-0__GPKG_LAMB93_FRA_2026-01-01",
+      "editionDate": "2026-01-01",
+      "format": [
+        {
+          "label": "GPKG (GeoPackage)",
+          "term": "GPKG"
+        }
+      ],
+      "id": "https://data.geopf.fr/telechargement/resource/ADMIN-EXPRESS-COG-CARTOPLUS/ADMIN-EXPRESS-COG-CARTOPLUS_4-0__GPKG_LAMB93_FRA_2026-01-01",
+      "link": [
+        {
+          "bbox": null,
+          "href": "https://data.geopf.fr/telechargement/resource/ADMIN-EXPRESS-COG-CARTOPLUS/ADMIN-EXPRESS-COG-CARTOPLUS_4-0__GPKG_LAMB93_FRA_2026-01-01",
+          "rel": "alternate",
+          "title": "ADMIN-EXPRESS-COG-CARTOPLUS_4-0__GPKG_LAMB93_FRA_2026-01-01",
+          "type": "application/atom+xml"
+        }
+      ],
+      "polygon": null,
+      "title": "ADMIN-EXPRESS-COG-CARTOPLUS_4-0__GPKG_LAMB93_FRA_2026-01-01",
+      "updated": "2026-07-07T14:59:00+01:00",
+      "zone": [
+        {
+          "label": "FRA France entière",
+          "term": "FRA"
+        }
+      ]
+    }
+  },
+  "download_url": "https://data.geopf.fr/telechargement/download/ADMIN-EXPRESS-COG-CARTOPLUS/ADMIN-EXPRESS-COG-CARTOPLUS_4-0__GPKG_LAMB93_FRA_2026-01-01/ADMIN-EXPRESS-COG-CARTOPLUS_4-0__GPKG_LAMB93_FRA_2026-01-01.7z",
+  "geopackage_file": "ADE-COG-CARTOPLUS-SANS-ECHELLE_4-0_GPKG_LAMB93_FRA-ED2026-01-01.gpkg",
+  "selected_layers": {
+    "arrondissements": "arrondissement",
+    "arrondissements_municipaux": "arrondissement_municipal",
+    "centers": [
+      "chef_lieu_d_arrondissement",
+      "chef_lieu_d_arrondissement_municipal",
+      "chef_lieu_de_canton",
+      "chef_lieu_de_collectivite_territoriale",
+      "chef_lieu_de_commune",
+      "chef_lieu_de_commune_associee_ou_deleguee",
+      "chef_lieu_de_departement",
+      "chef_lieu_d_epci",
+      "chef_lieu_de_region"
+    ],
+    "collectivites": "collectivite_territoriale",
+    "commune_centers": "chef_lieu_de_commune",
+    "commune_centers_fallback": "commune",
+    "communes_associees_deleguees": "commune_associee_ou_deleguee",
+    "departements": "departement",
+    "epci": "epci",
+    "regions": "region"
+  },
+  "source": "IGN ADMIN EXPRESS COG CARTO PLUS 2026",
+  "variant": "sans conservation d'echelle des DROM"
+}
