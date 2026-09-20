@@ -730,7 +730,7 @@ const satelliteTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/se
 map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.getPane('centersPane').style.pointerEvents='none';map.createPane('groupCenterPane');map.getPane('groupCenterPane').style.zIndex='435';map.getPane('groupCenterPane').style.pointerEvents='none';map.createPane('eventPointPane');map.getPane('eventPointPane').style.zIndex='500';map.getPane('eventPointPane').style.pointerEvents='none';map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('arrondissementPane');map.getPane('arrondissementPane').style.zIndex='412';map.getPane('arrondissementPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('selectedGroupPane');map.getPane('selectedGroupPane').style.zIndex='425';map.getPane('selectedGroupPane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),selectedGroup=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
 const IGN_ADMIN_BASE=cartoAsset('data/ign/2026/');const IGN_GEO_BASE=IGN_ADMIN_BASE+'geographic/';const IGN_OVERVIEW_BASE=IGN_ADMIN_BASE+'overview/';const PACIFIC_ADMIN_BASE=cartoAsset('data/pacific/');
-let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c',ignAdminManifest=null;
+let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrGeoPromise=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c',ignAdminManifest=null;
 let overviewActive=false,overviewRegionGeo=null,overviewDeptGeo=null,overviewCollectiviteGeo=null,overviewEpciGeo=null,overviewArrGeo=null,overviewCommuneCenters=null,ignOverviewManifest=null,overviewDepartmentRenderGeoCache=null,overviewDepartmentOutlineGeoCache=null,overviewEpciPromise=null,overviewArrPromise=null,overviewBootResolved=false;
 let pacificAdmin={pf:null,nc:null},pacificOverviewCache=new Map(),pacificLoadPromise=null;
 // Must exist before desktop inset maps are initialized below.
@@ -1430,25 +1430,35 @@ function arrGeoHasDepartment(geo,dept){
 async function ensureArrGeo(requiredDept=''){
  requiredDept=String(requiredDept||'');
  if(arrGeo&&arrGeoHasDepartment(arrGeo,requiredDept))return arrGeo;
- const officialUrl=ignAdmin2026Wfs('arrondissement');
- try{
-   const official=await getJSON(officialUrl);
-   if(official?.features?.length&&arrGeoHasDepartment(official,requiredDept))arrGeo=official
- }catch{}
- if(!arrGeo||!arrGeoHasDepartment(arrGeo,requiredDept)){
-   try{
-     const fallback=await getJSONFallback([
-       IGN_GEO_BASE+'arrondissements.geojson',
-       'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-avec-outre-mer.geojson',
-      './data/admin/arrondissements.geojson',
-      'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-version-simplifiee.geojson'
-     ]);
-     if(fallback?.features?.length&&arrGeoHasDepartment(fallback,requiredDept))arrGeo=fallback
-   }catch{}
+ if(arrGeoPromise){
+  try{const pending=await arrGeoPromise;if(pending&&arrGeoHasDepartment(pending,requiredDept))return pending}catch{}
  }
+ arrGeoPromise=(async()=>{
+  // Deterministic path first: use the local IGN 2026 extract committed with
+  // the site. Network WFS/raw GitHub are only fallbacks, never the first load.
+  try{
+   const local=await getJSON(IGN_GEO_BASE+'arrondissements.geojson');
+   if(local?.features?.length)return local
+  }catch{}
+  try{
+   const official=await getJSON(ignAdmin2026Wfs('arrondissement'));
+   if(official?.features?.length)return official
+  }catch{}
+  try{
+   return await getJSONFallback([
+    cartoAsset('data/admin/arrondissements.geojson'),
+    'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-avec-outre-mer.geojson',
+    'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-version-simplifiee.geojson'
+   ])
+  }catch{return null}
+ })();
+ try{
+  const loaded=await arrGeoPromise;
+  if(loaded?.features?.length)arrGeo=loaded
+ }finally{arrGeoPromise=null}
  arrDeptGeo=deptGeo;
  if(mode===2)drawMainOutline();
- return arrGeo
+ return arrGeo&&arrGeoHasDepartment(arrGeo,requiredDept)?arrGeo:null
 }
 function arrondissementDepartmentCode(value){
  const code=String(value?.properties?.code??value?.code??'');
@@ -1543,7 +1553,7 @@ async function updateSubdivisions(force=false){
     const ign=await ensureOverviewArrGeo(),geo=mergeFeatureCollections(ign,pacificOverviewLevel(0));if(key!==subdivisionKey||!overviewActive||mode!==2)return;
     if(geo?.features?.length)L.geoJSON(geo,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(1.42),opacity:1,fillOpacity:0}}).addTo(subAdmin)
    }
-  }catch(e){console.warn('Sous-divisions CARTO PLUS indisponibles',e)}
+  }catch(e){if(subdivisionKey===key)subdivisionKey='';console.warn('Sous-divisions CARTO PLUS indisponibles',e)}
   return
  }
  if(mode===0&&selection&&z>=9&&!epciGeo){try{await ensureEpciGeo()}catch{}if(mode!==0||!selection)return}
@@ -1580,9 +1590,12 @@ async function updateSubdivisions(force=false){
    }
    if(showArrondissements&&arrWanted.length){
      const requiredDept=overseasArrFocus?String(focusedOverseas.dept):'',
-           geo=await ensureArrGeo(requiredDept);if(key!==subdivisionKey||!geo?.features?.length)return;
+           geo=await ensureArrGeo(requiredDept);
+     if(key!==subdivisionKey)return;
+     if(!geo?.features?.length){subdivisionKey='';return}
      const wanted=new Set(arrWanted),filtered={type:'FeatureCollection',features:geo.features.filter(f=>wanted.has(arrondissementDepartmentCode(f)))};
-     if(filtered.features.length)L.geoJSON(filtered,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(mode===0?1.55:1.42),opacity:1,fillOpacity:0}}).addTo(subAdmin)
+     if(filtered.features.length)L.geoJSON(filtered,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(mode===0?1.55:1.42),opacity:1,fillOpacity:0}}).addTo(subAdmin);
+     else subdivisionKey=''
    }
    if(epci){
      const geo=await epciCommuneGeo(epci);if(key!==subdivisionKey||!geo?.features||contextEpci()!==epci)return;
