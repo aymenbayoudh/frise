@@ -1232,7 +1232,7 @@ function shade(n,code=''){
  return mixHex('#ffffff',unitDisplayColor(code),n===1?.18:n===2?.34:n===3?.5:n<=5?.68:.88)
 }
 function countCode(code){return groupByCode(code)?.items?.length||0;}
-function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom(),rawBase=mode===3?.72:mode===2?1.4:mode===1?.525:.8,mgpSelected=mode===1&&String(selection?.code||'')===GRAND_PARIS_CODE;if(mgpSelected&&(f?.properties?._ept||f?.properties?._mgpParis))return{color:'#000000',weight:0,fillColor:'#ffffff',fillOpacity:0,opacity:0};let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=primaryAdminStroke(rawBase),mergedPart=mode===2&&!!f?.properties?._mergedDeptPart;if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));const selectedWeight=primaryAdminStroke(mode===1?2.15:Math.max(4.3,rawBase+2.4));return {color:selected?'#000000':'#090B0D',weight:mergedPart?0:(selected?selectedWeight:baseWeight),fillColor:shade(n,code),fillOpacity,opacity:1};}
+function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom(),rawBase=mode>=2?1.4:mode===1?.525:.8,mgpSelected=mode===1&&String(selection?.code||'')===GRAND_PARIS_CODE;if(mgpSelected&&(f?.properties?._ept||f?.properties?._mgpParis))return{color:'#000000',weight:0,fillColor:'#ffffff',fillOpacity:0,opacity:0};let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=primaryAdminStroke(rawBase),mergedPart=mode===2&&!!f?.properties?._mergedDeptPart;if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));const selectedWeight=primaryAdminStroke(mode===1?2.15:Math.max(4.3,rawBase+2.4));return {color:selected?'#000000':'#090B0D',weight:mergedPart?0:(selected?selectedWeight:baseWeight),fillColor:shade(n,code),fillOpacity,opacity:1};}
 const SATELLITE_ZOOM_THRESHOLD=OVERVIEW_OVERSEAS_HANDOFF_ZOOM;
 function updateBasemap(){
  // Satellite depends on geographic zoom, not on whether the lightweight
@@ -1444,7 +1444,7 @@ function drawAdminHits(){
  }
 }
 function mainOutlineStyle(f){
- const code=featureAdminCode(f),selected=mode>=1&&selection&&String(selection.code)===code,rawBase=mode===3?.72:mode===2?1.45:mode===1?.54:.85;
+ const code=featureAdminCode(f),selected=mode>=1&&selection&&String(selection.code)===code,rawBase=mode>=2?1.45:mode===1?.54:.85;
  const base=primaryAdminStroke(rawBase),selectedWeight=primaryAdminStroke(mode===1?2.18:Math.max(4.35,rawBase+2.45));
  return {pane:'mainOutlinePane',color:'#000000',weight:selected?selectedWeight:base,opacity:1,fill:false,fillOpacity:0}
 }
@@ -1452,10 +1452,9 @@ function restyleMainOutline(layer){if(layer.feature&&layer.setStyle)layer.setSty
 function drawMainOutline(){
  mainOutline.clearLayers();
  const mgpSelected=!overviewActive&&mode===1&&String(selection?.code||'')===GRAND_PARIS_CODE&&mgpTrueFeature;
- // Region mode already draws the region border in the primary admin layer.
- // Do not double-stroke it: region and department boundaries can then share
- // the same visual weight.
- const geo=mode===2?displayDepartmentOutlineGeo():mode===1&&mgpSelected?{type:'FeatureCollection',features:[mgpTrueFeature]}:null;
+ // Keep the same two-layer treatment for the active top-level boundary in
+ // Region and Department modes; only the geometry changes.
+ const geo=mode===3?displayRegionGeo():mode===2?displayDepartmentOutlineGeo():mode===1&&mgpSelected?{type:'FeatureCollection',features:[mgpTrueFeature]}:null;
  if(geo)L.geoJSON(geo,{pane:'mainOutlinePane',interactive:false,style:mainOutlineStyle}).addTo(mainOutline)
 }
 function drawSelectedGroupOverlay(){
@@ -1499,7 +1498,7 @@ function drawOverseasContext(target=contextAdmin){
 }
 function drawContextAdmin(){
  contextAdmin.clearLayers();const rg=displayRegionGeo(),dg=displayDepartmentRenderGeo();
- if(mode<=2&&rg)L.geoJSON(rg,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:mode===1?'#000000':mode===2?'#050607':'#090B0D',weight:adminStroke(mode<=1?2.55:2.9),opacity:1,fillOpacity:0}}).addTo(contextAdmin);
+ if(mode<=2&&rg)L.geoJSON(rg,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:mode===1?'#000000':mode===2?'#050607':'#090B0D',weight:adminStroke(mode===2?1.8:1.45),opacity:1,fillOpacity:0}}).addTo(contextAdmin);
  if(mode===0&&dg)L.geoJSON(dg,{pane:'contextAdminPane',interactive:false,style:{pane:'contextAdminPane',color:'#0B0D0F',weight:adminStroke(1.1),opacity:1,fillOpacity:0}}).addTo(contextAdmin);
  drawOverseasContext(contextAdmin)
 }
