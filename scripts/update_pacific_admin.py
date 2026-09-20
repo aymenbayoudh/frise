@@ -86,6 +86,22 @@ def feature(code: str, name: str, geom, **extra: Any) -> dict[str, Any] | None:
     return {"type": "Feature", "properties": props, "geometry": mapping(g)}
 
 
+def simplify_shape(g, tolerance: float):
+    g = clean_shape(g)
+    if not g or tolerance <= 0:
+        return g
+    out = clean_shape(g.simplify(tolerance, preserve_topology=True))
+    return out or g
+
+
+def simplify_feature(f: dict[str, Any], tolerance: float) -> dict[str, Any]:
+    return {
+        "type": "Feature",
+        "properties": dict(f.get("properties") or {}),
+        "geometry": mapping(simplify_shape(shape(f["geometry"]), tolerance)),
+    }
+
+
 def fc(features):
     return {"type": "FeatureCollection", "features": [f for f in features if f and f.get("geometry")]}
 
@@ -209,14 +225,16 @@ def build_nc():
         code = str(code).strip()
         if code.isdigit() and len(code) <= 2:
             code = "988" + code.zfill(2)
-        communes.append(feature(code, name, shape(f["geometry"]), region="988", territory="NC"))
+        g = simplify_shape(shape(f["geometry"]), 0.0012)
+        communes.append(feature(code, name, g, region="988", territory="NC"))
 
     provinces = []
     for i, f in enumerate(rawp.get("features", []), 1):
         p = f.get("properties") or {}
         name = first(p, "nom", "NOM", "province", "nom_prov") or f"Province {i}"
         raw = first(p, "code_prov", "CODE_PROV", "code", "id") or i
-        provinces.append(feature("988-P" + str(raw), name, shape(f["geometry"]), region="988", territory="NC"))
+        g = simplify_shape(shape(f["geometry"]), 0.0012)
+        provinces.append(feature("988-P" + str(raw), name, g, region="988", territory="NC"))
 
     by = feature_name_map(communes)
     groups, group_centres, missing = [], {}, {}
@@ -332,7 +350,7 @@ def build_pf():
         u = union_features(selected, code, name, region="987", dept="987", territory="PF", kind="communaute_de_communes")
         if u:
             groups.append(u)
-            group_centres[code] = centre
+            group_centres[code] = {"name": centre, "at": POINTS.get(centre)}
 
     region = union_features(communes, "987", "Polynésie française", region="987", territory="PF")
     sub_codes = {fold(f["properties"]["nom"]): f["properties"]["code"] for f in subdivisions}
@@ -461,6 +479,7 @@ def build_pf_overview(pf, center):
         minx, miny, maxx, maxy = g.bounds
         if max(maxx - minx, maxy - miny) < min_width:
             g = g.buffer(min_width / 2)
+        g = simplify_shape(g, 0.0007)
         return feature(f["properties"]["code"], f["properties"]["nom"], g, **{k:v for k,v in f["properties"].items() if k not in {"code","nom"}})
 
     communes = [x for f in pf["communes"] if (x := t_commune(f))]
@@ -528,7 +547,8 @@ def build_nc_overview(nc, center):
     def transform_fc(items):
         out = []
         for f in items:
-            out.append(feature(f["properties"]["code"], f["properties"]["nom"], tr(shape(f["geometry"])), **{k:v for k,v in f["properties"].items() if k not in {"code","nom"}}))
+            g = simplify_shape(tr(shape(f["geometry"])), 0.0018)
+            out.append(feature(f["properties"]["code"], f["properties"]["nom"], g, **{k:v for k,v in f["properties"].items() if k not in {"code","nom"}}))
         return out
 
     return {
@@ -576,7 +596,7 @@ def main():
         },
         "overview_slots": slots,
         "notes": {
-            "nc_departements": "3 provinces",
+            "nc_departements": "3 provinces; geometries simplified from the official terrestrial administrative limits for browser performance.",
             "nc_groupements": "5 groupements territoriaux principaux affichés (SIGN, SIVM Sud, SIVOM VKP, SIVM Nord, SIVM Côte Est). Le SIVU Tipeep, qui recouvre Touho/Poindimié et chevauche le SIVM Côte Est, n'est pas utilisé comme couche principale afin d'éviter une fausse partition superposée.",
             "pf_departements": "5 subdivisions administratives, rendered as unions of island land polygons.",
             "pf_groupements": "7 communities of communes, rendered as unions of member islands.",
