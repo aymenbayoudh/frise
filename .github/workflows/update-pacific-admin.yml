@@ -1,0 +1,43 @@
+name: Update Pacific admin data
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/update_pacific_admin.py"
+      - ".github/workflows/update-pacific-admin.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pacific-admin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check requests shapely
+      - name: Download and build Pacific admin layers
+        run: python scripts/update_pacific_admin.py
+      - name: Commit generated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add carto/data/pacific
+          if git diff --cached --quiet; then
+            echo "Pacific data already up to date"
+            exit 0
+          fi
+          git commit -m "data(carto): refresh Pacific administrative layers"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
