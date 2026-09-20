@@ -857,6 +857,28 @@ function pacificOverviewFeatureCenter(level,code){
 function pacificOverviewCommunePoint(code){
  code=String(code||'');for(const kind of ['pf','nc']){const p=pacificAdmin[kind]?.overviewCommuneCenters?.[code];if(Array.isArray(p)&&p.length>=2)return p}return null
 }
+function mapGeoCoordinates(value,fn){
+ if(!Array.isArray(value))return value;
+ if(value.length>=2&&Number.isFinite(Number(value[0]))&&Number.isFinite(Number(value[1])))return fn(value);
+ return value.map(x=>mapGeoCoordinates(x,fn))
+}
+function transformOverviewGeo(geo,fn){
+ if(!geo?.features)return geo;
+ for(const f of geo.features||[])if(f.geometry?.coordinates)f.geometry.coordinates=mapGeoCoordinates(f.geometry.coordinates,fn);
+ return geo
+}
+function normalizePacificOverview(kind,payload){
+ if(kind!=='pf'||!payload?.regions?.features?.length)return payload;
+ const b=L.geoJSON(payload.regions).getBounds();if(!b.isValid())return payload;
+ const source=b.getCenter(),sourceWidth=Math.max(.001,b.getEast()-b.getWest()),
+       target={lat:42.05,lng:2.08,width:1.30},scale=target.width/sourceWidth,
+       xy=a=>[target.lng+(Number(a[0])-source.lng)*scale,target.lat+(Number(a[1])-source.lat)*scale,...a.slice(2)],
+       ll=a=>[target.lat+(Number(a[0])-source.lat)*scale,target.lng+(Number(a[1])-source.lng)*scale];
+ for(const k of ['regions','departements','groupements','communes'])transformOverviewGeo(payload[k],xy);
+ for(const e of payload.centers||[])if(Array.isArray(e.overview_at))e.overview_at=ll(e.overview_at);
+ for(const k of Object.keys(payload.communeCenters||{}))if(Array.isArray(payload.communeCenters[k]))payload.communeCenters[k]=ll(payload.communeCenters[k]);
+ return payload
+}
 async function loadPacificAdmin(){
  if(pacificLoadPromise)return pacificLoadPromise;
  pacificLoadPromise=(async()=>{
@@ -868,7 +890,8 @@ async function loadPacificAdmin(){
     getJSON(overviewBase+'regions.geojson'),getJSON(overviewBase+'departements.geojson'),getJSON(overviewBase+'groupements.geojson'),getJSON(overviewBase+'communes.geojson'),
     getJSON(overviewBase+'centers.json').catch(()=>([])),getJSON(overviewBase+'commune-centers.json').catch(()=>({}))
    ]);
-   return{regions,departements,groupements,communes,communeCenters,centers,groupCenters,overview:{regions:oRegions,departements:oDepartements,groupements:oGroupements,communes:oCommunes},overviewCenters:oCenters,overviewCommuneCenters:oCommuneCenters}
+   const ov=normalizePacificOverview(kind,{regions:oRegions,departements:oDepartements,groupements:oGroupements,communes:oCommunes,centers:oCenters,communeCenters:oCommuneCenters});
+   return{regions,departements,groupements,communes,communeCenters,centers,groupCenters,overview:{regions:ov.regions,departements:ov.departements,groupements:ov.groupements,communes:ov.communes},overviewCenters:ov.centers,overviewCommuneCenters:ov.communeCenters}
   };
   const [pf,nc]=await Promise.all([load('pf'),load('nc')]);pacificAdmin={pf,nc};pacificOverviewCache.clear();
   for(const [kind,dept] of [['pf','987'],['nc','988']]){const d=doms.find(x=>String(x.dept)===dept),src=pacificAdmin[kind];if(!d||!src)continue;d.pacific=true;d.geo=src.regions;d.detailGeo=src.communes;d.departmentGeo=src.departements;d.epciGeo=src.groupements;d.epciCodes=new Set((src.groupements.features||[]).map(featureAdminCode).filter(Boolean));d.geoSource='pacific';d.fittedGeo=false}
@@ -943,7 +966,7 @@ function compactMapUi(){return matchMedia('(max-width:640px)').matches}
 function adminStroke(v){return compactMapUi()?v*.52:v}
 function mixHex(a,b,t){const pa=a.match(/\w\w/g).map(x=>parseInt(x,16)),pb=b.match(/\w\w/g).map(x=>parseInt(x,16));return'#'+pa.map((v,i)=>Math.round(v+(pb[i]-v)*t).toString(16).padStart(2,'0')).join('')}
 function unitDisplayColor(code){const g=groupByCode(code),n=g?.items?.length||0;if(!n)return defaultColors[mode]||accent;return mode===0?densityContinuousColor(n):densityColor(n)}
-function itemDisplayColor(d){return temporaryEventColor(d)}
+function itemDisplayColor(d){return temporaryPaletteActive?temporaryEventColor(d):unitDisplayColor(String(keyOf(d)))}
 function adminItemFor(level,code){return data.find(d=>d.mode===level&&String(level===2?displayDepartmentCode(keyOf(d)):keyOf(d))===String(code))}
 function adminLevelColor(level,code){const e=adminItemFor(level,code);return e?temporaryEventColor(e):accent}
 function hexRgb(c){const x=validColor(c).slice(1);return[parseInt(x.slice(0,2),16),parseInt(x.slice(2,4),16),parseInt(x.slice(4,6),16)]}
@@ -1035,7 +1058,7 @@ function shade(n,code=''){
 }
 function countCode(code){return groupByCode(code)?.items?.length||0;}
 function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom(),rawBase=mode===3?1.9:mode===2?1.55:mode===1?.525:.8,mgpSelected=mode===1&&String(selection?.code||'')===GRAND_PARIS_CODE;if(mgpSelected&&(f?.properties?._ept||f?.properties?._mgpParis))return{color:'#000000',weight:0,fillColor:'#ffffff',fillOpacity:0,opacity:0};let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=adminStroke(rawBase),mergedPart=mode===2&&!!f?.properties?._mergedDeptPart;if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));const selectedWeight=adminStroke(mode===1?2.15:Math.max(4.3,rawBase+2.4));return {color:selected?'#000000':'#090B0D',weight:mergedPart?0:(selected?selectedWeight:baseWeight),fillColor:shade(n,code),fillOpacity,opacity:1};}
-const SATELLITE_ZOOM_THRESHOLD=11;
+const SATELLITE_ZOOM_THRESHOLD=10;
 function updateBasemap(){if(!overviewActive&&map.getZoom()>=SATELLITE_ZOOM_THRESHOLD){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
 function restyleAdminLayer(layer){if(layer.feature&&layer.setStyle)layer.setStyle(adminStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleAdminLayer)}
 function refreshAdminStyle(){admin.eachLayer(restyleAdminLayer);mainOutline.eachLayer(restyleMainOutline)}
@@ -1316,7 +1339,7 @@ function drawAdmin(){
 function densityProgress(n){const max=densityMaxCount();return max<=1?1:Math.max(0,Math.min(1,Math.log1p(n)/Math.log1p(max)))}
 function densityContinuousColor(n){const ramp=densityPalette();if(!ramp.length)return accent;if(ramp.length===1)return ramp[0];const x=densityProgress(n)*(ramp.length-1),i=Math.floor(x),j=Math.min(ramp.length-1,i+1);return mixHex(ramp[i],ramp[j],x-i)}
 function communeBubbleSize(n){const t=densityProgress(n);return compactMapUi()?Math.round(14+20*t):Math.round(22+36*t)}
-function icon(items,label,pin=false,showLabel=true){const n=items.length,global=items.every(x=>x.kind==='global'),s=pin?(global?35:26):communeBubbleSize(n),c=pin?temporaryEventColor(items[0]):densityContinuousColor(n),bubbleLabel=showLabel?'<span class="bubble-label">'+escape(label)+'</span>':'';return L.divIcon({className:pin?'pin-wrap':'bubble',iconSize:[s,s],iconAnchor:[s/2,pin?s:s/2],html:pin?'<div class="pin-body '+(global?'global':'')+'" style="--unit-color:'+c+'"><span>'+(n>1?n:global?'◆':'')+'</span></div>':'<div class="bubble-body" style="--unit-color:'+c+';width:'+s+'px;height:'+s+'px">'+n+'</div>'+bubbleLabel});}
+function icon(items,label,pin=false,showLabel=true){const n=items.length,global=items.every(x=>x.kind==='global'),s=pin?(global?35:26):communeBubbleSize(n),c=pin?itemDisplayColor(items[0]):densityContinuousColor(n),bubbleLabel=showLabel?'<span class="bubble-label">'+escape(label)+'</span>':'';return L.divIcon({className:pin?'pin-wrap':'bubble',iconSize:[s,s],iconAnchor:[s/2,pin?s:s/2],html:pin?'<div class="pin-body '+(global?'global':'')+'" style="--unit-color:'+c+'"><span>'+(n>1?n:global?'◆':'')+'</span></div>':'<div class="bubble-body" style="--unit-color:'+c+';width:'+s+'px;height:'+s+'px">'+n+'</div>'+bubbleLabel});}
 function addMarker(at,items,label,pin,fn,target=points,showLabel=true){const marker=L.marker(at,{pane:'eventPointPane',icon:icon(items,label,pin,showLabel),title:label,alt:label,keyboard:true}).addTo(target);marker.bindTooltip(escape(label)+' · '+items.length+' exemple'+(items.length>1?'s':''));marker.on('click',fn);}
 function locationBuckets(items){const b=new Map();items.forEach(d=>{const k=d.at.join(',');if(!b.has(k))b.set(k,[]);b.get(k).push(d)});return [...b.values()];}
 function openBucket(items){if(items.length===1){showItem(items[0]);return;}activeItem=null;focus.clearLayers();$('heading').textContent='Au siège · '+units[items[0].unit].name;$('context').textContent=items.length+' initiatives à portée générale';$('back').hidden=false;renderCards(items);}
@@ -1395,7 +1418,7 @@ async function choose(g,bounds,options={}){
  drawPoints();updateCommuneDataLayer(true);if(mode===1){refreshAdminStyle();drawMainOutline();drawSelectedGroupOverlay();drawAdminHits()}subdivisionKey='';communeLabelKey='';centerKey='';updateSubdivisions(true);updateCenters(true);if(mode===1&&g.code)showGroupCenter(g.code,true);else{groupCenterToken++;groupCenter.clearLayers()}updateBasemap();++epoch
 }
 function closeMapDetail(){$('mapDetail').hidden=true;activeItem=null;focus.clearLayers()}
-function showItem(d,options={}){if(!d)return;focus.clearLayers();const g=groups().find(g=>g.key===d.unit||g.items?.some(x=>x.id===d.id))||{key:d.unit,...units[d.unit],items:[d]};selection=g;renderSide();activeItem=d;refreshAdminStyle();const detail=$('mapDetail');detail.style.setProperty('--event-color',temporaryEventColor(d));$('mapDetailTitle').innerHTML=cleanCartInline(d.title);$('mapDetailPlace').textContent=(units[d.unit]?.name||d.unit)+' · '+kindLabel(d);$('mapDetailSubtitle').innerHTML=cleanCartInline(d.subtitle||'');$('mapDetailSubtitle').hidden=!d.subtitle;const body=$('mapDetailBody');body.innerHTML=cleanCartHtml(d.html||'');for(const src of d.image||[]){const img=document.createElement('img');img.src=src;img.alt=stripHtml(d.title);img.loading='lazy';body.append(img)}detail.hidden=false;detail.scrollTop=0;if(mode===0&&options.recenter!==false){map.setView(d.at,Math.max(map.getZoom(),d.kind==='global'?13:14));L.circleMarker(d.at,{radius:18,color:temporaryEventColor(d),weight:2,fillColor:temporaryEventColor(d),fillOpacity:.12,interactive:false}).addTo(focus);drawPoints();updateBasemap()}}
+function showItem(d,options={}){if(!d)return;focus.clearLayers();const g=groups().find(g=>g.key===d.unit||g.items?.some(x=>x.id===d.id))||{key:d.unit,...units[d.unit],items:[d]};selection=g;renderSide();activeItem=d;refreshAdminStyle();const mapColor=itemDisplayColor(d),detail=$('mapDetail');detail.style.setProperty('--event-color',mapColor);$('mapDetailTitle').innerHTML=cleanCartInline(d.title);$('mapDetailPlace').textContent=(units[d.unit]?.name||d.unit)+' · '+kindLabel(d);$('mapDetailSubtitle').innerHTML=cleanCartInline(d.subtitle||'');$('mapDetailSubtitle').hidden=!d.subtitle;const body=$('mapDetailBody');body.innerHTML=cleanCartHtml(d.html||'');for(const src of d.image||[]){const img=document.createElement('img');img.src=src;img.alt=stripHtml(d.title);img.loading='lazy';body.append(img)}detail.hidden=false;detail.scrollTop=0;if(mode===0&&options.recenter!==false){map.setView(d.at,Math.max(map.getZoom(),d.kind==='global'?13:14));L.circleMarker(d.at,{radius:18,color:mapColor,weight:2,fillColor:mapColor,fillOpacity:.12,interactive:false}).addTo(focus);drawPoints();updateBasemap()}}
 function updateScaleSelector(value=mode,animate=true){
  const selector=$('scaleSelector'),glass=$('scaleGlass'),v=Math.max(0,Math.min(3,Number(value)||0));
  if(selector){selector.style.setProperty('--scale-position',String(v));selector.classList.toggle('instant',!animate)}
@@ -1568,8 +1591,8 @@ async function updateSubdivisions(force=false){
   return
  }
  const overseasArrFocus=(mode===0||mode===2)&&!!focusedOverseas?.departmentArrondissements;
- const showRegionDepartments=mode===3&&z>=6;
- const showArrondissements=(mode===2||mode===0)&&(z>=7||overseasArrFocus);
+ const showRegionDepartments=mode===3;
+ const showArrondissements=mode===2||(mode===0&&(z>=7||overseasArrFocus));
  let arrWanted=[];
  if(showArrondissements){
    if(mode===2&&selection)arrWanted=rawDepartmentCodes(String(selection.code)).filter(departmentHasArrondissements);
@@ -1942,15 +1965,8 @@ function renderInset(d,items=domItems(d)){
 }
 function overviewCoversInset(d){if(!overviewActive)return false;return adminGeoHasCode(displayRegionGeo(),d.region)||adminGeoHasCode(displayDepartmentRenderGeo(),d.dept)||!!(d.pacific&&pacificAdmin[d.dept==='987'?'pf':'nc'])}
 function updateInsetVisibility(){
- const box=$('overseas');
- if(!overviewBootResolved){if(box)box.style.display='none';for(const d of doms)if(d.el)d.el.style.display='none';return}
- let visible=0;
- for(const [i,d] of doms.entries()){
-  const show=!overviewCoversInset(d);if(d.el)d.el.style.display=show?'':'none';
-  if(show){visible++;if(!d.map){if(insetObserver)insetObserver.observe(d.el);else initInsetMap(d,i)}}
-  else if(insetObserver&&d.el)insetObserver.unobserve(d.el)
- }
- if(box)box.style.display=visible?'':'none'
+ const box=$('overseas');if(box)box.style.display='none';
+ for(const d of doms){if(d.el)d.el.style.display='none';if(insetObserver&&d.el)insetObserver.unobserve(d.el)}
 }
 function updateInsets(){
  updateInsetVisibility();
@@ -2539,7 +2555,7 @@ function automaticPaletteColors(style,n){
 function generateAutomaticPalette(style=$("palettePreset")?.value||"surprise"){const n=temporaryPaletteCount,colors=automaticPaletteColors(style,n);temporaryPalette=[...colors,...temporaryPalette.slice(n)];renderTemporaryPaletteInputs();temporaryPaletteActive=true;temporaryPaletteAssignments.clear();refreshPaletteMap()}
 function scalePaletteColor(){if(!temporaryPaletteActive)return defaultColors[mode]||accent;const ramp=densityPalette();return ramp[Math.min(ramp.length-1,Math.max(0,Math.round((ramp.length-1)*.66)))]||accent}
 function updateScalePaletteColor(){document.querySelector('.scale-panel')?.style.setProperty('--scale-color',scalePaletteColor())}
-function refreshPaletteMap(){updateScalePaletteColor();if(mode===1){refreshAdminStyle();drawSelectedGroupOverlay()}else drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer(true);centerKey='';updateCenters(true);if(activeItem){$("mapDetail")?.style.setProperty("--event-color",temporaryEventColor(activeItem));focus.eachLayer(l=>{if(l.setStyle)l.setStyle({color:temporaryEventColor(activeItem),fillColor:temporaryEventColor(activeItem)})})}}
+function refreshPaletteMap(){updateScalePaletteColor();if(mode===1){refreshAdminStyle();drawSelectedGroupOverlay()}else drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer(true);centerKey='';updateCenters(true);if(activeItem){$("mapDetail")?.style.setProperty("--event-color",itemDisplayColor(activeItem));focus.eachLayer(l=>{if(l.setStyle)l.setStyle({color:itemDisplayColor(activeItem),fillColor:itemDisplayColor(activeItem)})})}}
 let paletteOpacityFrame=0;
 function refreshPaletteOpacityLive(){
  if(!temporaryPaletteActive)return;
@@ -2679,7 +2695,7 @@ function finishScaleDrag(e){if(!scaleDrag||scaleDrag.id!==e.pointerId)return;con
 scaleGlass.onpointerup=finishScaleDrag;scaleGlass.onpointercancel=e=>{if(!scaleDrag)return;scaleDrag=null;scaleGlass.classList.remove('dragging');updateScaleSelector(mode,true)};
 scaleGlass.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowDown'){e.preventDefault();setMode(Math.max(0,mode-1))}else if(e.key==='ArrowRight'||e.key==='ArrowUp'){e.preventDefault();setMode(Math.min(3,mode+1))}else if(e.key==='Home'){e.preventDefault();setMode(0)}else if(e.key==='End'){e.preventDefault();setMode(3)}};
 document.querySelectorAll('.scale-labels [data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));$('home').onclick=home;$('back').onclick=()=>{if(activeItem){activeItem=null;focus.clearLayers();renderSide();}else{selection=null;local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;subdivisionKey='';communeLabelKey='';centerKey='';renderSide();drawPoints();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);}};document.addEventListener('keydown',e=>{const ae=document.activeElement,tag=(ae?.tagName||'').toLowerCase(),editing=tag==='input'||tag==='textarea'||tag==='select'||ae?.isContentEditable;if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'&&!editing){e.preventDefault();undoCartLastChange();return}if(e.key==='Escape'){$('back').click();}});
-let mapDetailLayerTimer=null;function scheduleDetailLayers(){clearTimeout(mapDetailLayerTimer);mapDetailLayerTimer=setTimeout(()=>{updateSubdivisions();updateCommuneLabels();updateCenters();if(mode>=1&&compactMapUi())drawAdminHits()},190)}map.on('zoomend',()=>{updateBasemap();refreshAdminStyleForZoom();maybeDrawPoints();scheduleDetailLayers()});map.on('moveend',scheduleDetailLayers);
+let mapDetailLayerTimer=null;function scheduleDetailLayers(){clearTimeout(mapDetailLayerTimer);mapDetailLayerTimer=setTimeout(()=>{updateSubdivisions(true);updateCommuneLabels();updateCenters();if(mode>=1&&compactMapUi())drawAdminHits()},120)}map.on('zoomend',()=>{updateBasemap();refreshAdminStyleForZoom();maybeDrawPoints();scheduleDetailLayers()});map.on('moveend',scheduleDetailLayers);
 async function bootCartography(){
  const savedWidth=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(savedWidth)applySideWidth(savedWidth);
  updateScaleSelector(mode,false);
