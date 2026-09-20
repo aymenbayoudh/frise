@@ -2184,15 +2184,29 @@ let demoAdminSeeded=false,demoEpciSeeded=false,demoNextId=Math.max(0,...data.map
 const demoThemes=['Mobilités','Éducation','Patrimoine','Eau','Habitat','Culture','Santé','Action sociale','Politique de la ville','Urbanisme','Réemploi','Nature','Énergie'];
 const demoActions=['un réseau de lieux partagés','un programme de renaturation','un fonds de transformation','un atelier mobile','une plateforme de réemploi','un plan de sobriété','une boucle de mobilités','un observatoire territorial','un dispositif culturel','un programme d’adaptation'];
 function demoHash(v){let h=2166136261;for(const c of String(v)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
-function demoSkew(code,level){const h=demoHash(level+':'+code);if(level==='region')return h%7===0?8:h%4===0?5:1+h%3;if(level==='departement')return h%13===0?8:h%5===0?5:1+h%3;if(level==='commune')return h%5===0?10:5+h%5;return h%9===0?5:1+h%3}
+function demoSkew(code,level){
+ const h=demoHash(level+':'+code);
+ if(level==='region')return h%7===0?8:h%4===0?5:1+h%3;
+ if(level==='departement')return h%13===0?8:h%5===0?5:1+h%3;
+ if(level==='commune'){
+  // Metropolitan commune demos: keep roughly one quarter of the former
+  // density, uniformly per commune while preserving at least one example.
+  const former=h%5===0?10:5+h%5;
+  return Math.max(1,Math.ceil(former/4))
+ }
+ return h%9===0?5:1+h%3
+}
 function overseasDemoTarget(code,level){
  const ramps={
   region:[2,4,7,11,16],
   departement:[1,3,6,10,15],
   interco:[1,2,4,7,12,18],
   commune:[1,1,2,3,5,8,13]
- },r=ramps[level]||ramps.commune,h=demoHash('outremer:'+level+':'+String(code));
- return r[h%r.length]
+ },r=ramps[level]||ramps.commune,h=demoHash('outremer:'+level+':'+String(code)),
+    raw=r[h%r.length];
+ // Overseas commune demos: keep roughly one fifth of the former density,
+ // uniformly per commune, but retain at least one example everywhere.
+ return level==='commune'?Math.max(1,Math.ceil(raw/5)):raw
 }
 function demoFeatureCenter(feature){const c=featureBounds(feature).getCenter();return[c.lat,c.lng]}
 function unitKeyForModeCode(level,code){const d=data.find(x=>x.mode===level&&String(keyOf(x))===String(code));return d?.unit||null}
@@ -2257,8 +2271,10 @@ async function seedNationalCityDemoCoverage(){
 
   let rows=cityDemoRows(code),compo=cityDeckCount(rows,'Compo::Culture::'),ogct=cityDeckCount(rows,'OGCT::'),
       serial=rows.filter(d=>d.generatedDemo).length,
-      minCompo=spec.major?3:2,minOgct=spec.major?5:3,
-      target=(spec.major?10:6)+(demoHash('city-total:'+code)%(spec.major?5:4));
+      // After the global 3/4 reduction in metropolitan commune examples,
+      // keep both deck families represented without recreating the old density.
+      minCompo=1,minOgct=1,
+      target=(spec.major?3:2)+(demoHash('city-total:'+code)%(spec.major?2:2));
 
   while(compo<minCompo){
    const theme=CITY_COMPO_THEMES[(demoHash(code+'compo')+compo)%CITY_COMPO_THEMES.length],
@@ -2343,7 +2359,7 @@ async function seedAdministrativeDemoCoverage(){
   }
   const existingCommuneUnits=[...new Set(data.filter(d=>d.mode===0&&!d.generatedDemo).map(d=>d.unit))];
   for(const unit of existingCommuneUnits){
-    const u=units[unit];if(!u?.at)continue;const extra=3+demoHash(unit)%7;for(let i=0;i<extra;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(unit)+i)%demoActions.length]+' · démonstration locale',u.at,demoThemes[(i+demoHash(unit))%demoThemes.length],i)
+    const u=units[unit];if(!u?.at)continue;const formerExtra=3+demoHash(unit)%7,extra=Math.max(1,Math.ceil(formerExtra/4));for(let i=0;i<extra;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(unit)+i)%demoActions.length]+' · démonstration locale',u.at,demoThemes[(i+demoHash(unit))%demoThemes.length],i)
   }
  }
  refreshAfterDemoSeed()
@@ -2396,7 +2412,7 @@ function seedPacificDemoCoverage(){
   // strongly so the density ramps can be checked visually.
   for(const f of src.communes?.features||[]){
    const code=featureAdminCode(f),name=featureAdminName(f),at=demoFeatureCenter(f),unit='demo-pac-c-'+code;units[unit]={name,code,region:regionCode,dept:regionCode,at};
-   let count=targetCount(code,0);if(/noum|papeete/i.test(name))count+=5;if(demoHash(code)%17===0)count+=4;
+   let count=targetCount(code,0);if(/noum|papeete/i.test(name))count+=1;if(demoHash(code)%17===0)count+=1;
    for(let i=0;i<count;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(code+'pac-c')+i)%demoActions.length]+' · '+name,at,demoThemes[(i+7+demoHash(code))%demoThemes.length],i)
   }
  }
