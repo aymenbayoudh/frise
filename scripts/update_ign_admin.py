@@ -306,6 +306,9 @@ def build_standard(names: list[str]) -> dict[str, Any]:
         "departements": ("departement",),
         "epci": ("epci", "epci3"),
         "arrondissements": ("arrondissement",),
+        "arrondissements_municipaux": ("arrondissement_municipal",),
+        "collectivites": ("collectivite_territoriale",),
+        "communes_associees_deleguees": ("commune_associee_ou_deleguee",),
     }
     selected: dict[str, Any] = {}
     counts: dict[str, int] = {}
@@ -314,7 +317,13 @@ def build_standard(names: list[str]) -> dict[str, Any]:
         layer = find_layer(names, wanted, overview=False)
         assert layer
         selected[out_name] = layer
-        canonical = "epci" if out_name == "epci" else out_name.rstrip("s")
+        canonical = {
+            "epci": "epci",
+            "arrondissements": "arrondissement",
+            "arrondissements_municipaux": "arrondissement",
+            "communes_associees_deleguees": "commune",
+            "collectivites": "collectivite",
+        }.get(out_name, out_name.rstrip("s"))
         geo = normalize_geo(fetch_geojson(layer), canonical)
         write_json(base / f"{out_name}.geojson", geo)
         counts[out_name] = len(geo["features"])
