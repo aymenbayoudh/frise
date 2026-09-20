@@ -898,6 +898,51 @@ async function ensureEpciGeo(){
  return epciLoadPromise
 }
 
+async function ensureOverseasEpciGeometry(d){
+ if(!d?.nationalEpci)return null;
+ if(d.epciGeo?.features?.length)return d.epciGeo;
+ if(d.epciLoading)return d.epciLoading;
+ d.epciLoading=(async()=>{
+   try{
+     const url='https://geo.api.gouv.fr/epcis?codeDepartement='+encodeURIComponent(d.dept)+'&fields=nom,code&format=geojson&geometry=contour';
+     const geo=await getJSON(url);
+     if(geo?.features?.length){
+       d.epciGeo=geo;
+       d.epciCodes=new Set(geo.features.map(featureAdminCode).filter(Boolean));
+       if(mode===1){invalidateGroupCache();drawAdmin();updateInsets();updateCenters(true)}
+     }
+   }catch{}
+   finally{d.epciLoading=null}
+   return d.epciGeo||null
+ })();
+ return d.epciLoading
+}
+function overriddenEpciCodes(){
+ const out=new Set();
+ for(const d of doms)for(const code of d.epciCodes||[])out.add(String(code));
+ return out
+}
+function epciBaseGeo(){
+ if(!epciGeo?.features?.length)return epciGeo;
+ const overridden=overriddenEpciCodes();if(!overridden.size)return epciGeo;
+ return{type:'FeatureCollection',features:epciGeo.features.filter(f=>!overridden.has(featureAdminCode(f)))}
+}
+function overseasAtPoint(at){
+ if(!Array.isArray(at))return null;
+ const p=L.latLng(at);
+ for(const d of doms){
+   const geo=d.geo||d.detailGeo;if(!geo?.features?.length)continue;
+   for(const f of geo.features){
+     const b=featureBounds(f);if(b?.isValid?.()&&b.contains(p)&&pointInFeature(p.lat,p.lng,f))return d
+   }
+ }
+ return null
+}
+function ensureFocusedOverseasModeGeometry(){
+ const c=map.getCenter(),d=overseasAtPoint([c.lat,c.lng]);
+ if(mode===1&&d?.nationalEpci)ensureOverseasEpciGeometry(d).catch(()=>{});
+}
+
 async function groupCenterCommune(code){
  code=String(code||'');if(!code)return null;if(groupCenterCache.has(code))return groupCenterCache.get(code);
  const p=(async()=>{try{
@@ -1047,14 +1092,14 @@ function drawAdmin(){
  contextAdmin.clearLayers();admin.clearLayers();mainOutline.clearLayers();selectedGroup.clearLayers();adminHits.clearLayers();
  if(mode===3){if(regionGeo)geoLayer(regionGeo,admin,true);else if(deptGeo)geoLayer(deptGeo,admin,false)}
  else if(mode===2){const dg=departmentRenderGeo();if(dg)geoLayer(dg,admin,true);else if(regionGeo)geoLayer(regionGeo,admin,false)}
- else if(mode===1){if(epciGeo)geoLayer(epciGeo,admin,true)}
+ else if(mode===1){const eg=epciBaseGeo();if(eg)geoLayer(eg,admin,true);for(const d of doms)if(d.epciGeo?.features?.length)geoLayer(d.epciGeo,admin,true)}
  for(const d of doms){
    if(d.geo&&mode>=2){
      const code=mode===3?d.region:d.dept,baseGeo=mode===3?regionGeo:departmentRenderGeo();
      if(!adminGeoHasCode(baseGeo,code)){
        const n=domItems(d).length,boundary=overseasOuterBoundary(d.geo),fillOpacity=temporaryPaletteActive?temporaryPaletteOpacity:(mode===3?.68:.64);
        const mapped={type:'FeatureCollection',features:(d.geo.features||[]).map(f=>({...f,properties:{...(f.properties||{}),code,nom:d.name}}))};
-       L.geoJSON(mapped,{interactive:true,style:{color:'#111315',weight:adminStroke(1.05),opacity:1,fillColor:shade(n,code),fillOpacity},onEachFeature:(_,l)=>{l.bindTooltip(escape(d.name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on('click',()=>{const g=groupByCode(code);choose(g||{key:'empty-'+code,name:d.name,code,items:[],at:d.at},l.getBounds())})}}).addTo(admin);
+       L.geoJSON(mapped,{interactive:true,style:{color:'transparent',weight:0,opacity:0,fillColor:shade(n,code),fillOpacity},onEachFeature:(_,l)=>{l.bindTooltip(escape(d.name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on('click',()=>{const g=groupByCode(code);choose(g||{key:'empty-'+code,name:d.name,code,items:[],at:d.at},l.getBounds())})}}).addTo(admin);
        if(boundary)L.geoJSON(boundary,{pane:'mainOutlinePane',interactive:false,style:{pane:'mainOutlinePane',color:'#000000',weight:adminStroke(1.15),opacity:1,fill:false,fillOpacity:0}}).addTo(mainOutline)
      }
    }else if(mode===3&&d.regionOnly){
@@ -1135,7 +1180,7 @@ function updateScaleSelector(value=mode,animate=true){
  if(glass){glass.setAttribute('aria-valuenow',String(Math.round(v)));glass.setAttribute('aria-valuetext',modes[Math.round(v)]||modes[mode])}
  document.querySelectorAll('.scale-labels [data-mode]').forEach(b=>{const active=+b.dataset.mode===Math.round(v);b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))})
 }
-function setMode(n){closeMapDetail();mode=Math.max(0,Math.min(3,+n));invalidateGroupCache();epoch++;markCartCloudStateDirty();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();selectedGroup.clearLayers();adminHits.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;if(mode!==0){communeData.clearLayers();communeDataKey=''}subdivisionKey='';communeLabelKey='';centerKey='';updateScaleSelector(mode,true);renderSide();draw();updateSubdivisions(true);updateCenters(true);if(mode===1&&!epciGeo){$('status').textContent='Chargement des groupements…';ensureEpciGeo().then(()=>{if(mode!==1)return;renderSide();draw();updateCenters(true);$('status').textContent=''}).catch(()=>{if(mode===1)$('status').textContent='Contours des groupements indisponibles.'})}}
+function setMode(n){closeMapDetail();mode=Math.max(0,Math.min(3,+n));invalidateGroupCache();epoch++;markCartCloudStateDirty();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();selectedGroup.clearLayers();adminHits.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;if(mode!==0){communeData.clearLayers();communeDataKey=''}subdivisionKey='';communeLabelKey='';centerKey='';updateScaleSelector(mode,true);renderSide();draw();updateSubdivisions(true);updateCenters(true);ensureFocusedOverseasModeGeometry();if(mode===1&&!epciGeo){$('status').textContent='Chargement des groupements…';ensureEpciGeo().then(()=>{if(mode!==1)return;renderSide();draw();ensureFocusedOverseasModeGeometry();updateCenters(true);$('status').textContent=''}).catch(()=>{if(mode===1)$('status').textContent='Contours des groupements indisponibles.'})}}
 
 let metaPromise=null;
 async function loadJsonAny(urls){let last=null;for(const url of urls){try{return await getJSON(url)}catch(e){last=e}}throw last||Error('Source indisponible')}
@@ -1449,12 +1494,16 @@ function seedEpciDemoCoverage(){
 function domItems(d){return current().filter(x=>mode<2?units[x.unit]?.dept===d.dept:String(itemDisplayAdminCode(x,mode))===String(mode===2?d.dept:d.region));}
 function featureCollectionOf(features){return{type:'FeatureCollection',features:(features||[]).filter(Boolean)}}
 function hydrateOverseasEntryFromCore(d){
- if(!d||d.geo)return d?.geo||null;
+ if(!d)return null;
  const deptFeatures=(deptGeo?.features||[]).filter(f=>featureAdminCode(f)===String(d.dept));
  const regionFeatures=(regionGeo?.features||[]).filter(f=>featureAdminCode(f)===String(d.region));
  const features=deptFeatures.length?deptFeatures:regionFeatures;
- if(features.length){d.geo=featureCollectionOf(features);d.fittedGeo=false}
- return d.geo||null
+ if(features.length){
+   const next=featureCollectionOf(features);
+   if(d.geoSource!=='core'){d.geo=next;d.geoSource='core';d.fittedGeo=false}
+   return d.geo
+ }
+ return d.geo||d.detailGeo||null
 }
 function hydrateOverseasFromCore(){
  for(const d of doms)hydrateOverseasEntryFromCore(d);
@@ -1490,9 +1539,11 @@ async function ensureOverseasGeometry(d){
      if(hydrateOverseasEntryFromCore(d))return d.geo;
      const url='https://geo.api.gouv.fr/communes?codeDepartement='+encodeURIComponent(d.dept)+'&fields=nom,code&format=geojson&geometry=contour',response=await fetch(url,{cache:'force-cache',signal:AbortSignal.timeout(25000)});if(!response.ok)throw Error(response.status);const raw=await response.json();
      if(raw?.features?.length){
-       d.geo=simplifyFeatureCollection(raw,d.dept==='987'?.012:d.dept==='988'?.006:.003);
-       const bounds=L.geoJSON(d.geo).getBounds();if(d.map&&bounds.isValid()){d.map.fitBounds(bounds,{padding:[6,6]});d.fittedGeo=true}
-       updateInsets();if(mode>=2)drawAdmin()
+       const detail=simplifyFeatureCollection(raw,d.dept==='987'?.012:d.dept==='988'?.006:.003);
+       d.detailGeo=detail;
+       if(d.geoSource!=='core'){d.geo=detail;d.geoSource='detail';d.fittedGeo=false}
+       const fitGeo=d.geo||detail,bounds=L.geoJSON(fitGeo).getBounds();if(d.map&&bounds.isValid()){d.map.fitBounds(bounds,{padding:[6,6]});d.fittedGeo=true}
+       updateInsets();if(mode>=1)drawAdmin()
      }
    }catch{if(d.count)d.count.title='Contour détaillé indisponible'}
    finally{d.loadingGeo=null}
@@ -1502,20 +1553,21 @@ async function ensureOverseasGeometry(d){
 }
 function renderInset(d,items=domItems(d)){
  if(!d.layer)return;
- d.layer.clearLayers();const adminOpacity=temporaryPaletteActive&&mode>=2?temporaryPaletteOpacity:1;
- if(d.geo){
-   if(d.map&&!d.fittedGeo){const bounds=L.geoJSON(d.geo).getBounds();if(bounds.isValid()){d.map.fitBounds(bounds,{padding:[6,6]});d.fittedGeo=true}}
-   const boundary=overseasOuterBoundary(d.geo);
+ d.layer.clearLayers();const adminOpacity=temporaryPaletteActive&&mode>=2?temporaryPaletteOpacity:1,
+       renderGeo=mode===1&&d.epciGeo?.features?.length?d.epciGeo:(mode>=2?(d.geo||d.detailGeo):(d.detailGeo||d.geo));
+ if(renderGeo){
+   if(d.map&&!d.fittedGeo){const bounds=L.geoJSON(renderGeo).getBounds();if(bounds.isValid()){d.map.fitBounds(bounds,{padding:[6,6]});d.fittedGeo=true}}
+   const boundary=overseasOuterBoundary(renderGeo);
    if(mode>=2){
      const code=mode===3?d.region:d.dept;
-     L.geoJSON(d.geo,{interactive:false,style:{color:'transparent',weight:0,opacity:0,fillColor:shade(items.length,code),fillOpacity:adminOpacity}}).addTo(d.layer);
+     L.geoJSON(renderGeo,{interactive:false,style:{color:'transparent',weight:0,opacity:0,fillColor:shade(items.length,code),fillOpacity:adminOpacity}}).addTo(d.layer);
      if(boundary)L.geoJSON(boundary,{interactive:false,style:{color:'#111315',weight:1.15,opacity:1,fill:false,fillOpacity:0}}).addTo(d.layer)
    }else{
-     L.geoJSON(d.geo,{interactive:false,style:{color:'#606A72',weight:.38,fillColor:'#e2eaf0',fillOpacity:1}}).addTo(d.layer);
+     L.geoJSON(renderGeo,{interactive:false,style:{color:'#606A72',weight:.38,fillColor:'#e2eaf0',fillOpacity:1}}).addTo(d.layer);
      if(boundary)L.geoJSON(boundary,{interactive:false,style:{color:'#000000',weight:mode===0?2.05:1.5,opacity:1,fill:false,fillOpacity:0}}).addTo(d.layer)
    }
  }else L.circleMarker(d.at,{radius:mode>=2?5:4,color:'#fff',weight:1.2,fillColor:mode>=2?shade(items.length,mode===3?d.region:d.dept):(items.length?temporaryEventColor(items[0]):'#aeb8c0'),fillOpacity:.95,interactive:false}).addTo(d.layer);
- if(d.geo&&mode<2&&items.length)L.circleMarker(d.at,{radius:7,color:'#fff',weight:1,fillColor:temporaryEventColor(items[0]),fillOpacity:1,interactive:false}).addTo(d.layer)
+ if(renderGeo&&mode<2&&items.length)L.circleMarker(d.at,{radius:7,color:'#fff',weight:1,fillColor:temporaryEventColor(items[0]),fillOpacity:1,interactive:false}).addTo(d.layer)
 }
 function updateInsets(){
  for(const d of doms){const items=domItems(d);if(d.count)d.count.textContent=items.length;renderInset(d,items)}
@@ -1529,7 +1581,7 @@ function initInsetMap(d,i){
 const insetObserver=compactMapUi()&&'IntersectionObserver'in window?new IntersectionObserver(entries=>{for(const entry of entries){if(!entry.isIntersecting)continue;const i=+entry.target.dataset.insetIndex;initInsetMap(doms[i],i);insetObserver.unobserve(entry.target)}},{root:$('overseas'),rootMargin:'90px 0px'}):null;
 for(const [i,d] of doms.entries()){
  const el=document.createElement('div');el.className='inset';el.dataset.insetIndex=String(i);el.innerHTML='<div class="mini" id="mini'+i+'"></div><button aria-label="Afficher '+d.name+'"><span>'+d.name+' <b>0</b></span></button>';$('overseas').append(el);d.count=el.querySelector('b');
- el.querySelector('button').onclick=async()=>{initInsetMap(d,i);selection=null;activeItem=null;focus.clearLayers();local.clearLayers();if(!d.geo)await ensureOverseasGeometry(d);if(d.focusWhole&&d.geo)map.fitBounds(L.geoJSON(d.geo).getBounds(),{padding:[60,60],maxZoom:d.focusZ||8});else map.setView(d.at,d.focusZ||(d.dept==='973'?6:10));renderSide();drawPoints()};
+ el.querySelector('button').onclick=async()=>{initInsetMap(d,i);selection=null;activeItem=null;focus.clearLayers();local.clearLayers();if(!d.geo)await ensureOverseasGeometry(d);if(mode===1&&d.nationalEpci)await ensureOverseasEpciGeometry(d);const fitGeo=d.geo||d.detailGeo;if(d.focusWhole&&fitGeo)map.fitBounds(L.geoJSON(fitGeo).getBounds(),{padding:[60,60],maxZoom:d.focusZ||8});else map.setView(d.at,d.focusZ||(d.dept==='973'?6:10));renderSide();draw();updateSubdivisions(true);updateCenters(true)};
  if(insetObserver)insetObserver.observe(el);else initInsetMap(d,i)
 }
 
