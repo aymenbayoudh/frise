@@ -224,8 +224,6 @@ def build_nc():
         selected, absent = [], []
         for m in members:
             x = find_by_name(communes, m)
-            if not x and m in PF_MEMBER_CODES:
-                x = next((f for f in communes if f["properties"]["code"] == PF_MEMBER_CODES[m]), None)
             selected.append(x) if x else absent.append(m)
         if absent:
             missing[name] = absent
@@ -326,6 +324,8 @@ def build_pf():
         selected, absent = [], []
         for m in members:
             x = find_by_name(communes, m)
+            if not x and m in PF_MEMBER_CODES:
+                x = next((f for f in communes if f["properties"]["code"] == PF_MEMBER_CODES[m]), None)
             selected.append(x) if x else absent.append(m)
         if absent:
             missing[name] = absent
