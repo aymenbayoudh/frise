@@ -638,7 +638,8 @@ function shade(n,code=''){
 }
 function countCode(code){return current().filter(d=>String(itemDisplayAdminCode(d))===String(code)).length;}
 function adminStyle(f){const code=featureAdminCode(f),n=mode>=1?countCode(code):0,hasSelection=mode>=1&&!!selection,selected=hasSelection&&String(selection.code)===code,z=map.getZoom(),rawBase=mode===3?1.9:mode===2?1.55:mode===1?.525:.8,mgpSelected=mode===1&&String(selection?.code||'')===GRAND_PARIS_CODE;if(mgpSelected&&(f?.properties?._ept||f?.properties?._mgpParis))return{color:'#000000',weight:0,fillColor:'#ffffff',fillOpacity:0,opacity:0};let fillOpacity=temporaryPaletteActive&&mode>=1?temporaryPaletteOpacity:mode>=2?(z>=8?.56:.68):mode===1?(z>=8?.38:.62):0;const baseWeight=adminStroke(rawBase),mergedPart=mode===2&&!!f?.properties?._mergedDeptPart;if(hasSelection&&!selected)fillOpacity*=.16;if(selected)fillOpacity=Math.min(1,Math.max(fillOpacity,temporaryPaletteActive?temporaryPaletteOpacity+.10:.78));const selectedWeight=adminStroke(mode===1?2.15:Math.max(4.3,rawBase+2.4));return {color:selected?'#000000':'#090B0D',weight:mergedPart?0:(selected?selectedWeight:baseWeight),fillColor:shade(n,code),fillOpacity,opacity:1};}
-function updateBasemap(){if(map.getZoom()>=12.5){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
+const SATELLITE_ZOOM_THRESHOLD=11;
+function updateBasemap(){if(map.getZoom()>=SATELLITE_ZOOM_THRESHOLD){if(!map.hasLayer(satelliteTiles))satelliteTiles.addTo(map)}else if(map.hasLayer(satelliteTiles))map.removeLayer(satelliteTiles)}
 function restyleAdminLayer(layer){if(layer.feature&&layer.setStyle)layer.setStyle(adminStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleAdminLayer)}
 function refreshAdminStyle(){admin.eachLayer(restyleAdminLayer);mainOutline.eachLayer(restyleMainOutline)}
 function pointState(){const z=map.getZoom();return mode+':'+(selection?.key||'')+':'+(mode===0?(z<11?'agg':'pin'):mode===1?'free-interco':selection?'pin':'none')}
@@ -1037,7 +1038,7 @@ function syncGeneratedCommuneFromCenter(code,p){
 async function addAdminCenter(code,options,token){
  const p=await communeCenter(code);if(!p||token!==centerKey)return;
  syncGeneratedCommuneFromCenter(code,p);
- if(visibleEventNear(p.at))return;
+ if(options.rank!=='region'&&visibleEventNear(p.at))return;
  const color=adminCenterColor(options.adminLevel,options.adminCode,options.rank);
  L.marker(p.at,{icon:centerIcon(p.name,{rank:options.rank,showLabel:!!options.showLabel,color}),interactive:false,zIndexOffset:mode===0?-260:options.rank==='region'?220:options.rank==='department'?190:options.rank==='regionSecondary'?160:130}).addTo(centers)
 }
