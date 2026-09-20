@@ -264,6 +264,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 .leaflet-eventPointPane-pane .leaflet-marker-icon{pointer-events:auto!important;cursor:pointer}
 .leaflet-adminHitPane-pane{pointer-events:auto!important}
 .leaflet-adminHitPane-pane .leaflet-interactive{pointer-events:auto!important;cursor:pointer}
+.leaflet-arrondissementPane-pane{pointer-events:none!important}
 .leaflet-mainOutlinePane-pane,.leaflet-contextAdminPane-pane,.leaflet-subAdminPane-pane{pointer-events:none!important}
 
 .admin-search-box{min-width:190px}
@@ -682,7 +683,7 @@ function applySideWidth(width,persist=false){
 try{const saved=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(saved)applySideWidth(saved)}catch{}
 
 const satelliteTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,keepBuffer:matchMedia('(max-width:640px)').matches?0:1,updateWhenIdle:true,updateWhenZooming:false,attribution:'Tiles © Esri'});
-map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.getPane('centersPane').style.pointerEvents='none';map.createPane('groupCenterPane');map.getPane('groupCenterPane').style.zIndex='435';map.getPane('groupCenterPane').style.pointerEvents='none';map.createPane('eventPointPane');map.getPane('eventPointPane').style.zIndex='500';map.getPane('eventPointPane').style.pointerEvents='none';map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('selectedGroupPane');map.getPane('selectedGroupPane').style.zIndex='425';map.getPane('selectedGroupPane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
+map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.getPane('centersPane').style.pointerEvents='none';map.createPane('groupCenterPane');map.getPane('groupCenterPane').style.zIndex='435';map.getPane('groupCenterPane').style.pointerEvents='none';map.createPane('eventPointPane');map.getPane('eventPointPane').style.zIndex='500';map.getPane('eventPointPane').style.pointerEvents='none';map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('arrondissementPane');map.getPane('arrondissementPane').style.zIndex='412';map.getPane('arrondissementPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('selectedGroupPane');map.getPane('selectedGroupPane').style.zIndex='425';map.getPane('selectedGroupPane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),selectedGroup=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
 let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c';
 
@@ -1196,19 +1197,27 @@ function loadAdminMeta(){if(metaPromise)return metaPromise;metaPromise=(async()=
  return{departements,regions,arrondissements}
 })();return metaPromise}
 function ignAdmin2026Wfs(layer){return 'https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&OUTPUTFORMAT=application%2Fjson&SRSNAME=EPSG%3A4326&TYPENAMES=ADMINEXPRESS-COG-CARTO-PE.2026:'+encodeURIComponent(layer)+'&COUNT=1000'}
-async function ensureArrGeo(){
- if(arrGeo)return arrGeo;
+function arrGeoHasDepartment(geo,dept){
+ dept=String(dept||'');return !dept||!!geo?.features?.some(f=>arrondissementDepartmentCode(f)===dept)
+}
+async function ensureArrGeo(requiredDept=''){
+ requiredDept=String(requiredDept||'');
+ if(arrGeo&&arrGeoHasDepartment(arrGeo,requiredDept))return arrGeo;
  const officialUrl=ignAdmin2026Wfs('arrondissement');
  try{
    const official=await getJSON(officialUrl);
-   const features=official?.features||[],requiredDrom=['971','972','973','974'];
-   const hasDrom=requiredDrom.every(dep=>features.some(f=>arrondissementDepartmentCode(f)===dep));
-   if(features.length&&hasDrom)arrGeo=official
+   if(official?.features?.length&&arrGeoHasDepartment(official,requiredDept))arrGeo=official
  }catch{}
- if(!arrGeo)arrGeo=await getJSONFallback([
-  './data/admin/arrondissements.geojson',
-  'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-version-simplifiee.geojson'
- ]);
+ if(!arrGeo||!arrGeoHasDepartment(arrGeo,requiredDept)){
+   try{
+     const fallback=await getJSONFallback([
+      'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-avec-outre-mer.geojson',
+      './data/admin/arrondissements.geojson',
+      'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-version-simplifiee.geojson'
+     ]);
+     if(fallback?.features?.length&&arrGeoHasDepartment(fallback,requiredDept))arrGeo=fallback
+   }catch{}
+ }
  arrDeptGeo=deptGeo;
  if(mode===2)drawMainOutline();
  return arrGeo
@@ -1286,11 +1295,14 @@ async function updateSubdivisions(force=false){
  const z=map.getZoom();
  if(mode===0&&selection&&z>=9&&!epciGeo){try{await ensureEpciGeo()}catch{}if(mode!==0||!selection)return}
 
+ const center=map.getCenter(),focusedOverseas=overseasAtPoint([center.lat,center.lng]),
+       overseasArrFocus=(mode===0||mode===2)&&!!focusedOverseas?.departmentArrondissements;
  const showRegionDepartments=mode===3&&z>=6;
- const showArrondissements=(mode===2||mode===0)&&z>=7;
+ const showArrondissements=(mode===2||mode===0)&&(z>=7||overseasArrFocus);
  let arrWanted=[];
  if(showArrondissements){
    if(mode===2&&selection)arrWanted=rawDepartmentCodes(String(selection.code)).filter(departmentHasArrondissements);
+   else if(overseasArrFocus)arrWanted=[String(focusedOverseas.dept)];
    else if(mode===0&&selection){
      const u=units[selection.key]||selection,dep=String(u?.dept||'');
      arrWanted=dep?rawDepartmentCodes(dep).filter(departmentHasArrondissements):visibleCodesFromGeo(deptGeo).filter(departmentHasArrondissements).sort()
@@ -1307,9 +1319,10 @@ async function updateSubdivisions(force=false){
      L.geoJSON(deptGeo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(.82),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
    }
    if(showArrondissements&&arrWanted.length){
-     const geo=await ensureArrGeo();if(key!==subdivisionKey)return;
+     const requiredDept=overseasArrFocus?String(focusedOverseas.dept):'',
+           geo=await ensureArrGeo(requiredDept);if(key!==subdivisionKey||!geo?.features?.length)return;
      const wanted=new Set(arrWanted),filtered={type:'FeatureCollection',features:geo.features.filter(f=>wanted.has(arrondissementDepartmentCode(f)))};
-     L.geoJSON(filtered,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#181B1E',weight:adminStroke(.76),opacity:.94,fillOpacity:0}}).addTo(subAdmin)
+     if(filtered.features.length)L.geoJSON(filtered,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(mode===0?1.55:1.42),opacity:1,fillOpacity:0}}).addTo(subAdmin)
    }
    if(epci){
      const geo=await epciCommuneGeo(epci);if(key!==subdivisionKey||!geo?.features||contextEpci()!==epci)return;
@@ -1581,7 +1594,7 @@ function initInsetMap(d,i){
 const insetObserver=compactMapUi()&&'IntersectionObserver'in window?new IntersectionObserver(entries=>{for(const entry of entries){if(!entry.isIntersecting)continue;const i=+entry.target.dataset.insetIndex;initInsetMap(doms[i],i);insetObserver.unobserve(entry.target)}},{root:$('overseas'),rootMargin:'90px 0px'}):null;
 for(const [i,d] of doms.entries()){
  const el=document.createElement('div');el.className='inset';el.dataset.insetIndex=String(i);el.innerHTML='<div class="mini" id="mini'+i+'"></div><button aria-label="Afficher '+d.name+'"><span>'+d.name+' <b>0</b></span></button>';$('overseas').append(el);d.count=el.querySelector('b');
- el.querySelector('button').onclick=async()=>{initInsetMap(d,i);selection=null;activeItem=null;focus.clearLayers();local.clearLayers();if(!d.geo)await ensureOverseasGeometry(d);if(mode===1&&d.nationalEpci)await ensureOverseasEpciGeometry(d);const fitGeo=d.geo||d.detailGeo;if(d.focusWhole&&fitGeo)map.fitBounds(L.geoJSON(fitGeo).getBounds(),{padding:[60,60],maxZoom:d.focusZ||8});else map.setView(d.at,d.focusZ||(d.dept==='973'?6:10));renderSide();draw();updateSubdivisions(true);updateCenters(true)};
+ el.querySelector('button').onclick=async()=>{initInsetMap(d,i);selection=null;activeItem=null;focus.clearLayers();local.clearLayers();if(!d.geo)await ensureOverseasGeometry(d);if(mode===1&&d.nationalEpci)await ensureOverseasEpciGeometry(d);if((mode===0||mode===2)&&d.departmentArrondissements)await ensureArrGeo(d.dept);const fitGeo=d.geo||d.detailGeo;if(d.focusWhole&&fitGeo)map.fitBounds(L.geoJSON(fitGeo).getBounds(),{padding:[60,60],maxZoom:d.focusZ||8});else map.setView(d.at,d.focusZ||(d.dept==='973'?6:10));renderSide();draw();updateSubdivisions(true);updateCenters(true)};
  if(insetObserver)insetObserver.observe(el);else initInsetMap(d,i)
 }
 
