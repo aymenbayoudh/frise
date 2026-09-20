@@ -1104,7 +1104,10 @@ function updateBasemap(){if(!overviewActive&&map.getZoom()>=SATELLITE_ZOOM_THRES
 function restyleAdminLayer(layer){if(layer.feature&&layer.setStyle)layer.setStyle(adminStyle(layer.feature));if(layer.eachLayer)layer.eachLayer(restyleAdminLayer)}
 function refreshAdminStyle(){admin.eachLayer(restyleAdminLayer);mainOutline.eachLayer(restyleMainOutline)}
 let adminZoomStyleBand=map.getZoom()>=8?1:0;function refreshAdminStyleForZoom(){const band=map.getZoom()>=8?1:0;if(band===adminZoomStyleBand)return;adminZoomStyleBand=band;refreshAdminStyle()}
-function pointState(){const z=map.getZoom();return(overviewActive?'overview:':'geo:')+mode+':'+(selection?.key||'')+':'+(mode===0?(z<11?'agg':'pin'):mode===1?'free-interco':selection?'pin':'none')}
+function pointState(){
+ const z=map.getZoom(),communeState=z<11?'agg-z'+(Math.round(z*4)/4).toFixed(2):'pin';
+ return(overviewActive?'overview:':'geo:')+mode+':'+(selection?.key||'')+':'+(mode===0?communeState:mode===1?'free-interco':selection?'pin':'none')
+}
 function maybeDrawPoints(){const key=pointState();if(key!==pointRenderKey)drawPoints()}
 function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on({mouseover:e=>{l.openTooltip(e.latlng);const selected=mode>=1&&selection&&String(selection.code)===code,base=adminStyle(f),hoverWeight=mode===1?Math.max(1.15,base.weight+.25):Math.max(2.25,base.weight+.45);l.setStyle(selected?base:{weight:hoverWeight,color:'#000000',opacity:1});l.bringToFront()},mouseout:()=>{l.closeTooltip();l.setStyle(adminStyle(f))},click:()=>{if(mode<1)return;const g=groupByCode(code),fromOverview=overviewActive;choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},fromOverview?null:l.getBounds(),{fromOverview});}})}}).addTo(target);}
 const GRAND_PARIS_CODE='200054781',EPT_GEO_URL='https://www.carto-metropolegrandparis.fr/server/rest/services/Limites_administratives_MIL1/MapServer/3/query?where=1%3D1&outFields=code_ept%2Clib_ept%2Cterritoire&returnGeometry=true&outSR=4326&f=geojson';
@@ -1396,6 +1399,78 @@ function icon(items,label,pin=false,showLabel=true){const n=items.length,global=
 function addMarker(at,items,label,pin,fn,target=points,showLabel=true){const marker=L.marker(at,{pane:'eventPointPane',icon:icon(items,label,pin,showLabel),title:label,alt:label,keyboard:true}).addTo(target);marker.bindTooltip(escape(label)+' · '+items.length+' exemple'+(items.length>1?'s':''));marker.on('click',fn);}
 function locationBuckets(items){const b=new Map();items.forEach(d=>{const k=d.at.join(',');if(!b.has(k))b.set(k,[]);b.get(k).push(d)});return [...b.values()];}
 function openBucket(items){if(items.length===1){showItem(items[0]);return;}activeItem=null;focus.clearLayers();$('heading').textContent='Au siège · '+units[items[0].unit].name;$('context').textContent=items.length+' initiatives à portée générale';$('back').hidden=false;renderCards(items);}
+function communePermanentLabelZoom(){return compactMapUi()?9.65:9.15}
+function communeClusterRadiusPx(z){
+ const mobile=compactMapUi();
+ if(z<5.5)return mobile?82:70;
+ if(z<6.75)return mobile?74:64;
+ if(z<8)return mobile?64:56;
+ if(z<9)return mobile?54:48;
+ if(z<10)return mobile?46:40;
+ return mobile?38:34
+}
+function communeClusterSize(total,members){
+ const mobile=compactMapUi(),count=Math.max(1,Number(total)||1),memberCount=Math.max(1,Number(members)||1),
+       base=mobile?25:23,growth=Math.log1p(count)*5.4+Math.log1p(memberCount)*2.4;
+ return Math.round(Math.max(base,Math.min(mobile?62:58,base+growth)))
+}
+function clusterCommuneGroups(gs,z){
+ const view=map.getBounds().pad(.18),radius=communeClusterRadiusPx(z),cell=Math.max(24,radius),
+       buckets=new Map(),clusters=[];
+ const candidates=[];
+ for(const g of gs){
+  if(!g?.items?.length||!Array.isArray(g.at))continue;
+  const at=overviewPointForCommune(g.code,g.at),ll=L.latLng(at);
+  if(!view.contains(ll))continue;
+  const p=map.latLngToLayerPoint(ll);candidates.push({g,at,p})
+ }
+ candidates.sort((a,b)=>a.p.x-b.p.x||a.p.y-b.p.y);
+ const bucketKey=(x,y)=>x+':'+y;
+ for(const item of candidates){
+  const bx=Math.floor(item.p.x/cell),by=Math.floor(item.p.y/cell);
+  let best=null,bestDist=Infinity;
+  for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
+   for(const ci of buckets.get(bucketKey(bx+dx,by+dy))||[]){
+    const cl=clusters[ci],ddx=item.p.x-cl.px,ddy=item.p.y-cl.py,d=Math.hypot(ddx,ddy);
+    if(d<=radius&&d<bestDist){best=ci;bestDist=d}
+   }
+  }
+  if(best==null){
+   const ci=clusters.length;
+   clusters.push({members:[item],px:item.p.x,py:item.p.y,total:item.g.items.length});
+   const k=bucketKey(bx,by);if(!buckets.has(k))buckets.set(k,[]);buckets.get(k).push(ci)
+  }else{
+   const cl=clusters[best],n=cl.members.length;
+   cl.members.push(item);cl.total+=item.g.items.length;
+   cl.px=(cl.px*n+item.p.x)/(n+1);cl.py=(cl.py*n+item.p.y)/(n+1)
+  }
+ }
+ return clusters.map(cl=>({...cl,at:map.layerPointToLatLng(L.point(cl.px,cl.py))}))
+}
+function addCommuneClusterMarker(cluster,z){
+ const memberCount=cluster.members.length,total=cluster.total;
+ if(memberCount===1){
+  const {g,at}=cluster.members[0],
+        showLabel=z>=communePermanentLabelZoom()&&!isKnownAdminCenterCommune(String(g.code||''));
+  addMarker(at,g.items,g.name,false,()=>choose(g),points,showLabel);
+  return
+ }
+ const size=communeClusterSize(total,memberCount),color=densityContinuousColor(total),
+       html='<div class="bubble-body commune-cluster-body" style="--unit-color:'+color+';width:'+size+'px;height:'+size+'px">'+total+'</div>',
+       icon=L.divIcon({className:'bubble commune-cluster',iconSize:[size,size],iconAnchor:[size/2,size/2],html}),
+       marker=L.marker(cluster.at,{pane:'eventPointPane',icon,title:total+' exemples · '+memberCount+' communes',keyboard:true}).addTo(points);
+ marker.bindTooltip(total+' exemples · '+memberCount+' communes',{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
+ marker.on('click',()=>{
+  const bounds=L.latLngBounds(cluster.members.map(x=>L.latLng(x.at)));
+  const target=Math.min(10.75,Math.max(map.getZoom()+1.5,7));
+  if(bounds.isValid()&&memberCount>1){
+   const center=bounds.getCenter(),spread=Math.max(bounds.getNorth()-bounds.getSouth(),bounds.getEast()-bounds.getWest());
+   if(spread<1e-7)map.setView(center,target);
+   else map.fitBounds(bounds,{padding:[70,70],maxZoom:target,animate:false})
+  }
+ })
+}
+
 function drawPoints(){
  pointRenderKey=pointState();points.clearLayers();
  const gs=groups();
@@ -1413,7 +1488,17 @@ function drawPoints(){
  }
  if(mode>=2)return;
  const z=map.getZoom();
- for(const g of gs){if(!g.items.length)continue;if(z<11){const showCommuneLabel=!isKnownAdminCenterCommune(String(g.code||'')),at=overviewPointForCommune(g.code,g.at);addMarker(at,g.items,g.name,false,()=>choose(g),points,showCommuneLabel);continue}for(const bucket of locationBuckets(g.items)){const label=bucket.length>1?'Siège · '+g.name:bucket[0].title;addMarker(bucket[0].at,bucket,label,true,()=>{if(!selection||selection.key!==g.key){selection=g;renderSide()}openBucket(bucket)})}}
+ if(z<11){
+  for(const cluster of clusterCommuneGroups(gs,z))addCommuneClusterMarker(cluster,z);
+  return
+ }
+ for(const g of gs){
+  if(!g.items.length)continue;
+  for(const bucket of locationBuckets(g.items)){
+   const label=bucket.length>1?'Siège · '+g.name:bucket[0].title;
+   addMarker(bucket[0].at,bucket,label,true,()=>{if(!selection||selection.key!==g.key){selection=g;renderSide()}openBucket(bucket)})
+  }
+ }
 }
 function densityLegendGradient(){const ramp=densityPalette();if(!ramp.length)return'linear-gradient(90deg,#fff,'+accent+')';if(ramp.length===1)return ramp[0];return'linear-gradient(90deg,'+ramp.map((c,i)=>c+' '+Math.round(i/(ramp.length-1)*100)+'%').join(',')+')'}
 function densityLegendOpacity(){return temporaryPaletteActive?temporaryPaletteOpacity:1}
