@@ -1701,7 +1701,7 @@ async function choose(g,bounds,options={}){
    if(features.length)bounds=L.geoJSON({type:'FeatureCollection',features}).getBounds();else if(overseas?.geo)bounds=L.geoJSON(overseas.geo).getBounds()
   }
  }
- const defaultMax=mode===0?13:mode===1?10:mode===2?9:8,maxZoom=Number.isFinite(options.maxZoom)?options.maxZoom:defaultMax;
+ const defaultMax=mode===0?12.25:mode===1?10:mode===2?9:8,maxZoom=Number.isFinite(options.maxZoom)?options.maxZoom:defaultMax;
  if(slideToNext){
   let target=bounds?.isValid?.()?bounds.getCenter():null;
   if(!target&&g.items.length){const latlngs=g.items.map(d=>d.at).filter(at=>Array.isArray(at)&&at.length>=2);if(latlngs.length)target=L.latLngBounds(latlngs).getCenter()}
@@ -3117,7 +3117,24 @@ $('settingsApply').onclick=()=>{
  defaultColors=next;localStorage.setItem(CART_BASE_COLORS_KEY,JSON.stringify(defaultColors));markCartCloudStateDirty();closeCartSettings();refreshBaseColorDisplay();$('status').textContent='Couleurs de base enregistrées.'
 };
 $('moreButton').onclick=e=>{e.stopPropagation();toggleTool($('moreMenu'))};$('toggleFilters').onclick=e=>{e.stopPropagation();const pop=$('tagFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleFilters').setAttribute('aria-expanded',String(open))};$('toggleDecks').onclick=e=>{e.stopPropagation();toggleTool($('deckMenu'))};$('tagFilters').onclick=e=>e.stopPropagation();$('deckMenu').onclick=e=>e.stopPropagation();$('searchResults').onclick=e=>e.stopPropagation();$('adminSearchResults').onclick=e=>e.stopPropagation();$('adminSearch').onclick=e=>e.stopPropagation();
-async function focusItemFromNavigation(d){if(!d)return;setMode(d.mode);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));const u=units[d.unit]||{},code=String(u.code||d.unit);let bounds=null;if(d.mode===0){const f=await communeOutlineGeo(code);if(f)bounds=featureBounds(f)}else{const wanted=d.mode===2?displayDepartmentCode(code):code,geo=d.mode===3?regionGeo:d.mode===2?departmentRenderGeo():epciGeo,fs=geo?.features?.filter(f=>featureAdminCode(f)===wanted)||[];if(fs.length)bounds=L.geoJSON({type:'FeatureCollection',features:fs}).getBounds()}const g=groups().find(g=>g.key===d.unit)||{key:d.unit,...u,code,items:data.filter(x=>x.mode===d.mode&&x.unit===d.unit)};const maxZoom=d.mode===0?9.25:d.mode===1?7.8:d.mode===2?6.6:5.7;await choose(g,bounds||undefined,{maxZoom});showItem(d,{recenter:false})}
+async function focusItemFromNavigation(d){
+ if(!d)return;
+ setMode(d.mode);
+ await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+ const u=units[d.unit]||{},code=String(u.code||d.unit);let bounds=null;
+ // In commune mode, use exactly the same navigation path as clicking the
+ // commune bubble: no special outline fit, same target zoom.
+ if(d.mode!==0){
+  const wanted=d.mode===2?displayDepartmentCode(code):code,
+        geo=d.mode===3?regionGeo:d.mode===2?departmentRenderGeo():epciGeo,
+        fs=geo?.features?.filter(f=>featureAdminCode(f)===wanted)||[];
+  if(fs.length)bounds=L.geoJSON({type:'FeatureCollection',features:fs}).getBounds()
+ }
+ const g=groups().find(g=>g.key===d.unit)||{key:d.unit,...u,code,items:data.filter(x=>x.mode===d.mode&&x.unit===d.unit)},
+       maxZoom=d.mode===0?12.25:d.mode===1?7.8:d.mode===2?6.6:5.7;
+ await choose(g,bounds||undefined,{maxZoom});
+ showItem(d,{recenter:false})
+}
 
 function randomCurrentItem(){const pool=current();if(!pool.length)return;const a=new Uint32Array(1);crypto.getRandomValues(a);focusItemFromNavigation(pool[a[0]%pool.length])}
 const sideResize=$('sideResize');let sideResizeActive=false,sideResizeMobile=false;
