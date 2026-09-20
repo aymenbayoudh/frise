@@ -104,7 +104,7 @@ def discover_gpkg() -> tuple[str, dict[str, Any]]:
             for file_entry in files:
                 for u in links(file_entry):
                     ub = u.upper()
-                    if "/TELECHARGEMENT/DOWNLOAD/" not in ub or not ub.endswith(".GPKG"):
+                    if "/TELECHARGEMENT/DOWNLOAD/" not in ub or not (ub.endswith(".GPKG") or ub.endswith(".7Z")):
                         continue
                     if "2026" not in ub:
                         continue
@@ -197,8 +197,30 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="ign-carto-plus-") as td:
         td_path = Path(td)
-        gpkg = td_path / "carto-plus.gpkg"
-        download(url, gpkg)
+        downloaded = td_path / ("carto-plus.7z" if url.lower().endswith(".7z") else "carto-plus.gpkg")
+        download(url, downloaded)
+
+        if downloaded.suffix.lower() == ".7z":
+            extract_dir = td_path / "archive"
+            extract_dir.mkdir(parents=True, exist_ok=True)
+            subprocess.run(["7z", "x", "-y", f"-o{extract_dir}", str(downloaded)], check=True)
+            gpkg_candidates = list(extract_dir.rglob("*.gpkg"))
+            if not gpkg_candidates:
+                raise RuntimeError("L'archive CARTO PLUS ne contient aucun GeoPackage")
+            def gpkg_score(path: Path) -> tuple[int, str]:
+                name = path.name.upper()
+                score = 0
+                if "SANS-ECHELLE" in name or "SANS_ECHELLE" in name:
+                    score += 100
+                if "AVEC-ECHELLE" in name or "AVEC_ECHELLE" in name:
+                    score += 20
+                if "CARTOPLUS" in name:
+                    score += 10
+                return (score, name)
+            gpkg = sorted(gpkg_candidates, key=gpkg_score, reverse=True)[0]
+        else:
+            gpkg = downloaded
+
         names = layer_names(gpkg)
 
         specs = {
@@ -242,6 +264,7 @@ def main() -> int:
             "source": "IGN ADMIN EXPRESS COG CARTO PLUS 2026",
             "variant": "sans conservation d'echelle des DROM",
             "download_url": url,
+            "geopackage_file": gpkg.name,
             "available_layers": names,
             "selected_layers": selected,
             "counts": counts,
