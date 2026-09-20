@@ -73,6 +73,9 @@ def links(obj: dict[str, Any]) -> list[str]:
 
 
 def discover_gpkg() -> tuple[str, dict[str, Any]]:
+    # CARTO PLUS is an official download-only resource and is absent from the
+    # public 2026 WFS. GetCapabilities currently exposes this stable resource id.
+    resource_url = "https://data.geopf.fr/telechargement/resource/ADMIN-EXPRESS-COG-CARTOPLUS"
     filters = {
         "lang": "fre",
         "zone": "FRA",
@@ -81,61 +84,48 @@ def discover_gpkg() -> tuple[str, dict[str, Any]]:
         "editionDateTo": "2026-12-31",
     }
     try:
-        roots = entries_all(CAPABILITIES, filters)
+        subresources = entries_all(resource_url, filters)
     except Exception:
-        roots = entries_all(CAPABILITIES, {"lang": "fre"})
-
-    admin_roots = [e for e in roots if "ADMIN" in blob(e) and "EXPRESS" in blob(e)]
-    if not admin_roots:
-        # Fallback to all resources and let the subresource filter do the work.
-        admin_roots = roots
+        subresources = entries_all(resource_url, {"lang": "fre"})
 
     candidates: list[tuple[int, str, dict[str, Any]]] = []
-    seen_resources: set[str] = set()
-    for root in admin_roots:
-        resource_urls = [u for u in links(root) if "/telechargement/resource/" in u and u.rstrip("/").count("/") >= 4]
-        for resource_url in resource_urls:
-            resource_url = resource_url.split("?", 1)[0]
-            if resource_url in seen_resources:
-                continue
-            seen_resources.add(resource_url)
+    for sub in subresources:
+        if "2026" not in blob(sub):
+            continue
+        sub_urls = [
+            u.split("?", 1)[0] for u in links(sub)
+            if "/telechargement/resource/ADMIN-EXPRESS-COG-CARTOPLUS/" in u
+        ]
+        for sub_url in sub_urls:
             try:
-                subresources = entries_all(resource_url, filters)
+                files = entries_all(sub_url, {"lang": "fre"})
             except Exception:
-                try:
-                    subresources = entries_all(resource_url, {"lang": "fre"})
-                except Exception:
-                    continue
-            for sub in subresources:
-                sb = blob(sub)
-                if "CARTOPLUS" not in sb and "CARTO PLUS" not in sb and "CARTO_PLUS" not in sb:
-                    continue
-                if "2026" not in sb:
-                    continue
-                for sub_url in [u for u in links(sub) if "/telechargement/resource/" in u]:
-                    sub_url = sub_url.split("?", 1)[0]
-                    try:
-                        files = entries_all(sub_url, {"lang": "fre"})
-                    except Exception:
+                continue
+            for file_entry in files:
+                for u in links(file_entry):
+                    ub = u.upper()
+                    if "/TELECHARGEMENT/DOWNLOAD/" not in ub or not ub.endswith(".GPKG"):
                         continue
-                    for f in files:
-                        for u in links(f):
-                            ub = u.upper()
-                            if "/TELECHARGEMENT/DOWNLOAD/" not in ub or not ub.endswith(".GPKG"):
-                                continue
-                            if "CARTOPLUS" not in ub or "2026" not in ub:
-                                continue
-                            score = 0
-                            if "SANS-ECHELLE" in ub or "SANS_ECHELLE" in ub:
-                                score += 100
-                            if "AVEC-ECHELLE" in ub or "AVEC_ECHELLE" in ub:
-                                score += 20
-                            if "2026-01-01" in ub:
-                                score += 10
-                            candidates.append((score, u, {"resource": root, "subresource": sub, "file": f}))
+                    if "2026" not in ub:
+                        continue
+                    score = 0
+                    if "CARTOPLUS-SANS-ECHELLE" in ub or "SANS-ECHELLE" in ub or "SANS_ECHELLE" in ub:
+                        score += 100
+                    if "CARTOPLUS-AVEC-ECHELLE" in ub or "AVEC-ECHELLE" in ub or "AVEC_ECHELLE" in ub:
+                        score += 20
+                    if "2026-01-01" in ub or "ED2026-01-01" in ub:
+                        score += 10
+                    candidates.append((score, u, {
+                        "resource_url": resource_url,
+                        "subresource": sub,
+                        "file": file_entry,
+                    }))
 
     if not candidates:
-        raise RuntimeError("Impossible de découvrir le GeoPackage CARTO PLUS 2026 dans l'API de téléchargement IGN")
+        raise RuntimeError(
+            "GeoPackage CARTO PLUS 2026 introuvable. Sous-ressources: "
+            + json.dumps(subresources[:8], ensure_ascii=False)[:6000]
+        )
     candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
     _, url, meta = candidates[0]
     return url, meta
