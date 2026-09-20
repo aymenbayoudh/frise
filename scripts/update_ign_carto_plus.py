@@ -228,7 +228,9 @@ def main() -> int:
             "departements": ("departement",),
             "epci": ("epci", "epci3"),
             "arrondissements": ("arrondissement",),
+            "arrondissements_municipaux": ("arrondissement_municipal",),
             "collectivites": ("collectivite_territoriale",),
+            "communes_associees_deleguees": ("commune_associee_ou_deleguee",),
         }
         selected: dict[str, str] = {}
         counts: dict[str, int] = {}
@@ -238,11 +240,35 @@ def main() -> int:
             if not layer:
                 continue
             raw = ogr_to_geojson(gpkg, layer, td_path / f"{output}.geojson")
-            canonical = "epci" if output == "epci" else output.rstrip("s")
+            canonical = {
+                "epci": "epci",
+                "arrondissements": "arrondissement",
+                "arrondissements_municipaux": "arrondissement",
+                "communes_associees_deleguees": "commune",
+                "collectivites": "collectivite",
+            }.get(output, output.rstrip("s"))
             geo = normalize_geo(raw, canonical)
             write_json(OUT / f"{output}.geojson", geo)
             selected[output] = layer
             counts[output] = len(geo.get("features") or [])
+
+        def geometry_center(geometry: dict[str, Any] | None) -> list[float] | None:
+            if not geometry:
+                return None
+            points: list[tuple[float, float]] = []
+            def visit(value: Any) -> None:
+                if isinstance(value, list) and len(value) >= 2 and all(isinstance(x, (int, float)) for x in value[:2]):
+                    points.append((float(value[0]), float(value[1])))
+                    return
+                if isinstance(value, list):
+                    for child in value:
+                        visit(child)
+            visit(geometry.get("coordinates"))
+            if not points:
+                return None
+            xs = [p[0] for p in points]
+            ys = [p[1] for p in points]
+            return [round((min(ys) + max(ys)) / 2, 5), round((min(xs) + max(xs)) / 2, 5)]
 
         commune_center_layer = pick_layer(names, "chef_lieu_de_commune")
         center_map: dict[str, list[float]] = {}
@@ -250,15 +276,48 @@ def main() -> int:
             raw = ogr_to_geojson(gpkg, commune_center_layer, td_path / "commune-centers.geojson")
             normalized = normalize_geo(raw, "center")
             for feature in normalized.get("features") or []:
-                props = feature.get("properties") or {}
-                code = str(props.get("code") or "")
-                geom = feature.get("geometry") or {}
-                coords = geom.get("coordinates")
-                if code and geom.get("type") == "Point" and isinstance(coords, list) and len(coords) >= 2:
-                    center_map[code] = [round(float(coords[1]), 5), round(float(coords[0]), 5)]
-            write_json(OUT / "commune-centers.json", center_map)
+                code = str((feature.get("properties") or {}).get("code") or "")
+                at = geometry_center(feature.get("geometry"))
+                if code and at:
+                    center_map[code] = at
             selected["commune_centers"] = commune_center_layer
-            counts["commune_centers"] = len(center_map)
+
+        # Some CARTO PLUS centre layers do not expose the commune code in the
+        # same field names as the polygon layer. Fall back to polygon bboxes:
+        # this is only for positioning bubbles/labels in the relocated overview.
+        if len(center_map) < 1000:
+            commune_layer = pick_layer(names, "commune")
+            if commune_layer:
+                raw_communes = ogr_to_geojson(gpkg, commune_layer, td_path / "communes-for-centers.geojson")
+                normalized_communes = normalize_geo(raw_communes, "commune")
+                for feature in normalized_communes.get("features") or []:
+                    code = str((feature.get("properties") or {}).get("code") or "")
+                    at = geometry_center(feature.get("geometry"))
+                    if code and at:
+                        center_map.setdefault(code, at)
+                selected["commune_centers_fallback"] = commune_layer
+
+        write_json(OUT / "commune-centers.json", center_map)
+        counts["commune_centers"] = len(center_map)
+
+        # Keep every official chief-lieu class locally as well (including
+        # chef_lieu_d_epci, which is present in CARTO PLUS even when absent from
+        # the public CARTO-PE WFS capabilities).
+        all_centers: list[dict[str, Any]] = []
+        center_layers = [name for name in names if fold(name).startswith("chef_lieu")]
+        for center_layer in center_layers:
+            raw_center = ogr_to_geojson(gpkg, center_layer, td_path / ("center-" + fold(center_layer) + ".geojson"))
+            for feature in raw_center.get("features") or []:
+                nf = normalize_geo({"type": "FeatureCollection", "features": [feature]}, "center")["features"]
+                if not nf:
+                    continue
+                item = nf[0]
+                item["properties"]["kind"] = fold(center_layer)
+                all_centers.append(item)
+        if all_centers:
+            write_json(OUT / "centers.geojson", {"type": "FeatureCollection", "features": all_centers})
+        selected["centers"] = center_layers
+        counts["centers"] = len(all_centers)
 
         manifest = {
             "source": "IGN ADMIN EXPRESS COG CARTO PLUS 2026",
