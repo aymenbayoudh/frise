@@ -545,7 +545,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
   <span id="visibleCount" class="visible-count"></span>
 </div>
 </section>
-<main class="workspace"><section class="canvas" aria-label="Carte des exemples locaux"><div id="map"></div><div class="scale-panel"><div id="scaleSelector" class="scale-selector" style="--scale-position:0"><div id="scaleGlass" class="scale-glass" role="slider" tabindex="0" aria-label="Échelle territoriale" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" aria-valuetext="Communes"></div><div class="scale-labels"><button data-mode="0" class="active" aria-pressed="true">Communes</button><button data-mode="1" aria-pressed="false">Groupements</button><button data-mode="2" aria-pressed="false">Départements</button><button data-mode="3" aria-pressed="false">Régions</button></div></div></div><button class="home" id="home">↖ France entière</button><div class="overseas" id="overseas" aria-label="Encarts outre-mer"></div><div id="status" class="status" role="status"></div><div class="legend" id="legend"></div><aside id="mapDetail" class="map-detail" hidden aria-label="Détail de la fiche"><div class="map-detail-head"><button id="mapDetailClose" class="close" type="button" aria-label="Fermer">×</button><div class="detail-actions"><button id="mapDetailEdit" type="button">Modifier</button></div></div><h2 id="mapDetailTitle"></h2><p id="mapDetailPlace"></p><p id="mapDetailSubtitle"></p><div id="mapDetailBody"></div></aside></section>
+<main class="workspace"><section class="canvas" aria-label="Carte des exemples locaux"><div id="map"></div><div class="scale-panel"><div id="scaleSelector" class="scale-selector" style="--scale-position:0"><div id="scaleGlass" class="scale-glass" role="slider" tabindex="0" aria-label="Échelle territoriale" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" aria-valuetext="Communes"></div><div class="scale-labels"><button data-mode="0" class="active" aria-pressed="true">Communes</button><button data-mode="1" aria-pressed="false">Groupements</button><button data-mode="2" aria-pressed="false">Départements</button><button data-mode="3" aria-pressed="false">Régions</button></div></div></div><button class="home" id="home">↖ France entière</button><div class="overseas" id="overseas" aria-label="Encarts outre-mer" style="display:none"></div><div id="status" class="status" role="status"></div><div class="legend" id="legend"></div><aside id="mapDetail" class="map-detail" hidden aria-label="Détail de la fiche"><div class="map-detail-head"><button id="mapDetailClose" class="close" type="button" aria-label="Fermer">×</button><div class="detail-actions"><button id="mapDetailEdit" type="button">Modifier</button></div></div><h2 id="mapDetailTitle"></h2><p id="mapDetailPlace"></p><p id="mapDetailSubtitle"></p><div id="mapDetailBody"></div></aside></section>
 <aside id="sidePanel"><div id="sideResize" class="side-resize" role="separator" aria-orientation="vertical" aria-label="Redimensionner le panneau"></div><div class="aside-head"><div class="aside-topline"><button id="back" class="back" hidden>← Tous les territoires</button><button id="sideAdd" class="side-add" type="button">＋ Ajouter</button></div><div class="eyebrow" id="eyebrow">Atlas des exemples</div><h1 id="heading">Communes</h1><p id="context"></p><p id="adminCascade" class="admin-cascade"></p></div><div id="list" class="list"></div><div class="foot">Démonstration · aucune donnée Anki importée.<details><summary>Géométrie et sources</summary><p>Référentiel principal : IGN ADMIN EXPRESS COG CARTO PE 2026, extrait automatiquement depuis la Géoplateforme et conservé localement dans le site pour régions, départements, EPCI, arrondissements et communes. Les communes sont découpées par département et chargées à la demande. Sélecteur Région → Département → Commune : <code>admin-locations.json</code>. Fond satellite au zoom fort : Esri World Imagery.</p><p>Vue nationale rapprochée : IGN ADMIN EXPRESS COG CARTO PLUS 2026 lorsqu’elle est disponible. Les services externes ne servent plus que de secours. Rues et quartiers : point localisé uniquement, sans tracé.</p></details></div></aside></main>
 <div id="gameScrim" class="game-scrim" hidden></div>
 <section id="gamePanel" class="game-panel" hidden aria-label="Mode jeu">
@@ -731,7 +731,7 @@ map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),selectedGroup=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
 const IGN_ADMIN_BASE=cartoAsset('data/ign/2026/');const IGN_GEO_BASE=IGN_ADMIN_BASE+'geographic/';const IGN_OVERVIEW_BASE=IGN_ADMIN_BASE+'overview/';
 let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c',ignAdminManifest=null;
-let overviewActive=false,overviewRegionGeo=null,overviewDeptGeo=null,overviewEpciGeo=null,overviewArrGeo=null,overviewCommuneCenters=null,ignOverviewManifest=null,overviewDepartmentRenderGeoCache=null,overviewDepartmentOutlineGeoCache=null,overviewEpciPromise=null,overviewArrPromise=null;
+let overviewActive=false,overviewRegionGeo=null,overviewDeptGeo=null,overviewEpciGeo=null,overviewArrGeo=null,overviewCommuneCenters=null,ignOverviewManifest=null,overviewDepartmentRenderGeoCache=null,overviewDepartmentOutlineGeoCache=null,overviewEpciPromise=null,overviewArrPromise=null,overviewBootResolved=false;
 // Must exist before desktop inset maps are initialized below.
 let temporaryPaletteActive=false,temporaryPaletteOpacity=.68;
 
@@ -1793,9 +1793,11 @@ function renderInset(d,items=domItems(d)){
 }
 function overviewCoversInset(d){if(!overviewActive)return false;return adminGeoHasCode(overviewRegionGeo,d.region)||adminGeoHasCode(overviewDeptGeo,d.dept)}
 function updateInsetVisibility(){
+ const box=$('overseas');
+ if(!overviewBootResolved){if(box)box.style.display='none';for(const d of doms)if(d.el)d.el.style.display='none';return}
  let visible=0;
  for(const d of doms){const show=!overviewCoversInset(d);if(d.el)d.el.style.display=show?'':'none';if(show)visible++}
- const box=$('overseas');if(box)box.style.display=visible?'':'none'
+ if(box)box.style.display=visible?'':'none'
 }
 function updateInsets(){
  updateInsetVisibility();
@@ -2526,6 +2528,7 @@ async function bootCartography(){
  ]);
  await privateConnectPromise;
  await overviewPromise;
+ overviewBootResolved=true;updateInsetVisibility();
  if(mode===1)try{if(overviewReady())await ensureOverviewEpciGeo();else await ensureEpciGeo()}catch{}
  if(cartGithubMode&&hasImportedCartData){
   const privateUnits=Object.fromEntries(Object.entries(units).filter(([key])=>data.some(d=>d.unit===key)));
