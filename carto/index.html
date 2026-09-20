@@ -731,7 +731,7 @@ map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),selectedGroup=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
 const IGN_ADMIN_BASE=cartoAsset('data/ign/2026/');const IGN_GEO_BASE=IGN_ADMIN_BASE+'geographic/';const IGN_OVERVIEW_BASE=IGN_ADMIN_BASE+'overview/';
 let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c',ignAdminManifest=null;
-let overviewActive=false,overviewRegionGeo=null,overviewDeptGeo=null,overviewEpciGeo=null,overviewCommuneCenters=null,ignOverviewManifest=null,overviewDepartmentRenderGeoCache=null,overviewDepartmentOutlineGeoCache=null,overviewEpciPromise=null;
+let overviewActive=false,overviewRegionGeo=null,overviewDeptGeo=null,overviewEpciGeo=null,overviewArrGeo=null,overviewCommuneCenters=null,ignOverviewManifest=null,overviewDepartmentRenderGeoCache=null,overviewDepartmentOutlineGeoCache=null,overviewEpciPromise=null,overviewArrPromise=null;
 // Must exist before desktop inset maps are initialized below.
 let temporaryPaletteActive=false,temporaryPaletteOpacity=.68;
 
@@ -827,6 +827,12 @@ async function ensureOverviewEpciGeo(){
  if(overviewEpciPromise)return overviewEpciPromise;
  overviewEpciPromise=getJSON(IGN_OVERVIEW_BASE+'epci.geojson').then(j=>{if(!j?.features?.length)throw Error('EPCI CARTO PLUS vide');overviewEpciGeo=j;return j}).finally(()=>{overviewEpciPromise=null});
  return overviewEpciPromise
+}
+async function ensureOverviewArrGeo(){
+ if(overviewArrGeo?.features?.length)return overviewArrGeo;
+ if(overviewArrPromise)return overviewArrPromise;
+ overviewArrPromise=getJSON(IGN_OVERVIEW_BASE+'arrondissements.geojson').then(j=>{if(!j?.features?.length)throw Error('Arrondissements CARTO PLUS vides');overviewArrGeo=j;return j}).finally(()=>{overviewArrPromise=null});
+ return overviewArrPromise
 }
 function overviewDepartmentRenderGeo(){if(overviewDepartmentRenderGeoCache)return overviewDepartmentRenderGeoCache;if(!overviewDeptGeo)return null;return overviewDepartmentRenderGeoCache={type:'FeatureCollection',features:(overviewDeptGeo.features||[]).map(recodeDepartmentFeature)}}
 function overviewDepartmentOutlineGeo(){
@@ -1458,7 +1464,19 @@ async function updateCommuneLabels(force=false){
 }
 async function updateSubdivisions(force=false){
  const z=map.getZoom();
- if(overviewActive){subdivisionKey='overview';subAdmin.clearLayers();communeHits.clearLayers();communeLabelKey='';communeLabels.clearLayers();return}
+ if(overviewActive){
+  const key='overview:'+mode;subAdmin.clearLayers();communeHits.clearLayers();communeLabelKey='';communeLabels.clearLayers();
+  if(!force&&key===subdivisionKey)return;subdivisionKey=key;
+  try{
+   if(mode===3&&overviewDeptGeo?.features?.length){
+    L.geoJSON(overviewDepartmentOutlineGeo(),{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(.82),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
+   }else if(mode===2){
+    const geo=await ensureOverviewArrGeo();if(key!==subdivisionKey||!overviewActive||mode!==2)return;
+    L.geoJSON(geo,{pane:'arrondissementPane',interactive:false,style:{pane:'arrondissementPane',color:'#0C1014',weight:adminStroke(1.42),opacity:1,fillOpacity:0}}).addTo(subAdmin)
+   }
+  }catch(e){console.warn('Sous-divisions CARTO PLUS indisponibles',e)}
+  return
+ }
  if(mode===0&&selection&&z>=9&&!epciGeo){try{await ensureEpciGeo()}catch{}if(mode!==0||!selection)return}
 
  const focusedOverseas=overseasForView(),
@@ -1647,7 +1665,23 @@ async function seedAdministrativeDemoCoverage(){
    const code=featureAdminCode(f);if(!code)continue;let unit=unitKeyForModeCode(2,code);if(!unit){unit='demo-d-'+code;units[unit]={name:featureAdminName(f),code,at:demoFeatureCenter(f)}}
    const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(code,'departement');for(let i=0;i<count;i++)addGeneratedDemo(2,unit,(demoActions[(demoHash(code+'d')+i)%demoActions.length])+' à l’échelle départementale',at,demoThemes[(i+2+demoHash(code))%demoThemes.length],i)
  }
- const selectedDeps=[...(deptGeo.features||[])].filter(f=>demoHash(featureAdminCode(f))%3===0).slice(0,42);
+ // Guarantee visible demo density on every DROM at department and region scales.
+ const overseasDemo=doms.filter(d=>['971','972','973','974','976'].includes(String(d.dept)));
+ for(const d of overseasDemo){
+  const rf=(regionGeo.features||[]).find(f=>featureAdminCode(f)===String(d.region));
+  const df=(deptGeo.features||[]).find(f=>featureAdminCode(f)===String(d.dept));
+  if(rf){
+   let unit=unitKeyForModeCode(3,d.region);if(!unit){unit='demo-r-'+d.region;units[unit]={name:featureAdminName(rf)||d.name,code:String(d.region),at:demoFeatureCenter(rf)}}
+   const existing=data.filter(x=>x.mode===3&&String(keyOf(x))===String(d.region)).length,target=5;
+   for(let i=existing;i<target;i++)addGeneratedDemo(3,unit,demoActions[(demoHash(d.region+'om')+i)%demoActions.length]+' en '+d.name,units[unit].at||d.at,demoThemes[(i+demoHash(d.region))%demoThemes.length],i)
+  }
+  if(df){
+   let unit=unitKeyForModeCode(2,d.dept);if(!unit){unit='demo-d-'+d.dept;units[unit]={name:featureAdminName(df)||d.name,code:String(d.dept),region:String(d.region),at:demoFeatureCenter(df)}}
+   const existing=data.filter(x=>x.mode===2&&String(itemDisplayAdminCode(x,2))===String(d.dept)).length,target=5;
+   for(let i=existing;i<target;i++)addGeneratedDemo(2,unit,demoActions[(demoHash(d.dept+'om')+i)%demoActions.length]+' en '+d.name,units[unit].at||d.at,demoThemes[(i+2+demoHash(d.dept))%demoThemes.length],i)
+  }
+ }
+  const selectedDeps=[...(deptGeo.features||[])].filter(f=>demoHash(featureAdminCode(f))%3===0).slice(0,42);
  for(const f of selectedDeps){
    const dept=featureAdminCode(f),m=depMeta.get(dept),chef=String(m?.chefLieu||'');if(!chef)continue;
    let unit=unitKeyForModeCode(0,chef);if(!unit){unit='demo-c-'+chef;units[unit]={name:'Chef-lieu de '+featureAdminName(f),code:chef,dept,region:String(m?.region??m?.codeRegion??''),at:demoFeatureCenter(f),generatedChefLieu:true}}
@@ -1665,6 +1699,16 @@ function seedEpciDemoCoverage(){
  for(const f of candidates){
    const code=featureAdminCode(f);let unit=unitKeyForModeCode(1,code);if(!unit){unit='demo-e-'+code;units[unit]={name:featureAdminName(f),code,at:demoFeatureCenter(f)}}
    const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(code,'interco');for(let i=0;i<count;i++)addGeneratedDemo(1,unit,demoActions[(demoHash(code)+i)%demoActions.length]+' à l’échelle intercommunale',at,demoThemes[(i+6+demoHash(code))%demoThemes.length],i)
+ }
+ // DROM EPCIs are forced into the demo set (the generic hash sample can miss them).
+ for(const d of doms.filter(x=>x.nationalEpci&&['971','972','973','974','976'].includes(String(x.dept)))){
+  const deptFeature=(deptGeo?.features||[]).find(f=>featureAdminCode(f)===String(d.dept));if(!deptFeature)continue;
+  const localEpcis=(epciGeo.features||[]).filter(f=>{const at=demoFeatureCenter(f);return pointInFeature(at[0],at[1],deptFeature)});
+  for(const f of localEpcis){
+   const code=featureAdminCode(f);if(!code)continue;let unit=unitKeyForModeCode(1,code);if(!unit){unit='demo-e-'+code;units[unit]={name:featureAdminName(f),code,dept:String(d.dept),region:String(d.region),at:demoFeatureCenter(f)}}
+   const existing=data.filter(x=>x.mode===1&&String(keyOf(x))===String(code)).length,target=3;
+   for(let i=existing;i<target;i++)addGeneratedDemo(1,unit,demoActions[(demoHash(code+'om')+i)%demoActions.length]+' dans '+d.name,units[unit].at||demoFeatureCenter(f),demoThemes[(i+6+demoHash(code))%demoThemes.length],i)
+  }
  }
  refreshAfterDemoSeed()
 }
