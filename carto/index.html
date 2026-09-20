@@ -509,7 +509,7 @@ function demoDeckPaths(theme,level,index=0){
  return[...new Set(out)]
 }
 for(const d of data){d.subtitle=String(d.subtitle||'');d.tags=Array.isArray(d.tags)&&d.tags.length?d.tags:[d.theme||'Aménagement',modes[d.mode]];d.deck=Array.isArray(d.deck)&&d.deck.length?d.deck:demoDeckPaths(d.theme||'Aménagement',d.mode,d.id||0);d.color=/^#[0-9A-F]{6}$/i.test(d.color||'')?d.color.toUpperCase():defaultColors[d.mode]||'#315EB6';d.html=String(d.html||'<p>Exemple fictif utilisé pour tester la carte.</p>');d.image=Array.isArray(d.image)?d.image:[];d.shape=null}
-let hasImportedCartData=false;try{const saved=JSON.parse(localStorage.getItem(CART_DATA_KEY)||'null');if(saved?.rows?.length){data=saved.rows;Object.assign(units,saved.units||{});hasImportedCartData=true}}catch{};for(const d of data){if(d.generatedDemo||(d.deck||[]).some(p=>String(p).startsWith('Exemples fictifs::')))d.deck=demoDeckPaths(d.theme||d.tags?.[0]||'Aménagement',d.mode,d.id||0)}adminCatalogPromise.then(()=>hydrateCommuneUnitsFromCatalog())
+let hasImportedCartData=false;try{const saved=JSON.parse(localStorage.getItem(CART_DATA_KEY)||'null');if(saved?.rows?.length){data=saved.rows;Object.assign(units,saved.units||{});hasImportedCartData=true}}catch{};for(const d of data){if(d.generatedDemo)d.deck=demoDeckPaths(d.theme||d.tags?.[0]||'Aménagement',d.mode,d.id||0)}adminCatalogPromise.then(()=>hydrateCommuneUnitsFromCatalog())
 
 if(!window.L){$('status').textContent='Le moteur cartographique ne se charge pas. Vérifiez votre connexion et rechargez la page.';return;}
 const map=L.map('map',{zoomControl:true,minZoom:3,maxZoom:19,zoomSnap:.25,attributionControl:false,preferCanvas:true,fadeAnimation:false,markerZoomAnimation:false});
@@ -533,8 +533,8 @@ const communeLabels=L.layerGroup().addTo(map),groupCenterCache=new Map();let gro
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stripHtml=html=>{const t=document.createElement('template');t.innerHTML=String(html||'');return t.content.textContent||''},unique=a=>[...new Set((a||[]).filter(Boolean).map(String))];
 let selectedTags=new Set(),selectedDeckPaths=new Set(),allDeckPaths=[],deckStateLoaded=false;
-try{const fs=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');selectedTags=new Set(fs.tags||[]);if(Array.isArray(fs.decks)){selectedDeckPaths=new Set(fs.decks);deckStateLoaded=fs.decks.length>0||Number(fs.version)>=3}}catch{}
-function saveFilters(){localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:3,tags:[...selectedTags],decks:[...selectedDeckPaths]}));markCartCloudStateDirty()}
+try{const fs=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');selectedTags=new Set(fs.tags||[]);if(Array.isArray(fs.decks)&&(fs.initialized===true||fs.decks.length>0)){selectedDeckPaths=new Set(fs.decks);deckStateLoaded=true}}catch{}
+function saveFilters(){localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:4,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}));markCartCloudStateDirty()}
 function itemDecks(d){return d.deck?.length?d.deck:['Sans deck']}
 function tagsPass(d){return !selectedTags.size||(d.tags||[]).some(t=>selectedTags.has(t))}
 function decksPass(d){return itemDecks(d).some(p=>selectedDeckPaths.has(p))}
@@ -1354,7 +1354,7 @@ $('cartImage').onchange=()=>{const file=$('cartImage').files[0];if(!file)return;
 $('cartEditor').onsubmit=e=>{e.preventDefault();try{saveCartEditor()}catch(err){$('cartEditorError').textContent=err.message}};
 $('cartDelete').onclick=()=>{if(!cartEditedId||!confirm('Supprimer définitivement cette fiche ?'))return;const old=data.find(d=>d.id===cartEditedId),unit=old?.unit;pushCartUndo('Suppression d’une fiche');data=data.filter(d=>d.id!==cartEditedId);persistCartData();const returnedToSummary=closeCartEditor();renderTags();renderDeckTree();if(!returnedToSummary)refreshAfterCartEdit(unit)};
 $('cartCancel').onclick=closeCartEditor;$('editorScrim').onclick=closeCartEditor;
-function refreshDeckPaths(){allDeckPaths=unique(data.flatMap(itemDecks));if(!deckStateLoaded){selectedDeckPaths=new Set(allDeckPaths);deckStateLoaded=true}else selectedDeckPaths=new Set([...selectedDeckPaths].filter(p=>allDeckPaths.includes(p)))}
+function refreshDeckPaths(){allDeckPaths=unique(data.flatMap(itemDecks));if(!deckStateLoaded){selectedDeckPaths=new Set(allDeckPaths);deckStateLoaded=true}}
 function renderTags(){const tags=unique(data.flatMap(d=>d.tags||[])).sort((a,b)=>a.localeCompare(b,'fr'));$('tagFilters').innerHTML=tags.map(t=>'<button type="button" class="'+(selectedTags.has(t)?'active':'')+'" data-tag="'+escape(t)+'">'+escape(t)+'</button>').join('');$('tagFilters').querySelectorAll('[data-tag]').forEach(b=>b.onclick=()=>{const t=b.dataset.tag;selectedTags.has(t)?selectedTags.delete(t):selectedTags.add(t);saveFilters();renderTags();filterChanged()});$('toggleFilters').classList.toggle('active',selectedTags.size>0)}
 const deckExpandedPaths=new Set;
 function normalizeDeckPath(value){const parts=String(value||'').split('::').map(x=>x.trim()).filter(Boolean);if(!parts.length)throw Error('Le nom du deck est vide.');if(parts.some(x=>x.length>120))throw Error('Un niveau de deck est trop long.');return parts.join('::')}
@@ -1499,16 +1499,8 @@ async function cartGithubGetOptional(path){
 async function loadPrivateCartData(){
  const remote=await cartGithubGetOptional(CART_GITHUB_FILE);if(!remote)return false;
  cartPrivateDataSha=remote.sha;const parsed=readCartCsv(remote.text);if(!parsed.rows.length)return false;
- const previousDeckSelection=new Set(selectedDeckPaths),previousTags=new Set(selectedTags);
  data=parsed.rows;Object.assign(units,parsed.units);hasImportedCartData=true;
- const availableDecks=unique(data.flatMap(itemDecks)),availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));
- const matchingDecks=[...previousDeckSelection].filter(p=>availableDecks.includes(p));
- if(previousDeckSelection.size&&availableDecks.length&&!matchingDecks.length)selectedDeckPaths=new Set(availableDecks);
- else selectedDeckPaths=new Set(matchingDecks);
- selectedTags=new Set([...previousTags].filter(t=>availableTags.has(t)));
- deckStateLoaded=true;
  localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:parsed.units}));
- localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:3,tags:[...selectedTags],decks:[...selectedDeckPaths]}));
  return true
 }
 async function putPrivateCartData(){
@@ -1540,16 +1532,16 @@ function scheduleCartCloudSync(delay=7000){
  cartCloudTimer=setTimeout(()=>{cartCloudTimer=null;syncCartCloudStateToGitHub().catch(()=>{})},Math.max(0,delay))
 }
 function collectCartCloudState(){
- return{version:3,updatedAt:localCartCloudUpdated()||Date.now(),filters:{tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320}
+ return{version:4,updatedAt:localCartCloudUpdated()||Date.now(),filters:{initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320}
 }
 function applyCartCloudState(state){
  if(!state||typeof state!=='object')return;applyingCartCloudState=true;
  try{
   if(state.filters){
-   const availableDecks=unique(data.flatMap(itemDecks)),availableTags=new Set(unique(data.flatMap(d=>d.tags||[]))),requestedDecks=Array.isArray(state.filters.decks)?state.filters.decks:[];
+   const availableDecks=unique(data.flatMap(itemDecks)),availableTags=new Set(unique(data.flatMap(d=>d.tags||[]))),requestedDecks=Array.isArray(state.filters.decks)?state.filters.decks:[],initialized=state.filters.initialized===true||requestedDecks.length>0;
    selectedTags=new Set((state.filters.tags||[]).filter(t=>availableTags.has(String(t))));
-   selectedDeckPaths=new Set(Number(state.version)<3&&requestedDecks.length===0&&availableDecks.length?availableDecks:requestedDecks.filter(p=>availableDecks.includes(String(p))));
-   deckStateLoaded=true;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:3,tags:[...selectedTags],decks:[...selectedDeckPaths]}))
+   selectedDeckPaths=new Set(initialized?requestedDecks.filter(p=>availableDecks.includes(String(p))):availableDecks);
+   deckStateLoaded=true;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:4,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}))
   }
   if(state.gameErrors)localStorage.setItem(CART_GAME_ERROR_KEY,JSON.stringify(state.gameErrors));
   if(Array.isArray(state.gameRecent))localStorage.setItem(CART_GAME_RECENT_KEY,JSON.stringify(state.gameRecent.slice(0,600)));
@@ -1820,7 +1812,7 @@ async function bootCartography(){
  const savedWidth=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(savedWidth)applySideWidth(savedWidth);
  updateScaleSelector(mode,false);
  renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours…';
- const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
+ const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
  const results=await Promise.allSettled([
   getJSONFallback([
    'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson',
