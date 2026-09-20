@@ -1108,30 +1108,15 @@ const ADMIN_BOUNDARY_SOURCES=[
 ];
 let activeAdminBoundarySource=ADMIN_BOUNDARY_SOURCES[0];
 async function loadAdminBoundaryBundle(){
- let last=null;
- try{
-   const [manifest,departements,regions,epci]=await Promise.all([
-     getJSON(IGN_ADMIN_BASE+'manifest.json').catch(()=>null),
-     getJSON(IGN_GEO_BASE+'departements.geojson'),
-     getJSON(IGN_GEO_BASE+'regions.geojson'),
-     getJSON(IGN_GEO_BASE+'epci.geojson')
-   ]);
-   if(!departements?.features?.length||!regions?.features?.length||!epci?.features?.length)throw Error('Jeu IGN local incomplet');
-   ignAdminManifest=manifest;activeAdminBoundarySource={label:'IGN ADMIN EXPRESS COG CARTO PE 2026',base:IGN_GEO_BASE};
-   return{source:activeAdminBoundarySource,departements,regions,epci}
- }catch(e){last=e}
- for(const source of ADMIN_BOUNDARY_SOURCES){
-   try{
-     const [departements,regions,epci]=await Promise.all([
-       getJSON(source.base+'departements-1000m.geojson'),
-       getJSON(source.base+'regions-1000m.geojson'),
-       getJSON(source.base+'epci-1000m.geojson')
-     ]);
-     if(!departements?.features?.length||!regions?.features?.length||!epci?.features?.length)throw Error('Jeu administratif incomplet');
-     activeAdminBoundarySource=source;return{source,departements,regions,epci}
-   }catch(e){last=e}
- }
- throw(last||Error('Aucun millésime administratif cohérent disponible'))
+ const [manifest,departements,regions,epci]=await Promise.all([
+   getJSON(IGN_ADMIN_BASE+'manifest.json').catch(()=>null),
+   getJSON(IGN_GEO_BASE+'departements.geojson'),
+   getJSON(IGN_GEO_BASE+'regions.geojson'),
+   getJSON(IGN_GEO_BASE+'epci.geojson')
+ ]);
+ if(!departements?.features?.length||!regions?.features?.length||!epci?.features?.length)throw Error('Jeu IGN ADMIN EXPRESS 2026 local incomplet');
+ ignAdminManifest=manifest;activeAdminBoundarySource={label:'IGN ADMIN EXPRESS COG CARTO PE 2026',base:IGN_GEO_BASE};
+ return{source:activeAdminBoundarySource,departements,regions,epci}
 }
 async function getJSONFallback(urls){let last=null;for(const url of urls){try{const j=await getJSON(url);if(j?.features?.length)return j}catch(e){last=e}}throw(last||Error("Aucune source disponible"))}
 const ADMIN_2026_GEOJSON_BASE='https://etalab-datasets.geo.data.gouv.fr/2026/geojson/';
@@ -1288,12 +1273,7 @@ let epciLoadPromise=null;
 async function ensureEpciGeo(){
  if(epciGeo?.features?.length)return epciGeo;
  if(epciLoadPromise)return epciLoadPromise;
- epciLoadPromise=getJSONFallback([
-   IGN_GEO_BASE+'epci.geojson',
-   ADMIN_2026_GEOJSON_BASE+'epci-1000m.geojson',
-   './data/admin/epci.geojson',
-   'https://raw.githubusercontent.com/MTES-MCT/otelo/dev/apps/web/public/geojson/epci-1000m.geojson'
- ]).then(augmentGrandParisGroups).then(j=>{epciGeo=j;invalidateGroupCache();seedEpciDemoCoverage();return epciGeo}).finally(()=>{epciLoadPromise=null});
+ epciLoadPromise=getJSON(IGN_GEO_BASE+'epci.geojson').then(j=>{if(!j?.features?.length)throw Error('EPCI IGN local vide');return j}).then(augmentGrandParisGroups).then(j=>{epciGeo=j;invalidateGroupCache();seedEpciDemoCoverage();return epciGeo}).finally(()=>{epciLoadPromise=null});
  return epciLoadPromise
 }
 
@@ -1694,11 +1674,33 @@ async function adminCascadeFor(g,level=mode){if(!g)return'';const u=units[g.key]
 async function updateAdminCascade(g){const token=++adminCascadeToken,box=$('adminCascade');if(!g){box.textContent='';return}box.textContent='…';const text=await adminCascadeFor(g,mode);if(token!==adminCascadeToken||selection!==g)return;box.textContent=text}
 
 function renderSide(){activeItem=null;$('back').hidden=!selection;$('back').textContent='← Tous les territoires';$('heading').textContent=selection?selection.name:modes[mode];$('context').textContent=selection?selection.items.length+' exemple'+(selection.items.length>1?'s':'')+(selection.fiction?' · groupement libre':''):current().length+' exemples · '+groups().length+' territoires';$('adminCascade').textContent='';if(selection){renderCards(selection.items);updateAdminCascade(selection);return;}$('list').innerHTML=groups().map(g=>'<button class="entry" data-unit="'+g.key+'"><span class="num">'+g.items.length+'</span><strong>'+escape(g.name)+'</strong><small>'+escape(g.fiction?'Groupement libre':mode===0?'Commune':mode===1?'Groupement':modes[mode].slice(0,-1))+'</small></button>').join('');$('list').querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>choose(groups().find(g=>g.key===b.dataset.unit)));}
+function overviewSelectionNeedsRealGeography(g){
+ if(!g)return false;
+ const code=String(g.code||''),u=units[g.key]||g,
+       dept=String(u.dept||g.dept||''),region=String(u.region||g.region||'');
+ if(mode===3&&doms.some(d=>String(d.region)===code))return true;
+ if(mode===2&&doms.some(d=>String(displayDepartmentCode(d.dept))===String(displayDepartmentCode(code))))return true;
+ if(dept&&doms.some(d=>String(d.dept)===dept))return true;
+ if(region&&doms.some(d=>String(d.region)===region))return true;
+ if(Array.isArray(g.at)&&overseasAtPoint(g.at))return true;
+ return false
+}
 async function choose(g,bounds,options={}){
- const wasOverview=overviewActive,previousSelection=selection,slideToNext=!wasOverview&&mode<=1&&previousSelection&&String(previousSelection.key||previousSelection.code)!==String(g.key||g.code);
- if(wasOverview){overviewActive=false;pointRenderKey='';updateInsetVisibility();updateBasemap()}
- selection=g;activeItem=null;focus.clearLayers();local.clearLayers();renderSide();if(wasOverview)drawAdmin();else refreshAdminStyle();
- if(!bounds&&mode>=1){const pac=pacificGeoForModeCode(mode,g.code);if(pac?.features?.length)bounds=L.geoJSON(pac).getBounds();else{const geo=mode===3?regionGeo:mode===2?departmentRenderGeo():epciGeo,features=geo?.features?.filter(f=>featureAdminCode(f)===String(g.code))||[],overseas=mode>=2?doms.find(d=>(mode===3?d.region:displayDepartmentCode(d.dept))===String(g.code)):null;if(features.length)bounds=L.geoJSON({type:'FeatureCollection',features}).getBounds();else if(overseas?.geo)bounds=L.geoJSON(overseas.geo).getBounds()}}
+ const wasOverview=overviewActive,leaveOverview=wasOverview&&overviewSelectionNeedsRealGeography(g),
+       previousSelection=selection,slideToNext=!wasOverview&&mode<=1&&previousSelection&&String(previousSelection.key||previousSelection.code)!==String(g.key||g.code);
+ if(leaveOverview){overviewActive=false;pointRenderKey='';updateInsetVisibility();updateBasemap()}
+ selection=g;activeItem=null;focus.clearLayers();local.clearLayers();renderSide();
+ if(wasOverview)drawAdmin();else refreshAdminStyle();
+ if(!bounds&&mode>=1){
+  const pac=pacificGeoForModeCode(mode,g.code);
+  if(pac?.features?.length)bounds=L.geoJSON(pac).getBounds();
+  else{
+   const geo=overviewActive?(mode===3?displayRegionGeo():mode===2?displayDepartmentRenderGeo():displayEpciGeo()):(mode===3?regionGeo:mode===2?departmentRenderGeo():epciGeo),
+         features=geo?.features?.filter(f=>featureAdminCode(f)===String(g.code))||[],
+         overseas=mode>=2?doms.find(d=>(mode===3?d.region:displayDepartmentCode(d.dept))===String(g.code)):null;
+   if(features.length)bounds=L.geoJSON({type:'FeatureCollection',features}).getBounds();else if(overseas?.geo)bounds=L.geoJSON(overseas.geo).getBounds()
+  }
+ }
  const defaultMax=mode===0?13:mode===1?10:mode===2?9:8,maxZoom=Number.isFinite(options.maxZoom)?options.maxZoom:defaultMax;
  if(slideToNext){
   let target=bounds?.isValid?.()?bounds.getCenter():null;
@@ -1758,13 +1760,7 @@ async function ensureArrGeo(requiredDept=''){
    const official=await getJSON(ignAdmin2026Wfs('arrondissement'));
    if(official?.features?.length)return official
   }catch{}
-  try{
-   return await getJSONFallback([
-    cartoAsset('data/admin/arrondissements.geojson'),
-    'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-avec-outre-mer.geojson',
-    'https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/arrondissements-version-simplifiee.geojson'
-   ])
-  }catch{return null}
+  return null
  })();
  try{
   const loaded=await arrGeoPromise;
@@ -1818,7 +1814,7 @@ async function communeOutlineGeo(code){
  const p=(async()=>{
    const pac=pacificGeoForModeCode(0,code);if(pac?.features?.length)return pac.features[0];
    try{const local=await departmentCommuneGeo(departmentCodeForCommune(code)),found=local?.features?.find(f=>featureAdminCode(f)===code);if(found)return found}catch{}
-   try{const j=await getJSON('https://geo.api.gouv.fr/communes/'+encodeURIComponent(code)+'?fields=nom,code&format=geojson&geometry=contour');return j?.type==='Feature'?j:j?.features?.[0]||null}catch{return null}
+   return null
  })();
  communeOutlineGeoCache.set(code,p);return p
 }
@@ -1860,8 +1856,46 @@ async function updateCommuneDataLayer(force=false){
    await new Promise(r=>requestAnimationFrame(r))
  }
 }
-async function departmentCommuneGeo(dept){dept=String(dept||'');if(!dept)return null;if(departmentCommuneGeoCache.has(dept))return departmentCommuneGeoCache.get(dept);const p=getJSON(IGN_GEO_BASE+'communes/'+encodeURIComponent(dept)+'.geojson').catch(()=>getJSON('https://geo.api.gouv.fr/communes?codeDepartement='+encodeURIComponent(dept)+'&fields=nom,code&format=geojson&geometry=contour').catch(()=>null));departmentCommuneGeoCache.set(dept,p);return p}
-async function epciCommuneGeo(code){code=String(code||'');if(!code)return null;if(epciCommuneGeoCache.has(code))return epciCommuneGeoCache.get(code);const p=getJSON('https://geo.api.gouv.fr/epcis/'+encodeURIComponent(code)+'/communes?fields=nom,code&format=geojson&geometry=contour').catch(()=>null);epciCommuneGeoCache.set(code,p);return p}
+async function departmentCommuneGeo(dept){
+ dept=String(dept||'');if(!dept)return null;
+ if(departmentCommuneGeoCache.has(dept))return departmentCommuneGeoCache.get(dept);
+ const p=getJSON(IGN_GEO_BASE+'communes/'+encodeURIComponent(dept)+'.geojson').catch(()=>null);
+ departmentCommuneGeoCache.set(dept,p);return p
+}
+async function epciCommuneGeo(code){
+ code=String(code||'');if(!code)return null;
+ if(epciCommuneGeoCache.has(code))return epciCommuneGeoCache.get(code);
+ const p=(async()=>{
+  // geo.api is used only as a membership table here; every displayed contour
+  // is fetched from the committed IGN ADMIN EXPRESS 2026 commune files.
+  let memberCodes=[];
+  try{
+   const rows=await getJSON('https://geo.api.gouv.fr/epcis/'+encodeURIComponent(code)+'/communes?fields=code');
+   if(Array.isArray(rows))memberCodes=rows.map(x=>String(x.code||'')).filter(Boolean)
+  }catch{}
+  if(memberCodes.length){
+   const wanted=new Set(memberCodes),departments=new Set();
+   for(const ccode of memberCodes){
+    const dept=adminCatalog?.communeByCode.get(ccode)?.dept||departmentCodeForCommune(ccode);
+    if(dept)departments.add(String(dept))
+   }
+   const geos=await Promise.all([...departments].map(dept=>departmentCommuneGeo(dept)));
+   return{type:'FeatureCollection',features:geos.flatMap(g=>g?.features||[]).filter(f=>wanted.has(featureAdminCode(f)))}
+  }
+  // Offline fallback: derive membership spatially from the local IGN EPCI
+  // polygon and local IGN commune files, never from another contour source.
+  if(!epciGeo?.features?.length)try{await ensureEpciGeo()}catch{}
+  const ef=epciGeo?.features?.find(f=>featureAdminCode(f)===code);if(!ef)return null;
+  const eb=featureBounds(ef),candidateDepartments=(deptGeo?.features||[]).filter(f=>featureBounds(f).intersects(eb)).map(featureAdminCode);
+  const geos=await Promise.all(candidateDepartments.map(dept=>departmentCommuneGeo(dept))),features=[];
+  for(const g of geos)for(const f of g?.features||[]){
+   const center=featureBounds(f).getCenter();
+   if(eb.contains(center)&&pointInFeature(center.lat,center.lng,ef))features.push(f)
+  }
+  return{type:'FeatureCollection',features}
+ })().catch(()=>null);
+ epciCommuneGeoCache.set(code,p);return p
+}
 function communeLabelIcon(name){return L.divIcon({className:'commune-name-label',iconSize:null,html:'<span>'+escape(name)+'</span>'})}
 function selectedCommuneCode(){return mode===0&&selection?.code?String(selection.code):''}
 function communeBoundaryStyle(f){const code=featureAdminCode(f),selected=code&&code===selectedCommuneCode(),n=countCode(code);return selected?{pane:'subAdminPane',color:'#000000',weight:3.2,opacity:1,fillColor:n?densityContinuousColor(n):defaultColors[0],fillOpacity:.08}:{pane:'subAdminPane',color:'#111820',weight:1.05,opacity:.9,fillOpacity:0}}
