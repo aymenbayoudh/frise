@@ -1808,6 +1808,15 @@ const demoThemes=['Mobilités','Éducation','Patrimoine','Eau','Habitat','Cultur
 const demoActions=['un réseau de lieux partagés','un programme de renaturation','un fonds de transformation','un atelier mobile','une plateforme de réemploi','un plan de sobriété','une boucle de mobilités','un observatoire territorial','un dispositif culturel','un programme d’adaptation'];
 function demoHash(v){let h=2166136261;for(const c of String(v)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
 function demoSkew(code,level){const h=demoHash(level+':'+code);if(level==='region')return h%7===0?8:h%4===0?5:1+h%3;if(level==='departement')return h%13===0?8:h%5===0?5:1+h%3;if(level==='commune')return h%5===0?10:5+h%5;return h%9===0?5:1+h%3}
+function overseasDemoTarget(code,level){
+ const ramps={
+  region:[2,4,7,11,16],
+  departement:[1,3,6,10,15],
+  interco:[1,2,4,7,12,18],
+  commune:[1,1,2,3,5,8,13]
+ },r=ramps[level]||ramps.commune,h=demoHash('outremer:'+level+':'+String(code));
+ return r[h%r.length]
+}
 function demoFeatureCenter(feature){const c=featureBounds(feature).getCenter();return[c.lat,c.lng]}
 function unitKeyForModeCode(level,code){const d=data.find(x=>x.mode===level&&String(keyOf(x))===String(code));return d?.unit||null}
 function addGeneratedDemo(level,unit,title,at,theme,index){
@@ -1834,16 +1843,32 @@ async function seedAdministrativeDemoCoverage(){
   const df=(deptGeo.features||[]).find(f=>featureAdminCode(f)===String(d.dept));
   if(rf){
    let unit=unitKeyForModeCode(3,d.region);if(!unit){unit='demo-r-'+d.region;units[unit]={name:featureAdminName(rf)||d.name,code:String(d.region),at:demoFeatureCenter(rf)}}
-   const existing=data.filter(x=>x.mode===3&&String(keyOf(x))===String(d.region)).length,target=5;
+   const existing=data.filter(x=>x.mode===3&&String(keyOf(x))===String(d.region)).length,target=overseasDemoTarget(d.region,'region');
    for(let i=existing;i<target;i++)addGeneratedDemo(3,unit,demoActions[(demoHash(d.region+'om')+i)%demoActions.length]+' en '+d.name,units[unit].at||d.at,demoThemes[(i+demoHash(d.region))%demoThemes.length],i)
   }
   if(df){
    let unit=unitKeyForModeCode(2,d.dept);if(!unit){unit='demo-d-'+d.dept;units[unit]={name:featureAdminName(df)||d.name,code:String(d.dept),region:String(d.region),at:demoFeatureCenter(df)}}
-   const existing=data.filter(x=>x.mode===2&&String(itemDisplayAdminCode(x,2))===String(d.dept)).length,target=5;
+   const existing=data.filter(x=>x.mode===2&&String(itemDisplayAdminCode(x,2))===String(d.dept)).length,target=overseasDemoTarget(d.dept,'departement');
    for(let i=existing;i<target;i++)addGeneratedDemo(2,unit,demoActions[(demoHash(d.dept+'om')+i)%demoActions.length]+' en '+d.name,units[unit].at||d.at,demoThemes[(i+2+demoHash(d.dept))%demoThemes.length],i)
   }
  }
-  const selectedDeps=[...(deptGeo.features||[])].filter(f=>demoHash(featureAdminCode(f))%3===0).slice(0,42);
+ // Every DROM commune gets demo coverage. Counts intentionally vary a lot so
+ // the commune gradient can be checked from very pale to saturated.
+ for(const d of overseasDemo){
+  let cgeo=null;try{cgeo=await departmentCommuneGeo(d.dept)}catch{}
+  for(const f of cgeo?.features||[]){
+   const code=featureAdminCode(f);if(!code)continue;
+   const name=featureAdminName(f)||adminCatalog?.communeByCode.get(code)?.name||code,
+         at=demoFeatureCenter(f);
+   let unit=unitKeyForModeCode(0,code);
+   if(!unit){unit='demo-om-c-'+code;units[unit]={name,code,dept:String(d.dept),region:String(d.region),at}}
+   else{units[unit].name=name;units[unit].dept=String(d.dept);units[unit].region=String(d.region);if(!units[unit].at)units[unit].at=at}
+   const existing=data.filter(x=>x.mode===0&&String(keyOf(x))===String(code)).length,
+         target=overseasDemoTarget(code,'commune');
+   for(let i=existing;i<target;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(code+'om-c')+i)%demoActions.length]+' · '+name,units[unit].at||at,demoThemes[(i+demoHash(code))%demoThemes.length],i)
+  }
+ }
+ const selectedDeps=[...(deptGeo.features||[])].filter(f=>demoHash(featureAdminCode(f))%3===0).slice(0,42);
  for(const f of selectedDeps){
    const dept=featureAdminCode(f),m=depMeta.get(dept),chef=String(m?.chefLieu||'');if(!chef)continue;
    let unit=unitKeyForModeCode(0,chef);if(!unit){unit='demo-c-'+chef;units[unit]={name:'Chef-lieu de '+featureAdminName(f),code:chef,dept,region:String(m?.region??m?.codeRegion??''),at:demoFeatureCenter(f),generatedChefLieu:true}}
@@ -1868,7 +1893,7 @@ function seedEpciDemoCoverage(){
   const localEpcis=(epciGeo.features||[]).filter(f=>{const at=demoFeatureCenter(f);return pointInFeature(at[0],at[1],deptFeature)});
   for(const f of localEpcis){
    const code=featureAdminCode(f);if(!code)continue;let unit=unitKeyForModeCode(1,code);if(!unit){unit='demo-e-'+code;units[unit]={name:featureAdminName(f),code,dept:String(d.dept),region:String(d.region),at:demoFeatureCenter(f)}}else{units[unit].dept=String(d.dept);units[unit].region=String(d.region)}
-   const existing=data.filter(x=>x.mode===1&&String(keyOf(x))===String(code)).length,target=3;
+   const existing=data.filter(x=>x.mode===1&&String(keyOf(x))===String(code)).length,target=overseasDemoTarget(code,'interco');
    for(let i=existing;i<target;i++)addGeneratedDemo(1,unit,demoActions[(demoHash(code+'om')+i)%demoActions.length]+' dans '+d.name,units[unit].at||demoFeatureCenter(f),demoThemes[(i+6+demoHash(code))%demoThemes.length],i)
   }
  }
@@ -1880,11 +1905,8 @@ function seedPacificDemoCoverage(){
  if(hasImportedCartData||demoPacificSeeded||!pacificAdmin.pf||!pacificAdmin.nc)return;demoPacificSeeded=true;
  const configs=[['pf','987','Polynésie française'],['nc','988','Nouvelle-Calédonie']];
  const targetCount=(code,level,boost=0)=>{
-  const h=demoHash('pac:'+level+':'+code);
-  if(level===3)return 3+(h%6)+boost;
-  if(level===2)return 1+(h%8)+boost;
-  if(level===1)return 1+(h%6)+boost;
-  return 1+(h%5)+boost
+  const kind=level===3?'region':level===2?'departement':level===1?'interco':'commune';
+  return overseasDemoTarget(code,kind)+boost
  };
  for(const [kind,regionCode,territoryName] of configs){
   const src=pacificAdmin[kind];
