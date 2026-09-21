@@ -3,7 +3,7 @@
 <script>(()=>{try{const p=location.pathname;if(/\/carto(?:\.html|\/)$/.test(p))history.replaceState(null,'',p.replace(/\/carto(?:\.html|\/)$/,'/carto')+location.search+location.hash)}catch{}})();</script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-:root{--ink:#21313f;--muted:#6e7d89;--accent:#265f8c;--line:#dce2e7;--paper:#fff}*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden}body{font:15px/1.5 system-ui,-apple-system,sans-serif;color:var(--ink);background:#fff}button,a,input{font:inherit}button{cursor:pointer;color:inherit}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #e4a842;outline-offset:3px}.scale-labels button:focus,.scale-labels button:focus-visible{outline:none!important;outline-offset:0!important}header{height:60px;display:flex;align-items:center;gap:30px;padding:0 24px;border-bottom:1px solid var(--line)}header strong{font-size:14px;letter-spacing:.13em}nav{display:flex;gap:22px;height:100%;align-items:center}nav a{color:var(--muted);text-decoration:none;font-size:14px}nav a[aria-current]{height:100%;display:flex;align-items:center;color:var(--ink);border-bottom:2px solid var(--ink)}.header-actions{margin-left:auto;display:flex;align-items:center;gap:6px}.header-actions>button,.header-tool>button{width:34px;height:34px;min-height:34px;padding:0;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:16px}.header-actions>button:hover,.header-tool>button:hover{background:#f3f6f8}.header-tool{position:relative}.header-pop{position:absolute;right:0;top:40px;z-index:900;width:205px;padding:6px;border:1px solid var(--line);border-radius:9px;background:#fff;box-shadow:0 12px 34px #21313f22}.header-pop[hidden]{display:none}.header-pop button{display:flex;width:100%;min-height:31px;align-items:center;gap:7px;padding:5px 8px;border:0;border-radius:6px;background:#fff;text-align:left;font-size:12px}.header-pop button:hover{background:#f1f5f8}.palette-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:5px}.palette-grid button{min-height:30px;padding:0;border:2px solid #fff;border-radius:7px;background:var(--swatch);box-shadow:0 0 0 1px var(--line)}.demo{font-size:12px;color:#80591d;background:#fff7e7;padding:4px 9px;border-radius:4px}.workspace{--side-width:320px;height:calc(100dvh - 60px);display:grid;grid-template-columns:minmax(0,1fr) var(--side-width)}.canvas{position:relative;min-width:0;overflow:hidden;background:#f5f7f8}#map{position:absolute;inset:0;background:#f5f7f8}.leaflet-container{font:inherit;background:#f5f7f8}.satellite-tile{width:257px!important;height:257px!important;max-width:none!important;max-height:none!important}.leaflet-control-attribution{font-size:10px!important}.leaflet-top.leaflet-left{top:100px;left:auto;right:12px}.leaflet-bar{border:1px solid var(--line)!important;box-shadow:none!important}.leaflet-bar a{color:var(--ink)!important}.scale-panel{--scale-color:var(--accent);position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:600;width:min(570px,calc(100% - 30px));padding:0;background:transparent;border:0;box-shadow:none}.scale-selector{--scale-position:0;position:relative;height:52px;padding:4px;border:1px solid #d9e1e8aa;border-radius:26px;background:#ffffff8f;box-shadow:0 8px 28px #17223612,inset 0 1px 0 #ffffffcc;backdrop-filter:blur(14px) saturate(155%);-webkit-backdrop-filter:blur(14px) saturate(155%);overflow:hidden}.scale-labels{position:relative;z-index:2;display:grid;grid-template-columns:repeat(4,1fr);height:100%;gap:0}.scale-labels button{position:relative;z-index:2;min-width:0;height:44px;min-height:44px;padding:0 8px;border:0;border-radius:22px;background:transparent;font-size:13px;color:#61717e;font-weight:580;white-space:nowrap;transition:color .18s ease,font-weight .18s ease,transform .18s ease}.scale-labels button:hover{background:transparent;color:#243847}.scale-labels button.active{color:#102d43;font-weight:760;transform:scale(1.025)}.scale-glass{position:absolute;z-index:1;left:4px;top:4px;width:calc((100% - 8px)/4);height:44px;border:1px solid #ffffffd8;border-radius:22px;background:linear-gradient(145deg,#ffffff8c,#dcecf65c 52%,#ffffff70);box-shadow:0 5px 18px #21445e1f,inset 0 1px 1px #fff,inset 0 -1px 1px #89aabc3d;backdrop-filter:blur(18px) saturate(185%);-webkit-backdrop-filter:blur(18px) saturate(185%);transform:translateX(calc(var(--scale-position)*100%));transition:transform .28s cubic-bezier(.22,.85,.25,1),box-shadow .18s ease;cursor:grab;touch-action:none;outline:none}.scale-glass:before{content:"";position:absolute;inset:3px 8px auto 8px;height:9px;border-radius:999px;background:linear-gradient(180deg,#ffffffbb,#ffffff12);pointer-events:none}.scale-glass:after{content:"";position:absolute;inset:-1px;border-radius:inherit;box-shadow:inset 0 0 0 1px #9fc4d32e;pointer-events:none}.scale-glass:hover,.scale-glass:focus-visible{box-shadow:0 7px 22px #21445e29,inset 0 1px 1px #fff,inset 0 -1px 1px #89aabc45}.scale-glass.dragging{cursor:grabbing;transition:none;box-shadow:0 10px 28px #21445e30,inset 0 1px 1px #fff,inset 0 -1px 1px #89aabc45}.home{position:absolute;right:14px;top:190px;z-index:600;border:1px solid var(--line);background:white;border-radius:5px;padding:7px 10px;font-size:13px}.overseas{position:absolute;left:14px;top:118px;bottom:52px;z-index:500;width:115px;display:flex;flex-direction:column;gap:8px;overflow:auto;scrollbar-width:thin}.inset{border:1px solid #dce2e7;border-radius:6px;background:#fff;min-height:90px;flex:1;max-height:135px;position:relative;overflow:hidden}.mini{height:calc(100% - 25px);min-height:65px;pointer-events:none;background:#f5f7f8}.inset button{position:absolute;inset:0;z-index:450;background:transparent;border:0;padding:0;display:flex;align-items:flex-end;justify-content:space-between;font-size:11px;text-align:left}.inset button span{background:#fff;padding:4px 6px;width:100%;display:flex;justify-content:space-between;gap:2px}.inset b{color:var(--accent)}.inset:hover{border-color:var(--accent)}.legend{position:absolute;bottom:20px;left:150px;z-index:500;background:#ffffffed;padding:7px 10px;border-radius:5px;font-size:12px;color:var(--muted);max-width:calc(100% - 175px)}.ramp{display:inline-block;width:75px;height:9px;background:linear-gradient(90deg,#edf2f6,#aac7dc,#265f8c);margin:0 7px}.status{position:absolute;bottom:55px;left:150px;z-index:600;font-size:12px;max-width:calc(100% - 175px);background:#fff5db;padding:7px 10px;border-radius:5px}.status.has-close{padding-right:28px}.status:empty{display:none}.status-close{position:absolute;top:3px;right:4px;width:18px;height:18px;min-height:18px;padding:0;border:0;border-radius:50%;background:transparent;color:#7b6b45;font-size:14px;line-height:18px;text-align:center;opacity:.72}.status-close:hover,.status-close:focus-visible{background:#0000000d;color:#3e3522;opacity:1;outline:1px solid #9c8a5e;outline-offset:0}aside{border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:#fff}.aside-head{padding:24px 22px 18px;border-bottom:1px solid var(--line)}.eyebrow{text-transform:uppercase;font-size:11px;letter-spacing:.14em;color:var(--muted)}h1{font-size:25px;letter-spacing:-.04em;line-height:1.2;font-weight:600;margin:8px 0}#context{font-size:13px;color:var(--muted);margin:8px 0 0}.back{border:0;background:none;padding:0;color:var(--accent);font-size:13px;margin-bottom:12px}.back[hidden]{display:none}.list{overflow:auto;flex:1;padding:8px 12px}.entry{display:block;background:#fff;border:0;border-bottom:1px solid #edf0f2;width:100%;text-align:left;padding:14px 10px}.entry:hover,.entry.active{background:#f1f6fa;border-radius:5px}.entry strong{display:block;font-size:14px;font-weight:600}.entry small{display:block;margin-top:4px;color:var(--muted);font-size:12px}.entry .num{float:right;color:var(--accent);background:#ecf3f8;padding:1px 7px;border-radius:4px;margin-left:8px}.foot{padding:12px 22px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}.foot details{margin-top:0}.foot summary{cursor:pointer}.foot a{color:var(--accent)}.article{padding:16px 10px;font-size:15px}.article h2{font-size:21px;line-height:1.3;margin:7px 0 15px}.article p{margin:12px 0}.tag{display:inline-block;font-size:11px;padding:3px 6px;background:#edf3f7;color:var(--accent);border-radius:3px;margin:0 4px 4px 0}.notice{font-size:12px;color:#846428;background:#fff8e9;padding:10px;border-radius:5px}.bubble,.pin-wrap{background:none;border:0}.bubble-body{display:grid;place-items:center;border:2px solid #fff;border-radius:50%;background:var(--accent);color:white;font-weight:700;box-shadow:0 1px 6px #21313f30}.bubble-label{position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:600;color:#304a5b;text-shadow:0 1px 3px #fff,0 0 4px #fff}.pin-body{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;background:var(--accent);box-shadow:0 2px 5px #21313f40;display:grid;place-items:center}.pin-body span{transform:rotate(45deg);color:white;font-size:11px;font-weight:750}.pin-body.global{width:35px;height:35px;background:#1f384d}.leaflet-tooltip{font-size:12px;border:1px solid var(--line);box-shadow:0 2px 8px #21313f15}.leaflet-tooltip.group-unit-tooltip{margin-left:var(--avoid-x,0px)!important;margin-top:var(--avoid-y,0px)!important;transition:margin .06s ease-out}.empty{padding:20px 10px;color:var(--muted)}
+:root{--ink:#21313f;--muted:#6e7d89;--accent:#265f8c;--line:#dce2e7;--paper:#fff}*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden}body{font:15px/1.5 system-ui,-apple-system,sans-serif;color:var(--ink);background:#fff}button,a,input{font:inherit}button{cursor:pointer;color:inherit}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #e4a842;outline-offset:3px}.scale-labels button:focus,.scale-labels button:focus-visible{outline:none!important;outline-offset:0!important}header{height:60px;display:flex;align-items:center;gap:30px;padding:0 24px;border-bottom:1px solid var(--line)}header strong{font-size:14px;letter-spacing:.13em}nav{display:flex;gap:22px;height:100%;align-items:center}nav a{color:var(--muted);text-decoration:none;font-size:14px}nav a[aria-current]{height:100%;display:flex;align-items:center;color:var(--ink);border-bottom:2px solid var(--ink)}.header-actions{margin-left:auto;display:flex;align-items:center;gap:6px}.header-actions>button,.header-tool>button{width:34px;height:34px;min-height:34px;padding:0;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:16px}.header-actions>button:hover,.header-tool>button:hover{background:#f3f6f8}.header-tool{position:relative}.header-pop{position:absolute;right:0;top:40px;z-index:900;width:205px;padding:6px;border:1px solid var(--line);border-radius:9px;background:#fff;box-shadow:0 12px 34px #21313f22}.header-pop[hidden]{display:none}.header-pop button{display:flex;width:100%;min-height:31px;align-items:center;gap:7px;padding:5px 8px;border:0;border-radius:6px;background:#fff;text-align:left;font-size:12px}.header-pop button:hover{background:#f1f5f8}.palette-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:5px}.palette-grid button{min-height:30px;padding:0;border:2px solid #fff;border-radius:7px;background:var(--swatch);box-shadow:0 0 0 1px var(--line)}.demo{font-size:12px;color:#80591d;background:#fff7e7;padding:4px 9px;border-radius:4px}.workspace{--side-width:320px;height:calc(100dvh - 60px);display:grid;grid-template-columns:minmax(0,1fr) var(--side-width)}.canvas{position:relative;min-width:0;overflow:hidden;background:#f5f7f8}#map{position:absolute;inset:0;background:#f5f7f8}.leaflet-container{font:inherit;background:#f5f7f8}.satellite-tile{width:257px!important;height:257px!important;max-width:none!important;max-height:none!important}.leaflet-control-attribution{font-size:10px!important}.leaflet-top.leaflet-left{top:100px;left:auto;right:12px}.leaflet-bar{border:1px solid var(--line)!important;box-shadow:none!important}.leaflet-bar a{color:var(--ink)!important}.scale-panel{--scale-color:var(--accent);position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:600;width:min(570px,calc(100% - 30px));padding:0;background:transparent;border:0;box-shadow:none}.scale-selector{--scale-position:0;position:relative;height:52px;padding:4px;border:1px solid #d9e1e8aa;border-radius:26px;background:#ffffff8f;box-shadow:0 8px 28px #17223612,inset 0 1px 0 #ffffffcc;backdrop-filter:blur(14px) saturate(155%);-webkit-backdrop-filter:blur(14px) saturate(155%);overflow:hidden}.scale-labels{position:relative;z-index:2;display:grid;grid-template-columns:repeat(4,1fr);height:100%;gap:0}.scale-labels button{position:relative;z-index:2;min-width:0;height:44px;min-height:44px;padding:0 8px;border:0;border-radius:22px;background:transparent;font-size:13px;color:#61717e;font-weight:580;white-space:nowrap;transition:color .18s ease,font-weight .18s ease,transform .18s ease}.scale-labels button:hover{background:transparent;color:#243847}.scale-labels button.active{color:#102d43;font-weight:760;transform:scale(1.025)}.scale-glass{position:absolute;z-index:1;left:4px;top:4px;width:calc((100% - 8px)/4);height:44px;border:1px solid #ffffffd8;border-radius:22px;background:linear-gradient(145deg,#ffffff8c,#dcecf65c 52%,#ffffff70);box-shadow:0 5px 18px #21445e1f,inset 0 1px 1px #fff,inset 0 -1px 1px #89aabc3d;backdrop-filter:blur(18px) saturate(185%);-webkit-backdrop-filter:blur(18px) saturate(185%);transform:translateX(calc(var(--scale-position)*100%));transition:transform .28s cubic-bezier(.22,.85,.25,1),box-shadow .18s ease;cursor:grab;touch-action:none;outline:none}.scale-glass:before{content:"";position:absolute;inset:3px 8px auto 8px;height:9px;border-radius:999px;background:linear-gradient(180deg,#ffffffbb,#ffffff12);pointer-events:none}.scale-glass:after{content:"";position:absolute;inset:-1px;border-radius:inherit;box-shadow:inset 0 0 0 1px #9fc4d32e;pointer-events:none}.scale-glass:hover,.scale-glass:focus-visible{box-shadow:0 7px 22px #21445e29,inset 0 1px 1px #fff,inset 0 -1px 1px #89aabc45}.scale-glass.dragging{cursor:grabbing;transition:none;box-shadow:0 10px 28px #21445e30,inset 0 1px 1px #fff,inset 0 -1px 1px #89aabc45}.home{position:absolute;right:14px;top:190px;z-index:600;border:1px solid var(--line);background:white;border-radius:5px;padding:7px 10px;font-size:13px}.overseas{position:absolute;left:14px;top:118px;bottom:52px;z-index:500;width:115px;display:flex;flex-direction:column;gap:8px;overflow:auto;scrollbar-width:thin}.inset{border:1px solid #dce2e7;border-radius:6px;background:#fff;min-height:90px;flex:1;max-height:135px;position:relative;overflow:hidden}.mini{height:calc(100% - 25px);min-height:65px;pointer-events:none;background:#f5f7f8}.inset button{position:absolute;inset:0;z-index:450;background:transparent;border:0;padding:0;display:flex;align-items:flex-end;justify-content:space-between;font-size:11px;text-align:left}.inset button span{background:#fff;padding:4px 6px;width:100%;display:flex;justify-content:space-between;gap:2px}.inset b{color:var(--accent)}.inset:hover{border-color:var(--accent)}.legend{position:absolute;bottom:20px;left:150px;z-index:500;background:#ffffffed;padding:7px 10px;border-radius:5px;font-size:12px;color:var(--muted);max-width:calc(100% - 175px)}.ramp{display:inline-block;width:75px;height:9px;background:linear-gradient(90deg,#edf2f6,#aac7dc,#265f8c);margin:0 7px}.status{position:absolute;bottom:55px;left:150px;z-index:600;font-size:12px;max-width:calc(100% - 175px);background:#fff5db;padding:7px 10px;border-radius:5px}.status.has-close{padding-right:28px}.status:empty{display:none}.status-close{position:absolute;top:3px;right:4px;width:18px;height:18px;min-height:18px;padding:0;border:0;border-radius:50%;background:transparent;color:#7b6b45;font-size:14px;line-height:18px;text-align:center;opacity:.72}.status-close:hover,.status-close:focus-visible{background:#0000000d;color:#3e3522;opacity:1;outline:1px solid #9c8a5e;outline-offset:0}aside{border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:#fff}.aside-head{padding:24px 22px 18px;border-bottom:1px solid var(--line)}.eyebrow{text-transform:uppercase;font-size:11px;letter-spacing:.14em;color:var(--muted)}h1{font-size:25px;letter-spacing:-.04em;line-height:1.2;font-weight:600;margin:8px 0}#context{font-size:13px;color:var(--muted);margin:8px 0 0}.back{border:0;background:none;padding:0;color:var(--accent);font-size:13px;margin-bottom:12px}.back[hidden]{display:none}.list{overflow:auto;flex:1;padding:8px 12px}.entry{display:block;background:#fff;border:0;border-bottom:1px solid #edf0f2;width:100%;text-align:left;padding:14px 10px}.entry:hover,.entry.active{background:#f1f6fa;border-radius:5px}.entry strong{display:block;font-size:14px;font-weight:600}.entry small{display:block;margin-top:4px;color:var(--muted);font-size:12px}.entry .num{float:right;color:var(--accent);background:#ecf3f8;padding:1px 7px;border-radius:4px;margin-left:8px}.foot{padding:12px 22px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}.foot details{margin-top:0}.foot summary{cursor:pointer}.foot a{color:var(--accent)}.article{padding:16px 10px;font-size:15px}.article h2{font-size:21px;line-height:1.3;margin:7px 0 15px}.article p{margin:12px 0}.tag{display:inline-block;font-size:11px;padding:3px 6px;background:#edf3f7;color:var(--accent);border-radius:3px;margin:0 4px 4px 0}.notice{font-size:12px;color:#846428;background:#fff8e9;padding:10px;border-radius:5px}.bubble,.pin-wrap{background:none;border:0}.bubble-body{display:grid;place-items:center;border:2px solid #fff;border-radius:50%;background:var(--accent);color:white;font-weight:700;box-shadow:0 1px 6px #21313f30}.bubble-label{position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:600;color:#304a5b;text-shadow:0 1px 3px #fff,0 0 4px #fff}.pin-body{width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;background:var(--accent);box-shadow:0 2px 5px #21313f40;display:grid;place-items:center}.pin-body span{transform:rotate(45deg);color:white;font-size:11px;font-weight:750}.pin-body.global{width:35px;height:35px;background:#1f384d}.leaflet-tooltip{font-size:12px;border:1px solid var(--line);box-shadow:0 2px 8px #21313f15}.empty{padding:20px 10px;color:var(--muted)}
 @media(max-width:900px){.workspace{--side-width:270px;grid-template-columns:minmax(0,1fr) var(--side-width)}header{padding:0 14px;gap:18px}.overseas{width:88px}.legend,.status{left:110px;max-width:calc(100% - 130px)}.aside-head{padding:18px}.scale-labels button{font-size:11px}}
 @media(max-width:640px){header{height:50px;gap:7px;padding:0 8px}header strong{font-size:8.5px;letter-spacing:.075em;white-space:nowrap}nav{gap:9px}nav a{font-size:11px}.header-actions{gap:3px}.header-actions>button,.header-tool>button{width:29px;height:29px;min-height:29px;font-size:14px}.header-pop{top:34px;width:190px}.demo{display:none}.workspace{height:calc(100dvh - 50px);grid-template-columns:1fr;grid-template-rows:minmax(240px,60%) minmax(0,40%)}aside{border-left:0;border-top:1px solid var(--line)}.aside-head{padding:10px 15px}.eyebrow{display:none}h1{font-size:19px;margin:0}#context{margin:3px 0 0;font-size:12px}.foot{display:none}.list{padding:0 7px}.entry{padding:10px}.scale-panel{top:9px;padding:7px 10px;width:calc(100% - 20px)}.overseas{left:8px;top:auto;bottom:28px;right:8px;width:auto;flex-direction:row;gap:4px;height:72px;overflow:hidden}.inset{flex:1;min-width:0;min-height:65px}.mini{min-height:44px}.inset button{font-size:8px}.inset button span{padding:4px 2px}.legend{bottom:4px;left:8px;padding:0 3px;font-size:10px;max-width:90%}.status{left:8px;right:8px;bottom:0;max-width:none;border-radius:6px 6px 0 0}.leaflet-top.leaflet-left{top:76px;right:8px}.home{top:151px;right:10px;font-size:11px}.back{margin-bottom:5px}.article{padding:12px}.article h2{font-size:18px}}
 .admin-center{background:none!important;border:0!important}.admin-center-dot{position:relative;width:11px;height:11px;border:2px solid #fff;border-radius:50%;background:#657781;box-shadow:0 1px 5px #21313f55}.admin-center-dot.major{width:17px;height:17px;background:#172f45}.admin-center-dot span{position:absolute;left:50%;top:100%;transform:translate(-50%,3px) translate(var(--avoid-x,0px),var(--avoid-y,0px));padding:1px 3px;border-radius:3px;background:#ffffffdc;color:#364856;font-size:9px;font-weight:700;white-space:nowrap;transition:transform .08s ease-out}.admin-center-dot.major span{font-size:10px;color:#172f45}
@@ -277,7 +277,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 @media(max-width:720px){.cart-toolbar{flex-wrap:wrap}.admin-search-box,.admin-search-box input{width:100%;min-width:0}}
 
 .admin-cascade{min-height:1em;margin:7px 0 0;color:#788691;font-size:10.5px;line-height:1.35}
-.group-center-label{background:none!important;border:0!important;pointer-events:none!important}.group-center-label span{display:inline-block;transform:translate(-50%,-50%);padding:2px 5px;border-radius:5px;background:#fffffff2;color:#101820;box-shadow:0 1px 5px #0003;font-size:10px;font-weight:760;white-space:nowrap}
+.group-center-label{background:none!important;border:0!important;pointer-events:none!important}.group-center-label span{display:inline-block;transform:translate(-50%,-50%) translate(var(--avoid-x,0px),var(--avoid-y,0px));padding:2px 5px;border-radius:5px;background:#fffffff2;color:#101820;box-shadow:0 1px 5px #0003;font-size:10px;font-weight:760;white-space:nowrap;transition:transform .08s ease-out}
 .leaflet-groupCenterPane-pane{pointer-events:none!important}
 @media(max-width:640px){.admin-center-dot.rank-region{border-width:1.4px!important}.admin-center-dot.rank-department{border-width:1.1px!important}.admin-center-dot.rank-regionSecondary,.admin-center-dot.rank-subpref{border-width:.8px!important}.admin-center-dot span{font-size:7px!important;padding:1px 3px!important}.group-center-label span{font-size:7.5px!important;padding:1px 3px!important}.bubble-label{font-size:8px!important}.bubble-body{border-width:1.3px!important;font-size:9px!important}}
 
@@ -513,7 +513,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 .settings-section-title:not(:first-child){margin-top:10px;padding-top:9px;border-top:1px solid #edf0f4}
 .cart-settings-panel .settings-grid{display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:9px 14px;align-items:center}
 .cart-settings-panel .settings-grid>span{font-size:.8rem;font-weight:620;line-height:1.2}
-.settings-color-control{display:grid;grid-template-columns:48px 88px;gap:7px;align-items:center}
+.settings-color-control{display:grid;grid-template-columns:48px 88px 28px;gap:7px;align-items:center}
 .settings-color-control input[type="color"]{width:48px;height:36px;padding:2px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
 .settings-color-control input[type="text"]{width:88px;height:36px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase}
 .settings-mode-block{margin:0 0 9px;border:1px solid #e6ebf0;border-radius:10px;background:#fafbfd;overflow:hidden}
@@ -532,20 +532,29 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 .settings-link-button:hover{background:#eef2f6;opacity:.72}
 .settings-link-button.linked{border-color:#c9d3dc;background:#edf3f8;color:#1f384d;opacity:1;filter:none}
 .settings-link-button[hidden]{display:none!important}
+.settings-row-reset{display:inline-flex;align-items:center;justify-content:center;flex:0 0 28px;width:28px;height:28px;min-height:28px;padding:0;border:1px solid transparent;border-radius:7px;background:transparent;color:#7f8d98;font-size:16px;font-weight:650;line-height:1;cursor:pointer;opacity:.62}
+.settings-row-reset:hover{border-color:#d6dee5;background:#eef2f6;color:#334652;opacity:1}
+.settings-row-reset:active{transform:rotate(-22deg)}
+#map .bubble-label{font-size:var(--label-commune-event-size,11px)!important}
+#map .commune-name-label span{font-size:var(--label-commune-neighbor-size,9px)!important}
+#map .commune-name-label.selected span{font-size:var(--label-commune-selected-size,9px)!important}
+#map .group-center-label span{font-size:var(--label-group-center-size,10px)!important}
+#map .leaflet-tooltip.admin-unit-tooltip{font-size:var(--label-admin-unit-size,12px)!important}
+#map .admin-center-dot.rank-region span,#map .admin-center-dot.rank-department span{font-size:var(--label-pref-size,9px)!important}
+#map .admin-center-dot.rank-regionSecondary span,#map .admin-center-dot.rank-subpref span{font-size:var(--label-subpref-size,9px)!important}
 .cart-settings-panel input:focus{outline:2px solid #94aee8;outline-offset:1px}
 .cart-settings-panel .settings-hint{margin:12px 0 2px;padding-top:10px;border-top:1px solid #edf0f4;color:var(--muted);font-size:.68rem;line-height:1.35}
-.cart-settings-panel .batch-actions{flex:0 0 auto;display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:8px;margin:14px -18px -18px;padding:12px 18px;background:#fff;border-top:1px solid #e6ebf0}
+.cart-settings-panel .batch-actions{flex:0 0 auto;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;margin:14px -18px -18px;padding:12px 18px;background:#fff;border-top:1px solid #e6ebf0}
 .cart-settings-panel .batch-actions button{height:38px;min-height:38px;padding:0 13px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-size:.78rem;font-weight:650;line-height:1}
 .cart-settings-panel .batch-actions button:hover{background:#f3f6f9}
 .cart-settings-panel .batch-actions .primary{color:#fff;background:var(--ink);border-color:var(--ink)}
 .cart-settings-panel .batch-actions .primary:hover{background:#263846}
-#settingsReset{color:#65727d;background:#f8fafc}
 @media(max-width:640px){
  .cart-settings-panel{width:calc(100vw - 16px);height:90dvh;max-height:calc(100dvh - 16px);padding:14px;border-radius:13px}
  .cart-settings-panel h2{margin-bottom:5px}
  .cart-settings-panel .settings-grid{grid-template-columns:minmax(0,1fr) auto;gap:8px 8px}
  .cart-settings-panel .settings-grid>span{font-size:.74rem}
- .settings-color-control{grid-template-columns:42px 78px;gap:5px}
+ .settings-color-control{grid-template-columns:42px 78px 27px;gap:5px}
  .settings-color-control input[type="color"]{width:42px;height:34px}
  .settings-color-control input[type="text"]{width:78px;height:34px;padding:5px 6px;font-size:10px}
  .settings-mode-block>summary{min-height:38px;padding:8px 9px;font-size:.72rem}
@@ -618,7 +627,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 <div id="settingsScrim" class="editor-scrim" hidden></div>
 <section id="cartSettingsPanel" class="cart-settings-panel" hidden aria-label="Paramètres d’affichage">
   <h2>Paramètres d’affichage</h2>
-  <div class="settings-scroll">
+  <div class="cart-settings-scroll">
     <h3 class="settings-section-title">Couleurs de base</h3>
     <div class="settings-grid base-color-settings">
       <span>Communes</span><div class="settings-color-control"><input id="settingBaseColor0" type="color" aria-label="Couleur de base des communes"><input id="settingBaseColorCode0" type="text" maxlength="7" aria-label="Code couleur des communes"></div>
@@ -627,7 +636,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
       <span>Régions</span><div class="settings-color-control"><input id="settingBaseColor3" type="color" aria-label="Couleur de base des régions"><input id="settingBaseColorCode3" type="text" maxlength="7" aria-label="Code couleur des régions"></div>
     </div>
 
-    <h3 class="settings-section-title">Épaisseur des limites et centres</h3>
+    <h3 class="settings-section-title">Limites, centres et étiquettes</h3>
     <details class="settings-mode-block"><summary>Mode Communes</summary><div class="settings-grid settings-stroke-grid">
       <span>Communes avec exemples</span><label class="settings-stroke-control"><input id="settingStrokeCommuneExample" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des communes avec exemples en mode Communes"><small>px</small></label>
       <span>Communes voisines (EPCI)</span><label class="settings-stroke-control"><input id="settingStrokeCommuneNeighbor" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des communes voisines en mode Communes"><small>px</small></label>
@@ -636,6 +645,11 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
       <span>Régions</span><label class="settings-stroke-control"><input id="settingStrokeCommuneRegion" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des régions en mode Communes"><small>px</small></label>
       <span>Ronds de préfecture</span><label class="settings-stroke-control"><input id="settingSizeCommunePref" type="number" min="3" max="30" step="0.5" inputmode="decimal" aria-label="Taille des ronds de préfecture en mode Communes"><small>px</small></label>
       <span>Ronds de sous-préfecture</span><label class="settings-stroke-control"><input id="settingSizeCommuneSubpref" type="number" min="3" max="30" step="0.5" inputmode="decimal" aria-label="Taille des ronds de sous-préfecture en mode Communes"><small>px</small></label>
+      <span>Police · communes avec exemples</span><label class="settings-stroke-control"><input id="settingLabelCommuneEvent" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes des communes avec exemples"><small>px</small></label>
+      <span>Police · commune sélectionnée</span><label class="settings-stroke-control"><input id="settingLabelCommuneSelected" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille de l’étiquette de la commune sélectionnée"><small>px</small></label>
+      <span>Police · communes alentours</span><label class="settings-stroke-control"><input id="settingLabelCommuneNeighbor" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes des communes alentours"><small>px</small></label>
+      <span>Police · préfectures</span><label class="settings-stroke-control"><input id="settingLabelCommunePref" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes de préfecture en mode Communes"><small>px</small></label>
+      <span>Police · sous-préfectures</span><label class="settings-stroke-control"><input id="settingLabelCommuneSubpref" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes de sous-préfecture en mode Communes"><small>px</small></label>
     </div></details>
 
     <details class="settings-mode-block"><summary>Mode Groupements</summary><div class="settings-grid settings-stroke-grid">
@@ -644,6 +658,10 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
       <span>Régions</span><label class="settings-stroke-control"><input id="settingStrokeIntercoRegion" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des régions en mode Groupements"><small>px</small></label>
       <span>Ronds de préfecture</span><label class="settings-stroke-control"><input id="settingSizeIntercoPref" type="number" min="3" max="30" step="0.5" inputmode="decimal" aria-label="Taille des ronds de préfecture en mode Groupements"><small>px</small></label>
       <span>Ronds de sous-préfecture</span><label class="settings-stroke-control"><input id="settingSizeIntercoSubpref" type="number" min="3" max="30" step="0.5" inputmode="decimal" aria-label="Taille des ronds de sous-préfecture en mode Groupements"><small>px</small></label>
+      <span>Police · groupements (survol)</span><label class="settings-stroke-control"><input id="settingLabelIntercoUnit" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes de groupement"><small>px</small></label>
+      <span>Police · ville-centre</span><label class="settings-stroke-control"><input id="settingLabelIntercoCenter" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille de l’étiquette de ville-centre"><small>px</small></label>
+      <span>Police · préfectures</span><label class="settings-stroke-control"><input id="settingLabelIntercoPref" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes de préfecture en mode Groupements"><small>px</small></label>
+      <span>Police · sous-préfectures</span><label class="settings-stroke-control"><input id="settingLabelIntercoSubpref" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes de sous-préfecture en mode Groupements"><small>px</small></label>
     </div></details>
 
     <details class="settings-mode-block"><summary>Mode Départements</summary><div class="settings-grid settings-stroke-grid">
@@ -652,6 +670,9 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
       <span>Régions</span><label class="settings-stroke-control"><input id="settingStrokeDepartementRegion" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des régions en mode Départements"><small>px</small></label>
       <span>Ronds de préfecture</span><label class="settings-stroke-control"><input id="settingSizeDepartementPref" type="number" min="3" max="30" step="0.5" inputmode="decimal" aria-label="Taille des ronds de préfecture en mode Départements"><small>px</small></label>
       <span>Ronds de sous-préfecture</span><label class="settings-stroke-control"><input id="settingSizeDepartementSubpref" type="number" min="3" max="30" step="0.5" inputmode="decimal" aria-label="Taille des ronds de sous-préfecture en mode Départements"><small>px</small></label>
+      <span>Police · départements (survol)</span><label class="settings-stroke-control"><input id="settingLabelDepartementUnit" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes de département"><small>px</small></label>
+      <span>Police · préfectures</span><label class="settings-stroke-control"><input id="settingLabelDepartementPref" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes de préfecture en mode Départements"><small>px</small></label>
+      <span>Police · sous-préfectures</span><label class="settings-stroke-control"><input id="settingLabelDepartementSubpref" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes de sous-préfecture en mode Départements"><small>px</small></label>
     </div></details>
 
     <details class="settings-mode-block"><summary>Mode Régions</summary><div class="settings-grid settings-stroke-grid">
@@ -659,10 +680,13 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
       <span>Régions</span><label class="settings-stroke-control"><input id="settingStrokeRegionRegion" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des régions en mode Régions"><small>px</small></label>
       <span>Ronds de préfecture</span><label class="settings-stroke-control"><input id="settingSizeRegionPref" type="number" min="3" max="30" step="0.5" inputmode="decimal" aria-label="Taille des ronds de préfecture en mode Régions"><small>px</small></label>
       <span>Ronds de sous-préfecture</span><label class="settings-stroke-control"><input id="settingSizeRegionSubpref" type="number" min="3" max="30" step="0.5" inputmode="decimal" aria-label="Taille des ronds de sous-préfecture en mode Régions"><small>px</small></label>
+      <span>Police · régions (survol)</span><label class="settings-stroke-control"><input id="settingLabelRegionUnit" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes de région"><small>px</small></label>
+      <span>Police · préfecture régionale</span><label class="settings-stroke-control"><input id="settingLabelRegionPref" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille de l’étiquette de préfecture régionale"><small>px</small></label>
+      <span>Police · préfectures départementales</span><label class="settings-stroke-control"><input id="settingLabelRegionSubpref" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes des préfectures départementales en mode Régions"><small>px</small></label>
     </div></details>
 
   </div>
-  <div class="batch-actions"><button id="settingsReset" type="button">Valeurs par défaut</button><span class="settings-actions-spacer"></span><button id="settingsCancel" type="button">Annuler</button><button id="settingsApply" class="primary" type="button">Appliquer</button></div>
+  <div class="batch-actions"><span class="settings-actions-spacer"></span><button id="settingsCancel" type="button">Annuler</button><button id="settingsApply" class="primary" type="button">Appliquer</button></div>
 </section>
 <div id="editorScrim" class="editor-scrim" hidden></div>
 <form id="cartEditor" hidden>
@@ -786,22 +810,26 @@ const CART_DATA_KEY='cartographie-v2:data',CART_FILTER_KEY='cartographie-v2:filt
 let cartGithubMode=false,cartGithubConfig=null,cartGithubFiles=[],cartGithubFileShas={},cartGithubFileTexts={},cartGithubFileMaxIds={},cartGithubSyncChain=Promise.resolve(),cartPrivateMediaCache=new Map(),cartCloudTimer=null,applyingCartCloudState=false,cartDataDirty=false;
 const modeKeys=['commune','interco','departement','region'],BASE_COLOR_DEFAULTS=['#A8D93F','#245C3D','#D65A94','#1B83B2'];
 const STROKE_DEFAULTS={
- commune:{communeExample:1.65,communeNeighbor:1.05,arrondissement:1,departement:1.1,region:1.45,prefSize:11,subprefSize:6},
- interco:{groupement:.525,departement:.9,region:1.45,prefSize:11,subprefSize:6},
- departement:{arrondissement:.9,departement:1.4,region:1.8,prefSize:11,subprefSize:6},
- region:{departement:.72,region:1.4,prefSize:11,subprefSize:6}
+ commune:{communeExample:1.65,communeNeighbor:1.05,arrondissement:1,departement:1.1,region:1.45,prefSize:11,subprefSize:6,eventLabelSize:11,selectedLabelSize:9,neighborLabelSize:9,prefLabelSize:9,subprefLabelSize:9},
+ interco:{groupement:.525,departement:.9,region:1.45,prefSize:11,subprefSize:6,unitLabelSize:12,centerLabelSize:10,prefLabelSize:9,subprefLabelSize:9},
+ departement:{arrondissement:.9,departement:1.4,region:1.8,prefSize:11,subprefSize:6,unitLabelSize:12,prefLabelSize:9,subprefLabelSize:9},
+ region:{departement:.72,region:1.4,prefSize:11,subprefSize:6,unitLabelSize:12,prefLabelSize:9,subprefLabelSize:9}
 };
 const STROKE_SETTINGS_ROWS=[
  ['commune','communeExample','settingStrokeCommuneExample',null],['commune','communeNeighbor','settingStrokeCommuneNeighbor',null],['commune','arrondissement','settingStrokeCommuneArrondissement','arrondissement'],['commune','departement','settingStrokeCommuneDepartement','departement'],['commune','region','settingStrokeCommuneRegion','region'],['commune','prefSize','settingSizeCommunePref','prefSize'],['commune','subprefSize','settingSizeCommuneSubpref','subprefSize'],
  ['interco','groupement','settingStrokeIntercoGroupement',null],['interco','departement','settingStrokeIntercoDepartement','departement'],['interco','region','settingStrokeIntercoRegion','region'],['interco','prefSize','settingSizeIntercoPref','prefSize'],['interco','subprefSize','settingSizeIntercoSubpref','subprefSize'],
  ['departement','arrondissement','settingStrokeDepartementArrondissement','arrondissement'],['departement','departement','settingStrokeDepartementDepartement','departement'],['departement','region','settingStrokeDepartementRegion','region'],['departement','prefSize','settingSizeDepartementPref','prefSize'],['departement','subprefSize','settingSizeDepartementSubpref','subprefSize'],
- ['region','departement','settingStrokeRegionDepartement','departement'],['region','region','settingStrokeRegionRegion','region'],['region','prefSize','settingSizeRegionPref','prefSize'],['region','subprefSize','settingSizeRegionSubpref','subprefSize']
+ ['region','departement','settingStrokeRegionDepartement','departement'],['region','region','settingStrokeRegionRegion','region'],['region','prefSize','settingSizeRegionPref','prefSize'],['region','subprefSize','settingSizeRegionSubpref','subprefSize'],
+ ['commune','eventLabelSize','settingLabelCommuneEvent',null],['commune','selectedLabelSize','settingLabelCommuneSelected',null],['commune','neighborLabelSize','settingLabelCommuneNeighbor',null],['commune','prefLabelSize','settingLabelCommunePref','prefLabelSize'],['commune','subprefLabelSize','settingLabelCommuneSubpref','subprefLabelSize'],
+ ['interco','unitLabelSize','settingLabelIntercoUnit','unitLabelSize'],['interco','centerLabelSize','settingLabelIntercoCenter',null],['interco','prefLabelSize','settingLabelIntercoPref','prefLabelSize'],['interco','subprefLabelSize','settingLabelIntercoSubpref','subprefLabelSize'],
+ ['departement','unitLabelSize','settingLabelDepartementUnit','unitLabelSize'],['departement','prefLabelSize','settingLabelDepartementPref','prefLabelSize'],['departement','subprefLabelSize','settingLabelDepartementSubpref','subprefLabelSize'],
+ ['region','unitLabelSize','settingLabelRegionUnit','unitLabelSize'],['region','prefLabelSize','settingLabelRegionPref','prefLabelSize'],['region','subprefLabelSize','settingLabelRegionSubpref','subprefLabelSize']
 ];
-const SETTING_LINK_GROUPS=new Set(['arrondissement','departement','region','prefSize','subprefSize']);
+const SETTING_LINK_GROUPS=new Set(['arrondissement','departement','region','prefSize','subprefSize','unitLabelSize','prefLabelSize','subprefLabelSize']);
 function normalizeBaseColorValue(c,fallback){return /^#[0-9A-F]{6}$/i.test(String(c||''))?String(c).toUpperCase():fallback}
 function normalizeBaseColors(values){return BASE_COLOR_DEFAULTS.map((fallback,i)=>normalizeBaseColorValue(Array.isArray(values)?values[i]:'',fallback))}
 function normalizeStrokeValue(v,fallback,kind=''){
- const n=Number(v),isSize=/Size$/.test(kind),min=isSize?3:.1,max=isSize?30:6;
+ const n=Number(v),isLabel=/LabelSize$/.test(kind),isSize=/Size$/.test(kind),min=isLabel?6:isSize?3:.1,max=isLabel?24:isSize?30:6;
  return Number.isFinite(n)?Math.max(min,Math.min(max,Math.round(n*100)/100)):fallback
 }
 function normalizeBoundaryStrokes(values){
@@ -812,6 +840,18 @@ let defaultColors=(()=>{try{return normalizeBaseColors(JSON.parse(localStorage.g
 let boundaryStrokes=(()=>{try{return normalizeBoundaryStrokes(JSON.parse(localStorage.getItem(CART_STROKES_KEY)||'null'))}catch{return normalizeBoundaryStrokes(null)}})();
 let settingLinks=(()=>{try{return normalizeSettingLinks(JSON.parse(localStorage.getItem(CART_SETTING_LINKS_KEY)||'[]'))}catch{return new Set}})(),pendingSettingLinks=new Set(settingLinks);
 function strokeSetting(level,kind){const key=typeof level==='number'?modeKeys[level]:String(level||'');return boundaryStrokes?.[key]?.[kind]??STROKE_DEFAULTS?.[key]?.[kind]??1}
+function applyLabelSizeSettings(){
+ if(!map?.getContainer)return;
+ const el=map.getContainer(),pref=strokeSetting(mode,'prefLabelSize'),subpref=strokeSetting(mode,'subprefLabelSize'),
+       unit=mode===0?strokeSetting(0,'eventLabelSize'):strokeSetting(mode,'unitLabelSize');
+ el.style.setProperty('--label-commune-event-size',strokeSetting(0,'eventLabelSize')+'px');
+ el.style.setProperty('--label-commune-selected-size',strokeSetting(0,'selectedLabelSize')+'px');
+ el.style.setProperty('--label-commune-neighbor-size',strokeSetting(0,'neighborLabelSize')+'px');
+ el.style.setProperty('--label-group-center-size',strokeSetting(1,'centerLabelSize')+'px');
+ el.style.setProperty('--label-admin-unit-size',unit+'px');
+ el.style.setProperty('--label-pref-size',pref+'px');
+ el.style.setProperty('--label-subpref-size',subpref+'px')
+}
 function demoDeckPaths(theme,level,index=0){
  const primary={
   'Santé':'OGCT::Solidarité::Santé',
@@ -1415,7 +1455,7 @@ function pointState(){
  return(overviewActive?'overview:':'geo:')+mode+':'+(selection?.key||'')+':'+(mode===0?communeState:mode===1?'free-interco':selection?'pin':'none')
 }
 function maybeDrawPoints(){const key=pointState();if(key!==pointRenderKey)drawPoints()}
-function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'+(mode===1?' group-unit-tooltip':'')});l.on({mouseover:e=>{l.openTooltip(e.latlng);const selected=mode>=1&&selection&&String(selection.code)===code,base=adminStyle(f),hoverWeight=mode===1?Math.max(primaryAdminStroke(1.15),base.weight+primaryAdminStroke(.25)):Math.max(primaryAdminStroke(2.25),base.weight+primaryAdminStroke(.45));l.setStyle(selected?base:{weight:hoverWeight,color:'#000000',opacity:1});l.bringToFront()},mouseout:()=>{l.closeTooltip();l.setStyle(adminStyle(f))},click:()=>{if(mode<1)return;const g=groupByCode(code),fromOverview=overviewActive;choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},fromOverview?null:l.getBounds(),{fromOverview});}})}}).addTo(target);}
+function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on({mouseover:e=>{l.openTooltip(e.latlng);const selected=mode>=1&&selection&&String(selection.code)===code,base=adminStyle(f),hoverWeight=mode===1?Math.max(primaryAdminStroke(1.15),base.weight+primaryAdminStroke(.25)):Math.max(primaryAdminStroke(2.25),base.weight+primaryAdminStroke(.45));l.setStyle(selected?base:{weight:hoverWeight,color:'#000000',opacity:1});l.bringToFront()},mouseout:()=>{l.closeTooltip();l.setStyle(adminStyle(f))},click:()=>{if(mode<1)return;const g=groupByCode(code),fromOverview=overviewActive;choose(g||{key:'empty-'+code,name,code,items:[],at:l.getBounds().getCenter()},fromOverview?null:l.getBounds(),{fromOverview});}})}}).addTo(target);}
 const GRAND_PARIS_CODE='200054781',EPT_GEO_URL='https://www.carto-metropolegrandparis.fr/server/rest/services/Limites_administratives_MIL1/MapServer/3/query?where=1%3D1&outFields=code_ept%2Clib_ept%2Cterritoire&returnGeometry=true&outSR=4326&f=geojson';
 async function augmentGrandParisGroups(geo){
  if(!geo?.features?.length)return geo;
@@ -1601,7 +1641,7 @@ function addAdminHitGeo(geo){
    onEachFeature:(f,l)=>{
      const code=featureAdminCode(f),name=featureAdminName(f);
      if(!code)return;
-     l.bindTooltip(escape(name)+' · '+countCode(code)+' exemple'+(countCode(code)>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'+(mode===1?' group-unit-tooltip':'')});
+     l.bindTooltip(escape(name)+' · '+countCode(code)+' exemple'+(countCode(code)>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
      l.on({
        mouseover:e=>{l.openTooltip(e.latlng);setMainOutlineHover(code,true);if(mode===1)showGroupCenter(code,false)},
        mouseout:()=>{l.closeTooltip();setMainOutlineHover(code,false);if(mode===1)hideGroupCenterSoon(code)},
@@ -1819,7 +1859,7 @@ function drawPoints(){
      const dot=L.divIcon({className:'group-event-marker',iconSize:[size,size],iconAnchor:[size/2,size/2],html:'<div style="width:'+size+'px;height:'+size+'px;border:'+(selected?'2px':'1.4px')+' solid #0B0D0F;border-radius:50%;background:'+color+';opacity:.9;box-shadow:0 1px 3px #0003"></div>'});
      const markerAt=overviewActive?overviewFeatureCenter(displayEpciGeo(),g.code,g.at):g.at;
      const m=L.marker(markerAt,{pane:'eventPointPane',icon:dot,title:g.name,alt:g.name,keyboard:true}).addTo(points);
-     m.bindTooltip(escape(g.name)+' · '+g.items.length+' exemple'+(g.items.length>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip group-unit-tooltip'});
+     m.bindTooltip(escape(g.name)+' · '+g.items.length+' exemple'+(g.items.length>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
      m.on('click',()=>choose(g))
    }
    return
@@ -1857,7 +1897,7 @@ function updateLegend(){
    legend.innerHTML='<span class="legend-scale"><b>'+min+'</b><span class="ramp" style="background:'+densityLegendGradient()+';opacity:'+densityLegendOpacity()+'"></span><b>'+max+'</b></span>'
  }else legend.innerHTML='Cercles : nombre de fiches · épingles aux lieux précis'
 }
-function draw(){drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer()}
+function draw(){applyLabelSizeSettings();drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer()}
 function renderCards(items){$('list').innerHTML=items.length?items.map(d=>{const kind=kindLabel(d),meta=[kind,...(d.tags||[])].filter(Boolean).join(' · ');return '<button class="entry" data-item="'+d.id+'"><strong>'+cleanCartInline(d.title)+'</strong>'+(meta?'<small>'+escape(meta)+'</small>':'')+'</button>'}).join(''):'<p class="empty">Aucune fiche pour ce territoire avec les filtres actuels.</p>';$('list').querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>showItem(data.find(d=>d.id===+b.dataset.item)));}
 function kindLabel(d){return {global:'',point:'Lieu précis',street:'Rue / axe',quarter:'Quartier',area:''}[d.kind]||'';}
 const relationCache=new Map();
@@ -2118,7 +2158,7 @@ async function epciCommuneGeo(code){
  })().catch(()=>null);
  epciCommuneGeoCache.set(code,p);return p
 }
-function communeLabelIcon(name){return L.divIcon({className:'commune-name-label',iconSize:null,html:'<span>'+escape(name)+'</span>'})}
+function communeLabelIcon(name,selected=false){return L.divIcon({className:'commune-name-label'+(selected?' selected':''),iconSize:null,html:'<span>'+escape(name)+'</span>'})}
 function selectedCommuneCode(){return mode===0&&selection?.code?String(selection.code):''}
 function communeBoundaryStyle(f){
  const code=featureAdminCode(f),selected=code&&code===selectedCommuneCode(),base=adminStroke(strokeSetting(0,'communeNeighbor'));
@@ -2145,7 +2185,7 @@ function drawCommuneContextLabels(geo,epci,force=false){
  communeLabelKey=key;communeLabels.clearLayers();
  if(selectedEntry&&!selectedHasOwnAdminLabel){
   const [,f,at]=selectedEntry,name=featureAdminName(f)||selection?.name;
-  if(name)L.marker(at,{icon:communeLabelIcon(name),interactive:false,zIndexOffset:85}).addTo(communeLabels)
+  if(name)L.marker(at,{icon:communeLabelIcon(name,true),interactive:false,zIndexOffset:85}).addTo(communeLabels)
  }
  for(const [,f,at] of visible){
   const name=featureAdminName(f);
@@ -2322,31 +2362,21 @@ function updateMapLabelCollisions(){
  const bounds=container.getBoundingClientRect(),
        adminLabels=[...container.querySelectorAll('.admin-center-dot span')],
        groupLabels=[...container.querySelectorAll('.group-center-label span')],
-       groupTooltips=[...container.querySelectorAll('.leaflet-tooltip.group-unit-tooltip')],
-       ordinaryObstacleEls=[...container.querySelectorAll('.bubble-body,.pin-body,.bubble-label,.leaflet-tooltip:not(.group-unit-tooltip)')].filter(el=>!el.closest('.admin-center-dot,.group-center-label'));
- for(const el of adminLabels){el.style.removeProperty('--avoid-x');el.style.removeProperty('--avoid-y')}
- for(const el of groupTooltips){el.style.removeProperty('--avoid-x');el.style.removeProperty('--avoid-y')}
- const ordinaryObstacles=ordinaryObstacleEls.map(el=>el.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0&&rectsOverlap(r,bounds,0)),
+       obstacleEls=[...container.querySelectorAll('.bubble-body,.pin-body,.bubble-label,.leaflet-tooltip')].filter(el=>!el.closest('.admin-center-dot,.group-center-label'));
+ for(const el of [...adminLabels,...groupLabels]){el.style.removeProperty('--avoid-x');el.style.removeProperty('--avoid-y')}
+ const obstacles=obstacleEls.map(el=>el.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0&&rectsOverlap(r,bounds,0)),
        placed=[];
- const placeAdmin=el=>{
+ const place=(el,extra=[])=>{
   const base=el.getBoundingClientRect();if(!base.width||!base.height)return;
-  const hitSet=[...ordinaryObstacles,...placed];
+  const hitSet=[...obstacles,...extra,...placed];
   if(!hitSet.some(o=>rectsOverlap(base,o,5))){placed.push(base);return}
   const moved=bestLabelShift(base,hitSet,bounds);
   if(moved.dx||moved.dy){el.style.setProperty('--avoid-x',moved.dx+'px');el.style.setProperty('--avoid-y',moved.dy+'px')}
   placed.push(moved.rect)
  };
- for(const el of adminLabels)placeAdmin(el);
- // The group-centre name remains anchored on the seat commune. The hovering
- // groupement tooltip moves around it (and around prefecture/subprefecture labels).
- const fixedLabels=[...groupLabels,...adminLabels].map(el=>el.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0);
- for(const el of groupTooltips){
-  const base=el.getBoundingClientRect();if(!base.width||!base.height)continue;
-  const hitSet=[...fixedLabels,...ordinaryObstacles];
-  if(!hitSet.some(o=>rectsOverlap(base,o,6)))continue;
-  const moved=bestLabelShift(base,hitSet,bounds);
-  if(moved.dx||moved.dy){el.style.setProperty('--avoid-x',moved.dx+'px');el.style.setProperty('--avoid-y',moved.dy+'px')}
- }
+ for(const el of adminLabels)place(el);
+ const adminRects=adminLabels.map(el=>el.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0);
+ for(const el of groupLabels)place(el,adminRects)
 }
 function scheduleMapLabelCollisions(){
  if(mapLabelCollisionFrame)return;
@@ -3636,7 +3666,7 @@ function openCartSettings(){
 function closeCartSettings(){$('settingsScrim').hidden=true;$('cartSettingsPanel').hidden=true}
 function refreshDisplaySettings(){
  temporaryPaletteActive=false;temporaryPaletteAssignments.clear();pointRenderKey='';communeDataKey='';centerKey='';subdivisionKey='';
- updateScalePaletteColor();drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true)
+ applyLabelSizeSettings();updateScalePaletteColor();drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true)
 }
 for(let i=0;i<4;i++){
  const picker=$('settingBaseColor'+i),code=$('settingBaseColorCode'+i);
@@ -3669,11 +3699,22 @@ function installSettingLinks(){
  }
  refreshSettingLinkButtons()
 }
-installStrokeSteppers();installSettingLinks();
+function installSettingRowResets(){
+ for(let i=0;i<4;i++){
+  const picker=$('settingBaseColor'+i),control=picker?.closest('.settings-color-control');if(!picker||!control||control.querySelector('.settings-row-reset'))continue;
+  const reset=document.createElement('button');reset.type='button';reset.className='settings-row-reset';reset.textContent='↺';reset.title='Rétablir la valeur par défaut de cette ligne';reset.setAttribute('aria-label','Rétablir la couleur par défaut de cette ligne');
+  reset.onclick=e=>{e.preventDefault();e.stopPropagation();setSettingsColorRow(i,BASE_COLOR_DEFAULTS[i])};control.append(reset)
+ }
+ for(const [modeKey,kind,id] of STROKE_SETTINGS_ROWS){
+  const input=$(id),control=input?.closest('.settings-stroke-control');if(!input||!control||control.querySelector('.settings-row-reset'))continue;
+  const reset=document.createElement('button');reset.type='button';reset.className='settings-row-reset';reset.textContent='↺';reset.title='Rétablir la valeur par défaut de cette ligne';reset.setAttribute('aria-label','Rétablir la valeur par défaut de cette ligne');
+  reset.onclick=e=>{e.preventDefault();e.stopPropagation();input.value=formatStrokeInput(STROKE_DEFAULTS[modeKey][kind])};control.append(reset)
+ }
+}
+installStrokeSteppers();installSettingLinks();installSettingRowResets();
 $('openSettingsButton').onclick=openCartSettings;
 $('settingsCancel').onclick=closeCartSettings;
 $('settingsScrim').onclick=closeCartSettings;
-$('settingsReset').onclick=()=>{for(let i=0;i<4;i++)setSettingsColorRow(i,BASE_COLOR_DEFAULTS[i]);setSettingsStrokeRows(STROKE_DEFAULTS);pendingSettingLinks.clear();refreshSettingLinkButtons()};
 $('settingsApply').onclick=()=>{
  const next=BASE_COLOR_DEFAULTS.map((fallback,i)=>normalizeBaseColorValue($('settingBaseColorCode'+i).value||$('settingBaseColor'+i).value,fallback));
  defaultColors=next;boundaryStrokes=readSettingsStrokeRows();settingLinks=new Set(pendingSettingLinks);
