@@ -851,7 +851,25 @@ const communeLabels=L.layerGroup().addTo(map),groupCenterCache=new Map();let gro
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stripHtml=html=>{const t=document.createElement('template');t.innerHTML=String(html||'');return t.content.textContent||''},unique=a=>[...new Set((a||[]).filter(Boolean).map(String))];
 let selectedTags=new Set(),selectedDeckPaths=new Set(),allDeckPaths=[],deckStateLoaded=false,cartFilterVersion=0;
-try{const fs=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');cartFilterVersion=Number(fs.version)||0;selectedTags=new Set(fs.tags||[]);if(Array.isArray(fs.decks)&&(fs.initialized===true||fs.decks.length>0)){selectedDeckPaths=new Set(fs.decks);deckStateLoaded=true}}catch{}
+function migrateLegacyCartDeckPath(value){
+ let p=String(value||'').trim();
+ const rules=[
+  ['Compo - Culture, patrimoine et musées','ICT::3 - Compo::Culture, patrimoine et musées'],
+  ['Culture générale::IA et numérique','ICT::3 - Compo::IA et numérique'],
+  ['Culture générale::I / Réchauffement du système Terre, sociétés, écosystèmes et paysages','ICT::3 - Compo::Changement climatique et action publique territoriale::I / Réchauffement du système Terre, sociétés, écosystèmes et paysages'],
+  ['Culture générale::II / Atténuation, adaptation et transformation territoriale','ICT::3 - Compo::Changement climatique et action publique territoriale::II / Atténuation, adaptation et transformation territoriale'],
+  ["Droit des collectivités territoriales::1 / Collectivités territoriales dans l'État unitaire",'ICT::2 - OGCT - Droit des collectivités territoriales::1. Collectivités territoriales dans l’État unitaire'],
+  ['ICT::La gestion des compétences locales::Fonctionnement — tarification des SPIC',"ICT::2 - OGCT - Droit des collectivités territoriales::3. Champ d'action des CT::3.2 - La gestion des compétences locales::I. Le service public local::Fonctionnement — tarification des SPIC"],
+  ['ICT::La gestion des compétences locales::Mutualisation — exemples',"ICT::2 - OGCT - Droit des collectivités territoriales::3. Champ d'action des CT::3.2 - La gestion des compétences locales::Mutualisation — exemples"],
+  ['ICT::Les domaines de compétences des collectivités territoriales::Disparités territoriales - évaluation',"ICT::2 - OGCT - Droit des collectivités territoriales::3. Champ d'action des CT::3.1 - Compétences des collectivités territoriales::Disparités territoriales - évaluation"],
+  ['OGCT - Droit des collectivités territoriales::Polices municipales',"ICT::2 - OGCT - Droit des collectivités territoriales::3. Champ d'action des CT::3.1 - Compétences des collectivités territoriales::V. Cadre de vie::5.4 - Sécurité::Polices municipales"],
+  ['OGCT - Droit des collectivités territoriales::Promotion économique du territoire',"ICT::2 - OGCT - Droit des collectivités territoriales::3. Champ d'action des CT::3.1 - Compétences des collectivités territoriales::I. Promotion économique du territoire"]
+ ];
+ for(const [oldRoot,newRoot] of rules)if(p===oldRoot||p.startsWith(oldRoot+'::'))return newRoot+p.slice(oldRoot.length);
+ return p
+}
+function migrateLegacyCartDeckPaths(values){return unique((Array.isArray(values)?values:[]).map(migrateLegacyCartDeckPath).filter(Boolean))}
+try{const fs=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');cartFilterVersion=Number(fs.version)||0;selectedTags=new Set(fs.tags||[]);if(Array.isArray(fs.decks)&&(fs.initialized===true||fs.decks.length>0)){selectedDeckPaths=new Set(migrateLegacyCartDeckPaths(fs.decks));deckStateLoaded=true}}catch{}
 function saveFilters(){cartFilterVersion=5;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:5,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}));markCartCloudStateDirty()}
 function itemDecks(d){return d.deck?.length?d.deck:['Sans deck']}
 function tagsPass(d){return !selectedTags.size||(d.tags||[]).some(t=>selectedTags.has(t))}
@@ -3194,7 +3212,7 @@ function applyCartCloudState(state){
  if(!state||typeof state!=='object')return;applyingCartCloudState=true;
  try{
   if(state.filters){
-   const availableDecks=unique(data.flatMap(itemDecks)),availableTags=new Set(unique(data.flatMap(d=>d.tags||[]))),requestedDecks=Array.isArray(state.filters.decks)?state.filters.decks:[],initialized=state.filters.initialized===true||requestedDecks.length>0;
+   const availableDecks=unique(data.flatMap(itemDecks)),availableTags=new Set(unique(data.flatMap(d=>d.tags||[]))),requestedDecks=migrateLegacyCartDeckPaths(state.filters.decks),initialized=state.filters.initialized===true||requestedDecks.length>0;
    selectedTags=new Set((state.filters.tags||[]).filter(t=>availableTags.has(String(t))));
    selectedDeckPaths=new Set(initialized?requestedDecks.filter(p=>availableDecks.includes(String(p))):availableDecks);
    if(Number(state.version||0)<8&&availableDecks.includes('Sans deck'))selectedDeckPaths.add('Sans deck');
