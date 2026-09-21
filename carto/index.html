@@ -1178,6 +1178,10 @@ function autoExitOverseasOverview(){
  return true
 }
 function autoEnterOverseasOverview(){
+ // A programmatic click on an overseas commune/group/department/region may
+ // fit the real territory below the automatic handoff zoom. Do not bounce
+ // straight back to the schematic France overview and erase the selection.
+ if(selection&&overviewSelectionNeedsRealGeography(selection))return false;
  if(overviewOverseasHandoffBusy||overviewActive||map.getZoom()>=OVERVIEW_OVERSEAS_HANDOFF_ZOOM||!overviewReady())return false;
  const d=overseasForView();if(!d)return false;
  const realGeo=realGeoForOverseas(d),overviewGeo=overviewGeoForOverseas(d),
@@ -1564,7 +1568,13 @@ function drawAdminHits(){
  else if(mode===2)addAdminHitGeo(dg);
  else if(mode===1){
    if(!overviewActive&&String(selection?.code||'')===GRAND_PARIS_CODE&&mgpTrueFeature)addAdminHitGeo({type:'FeatureCollection',features:[mgpTrueFeature]});
-   else addAdminHitGeo(viewportHitGeo(eg))
+   else{
+     // In real geography, use the exact same DROM/Pacific EPCI polygons that
+     // are visibly drawn. The old hit layer only used epciGeo, so an overseas
+     // surface could show a correct hover/count yet fail to select reliably.
+     const hitGeo=overviewActive?eg:mergeFeatureCollections(epciBaseGeo(),...doms.map(d=>d.epciGeo).filter(g=>g?.features?.length));
+     addAdminHitGeo(viewportHitGeo(hitGeo))
+   }
  }
  if(!overviewActive&&mode>=2){
    for(const d of doms){
@@ -1721,9 +1731,9 @@ function addCommuneClusterMarker(cluster,z){
  const memberCount=cluster.members.length,total=cluster.total;
  if(memberCount===1){
   const {g,at}=cluster.members[0],code=String(g.code||'');
-  // The administrative-centre marker already carries the commune's density
-  // colour. Do not draw a second example circle at the polygon centroid.
-  if(code&&adminCenterRenderSeen.has(code))return;
+  // Keep the event bubble even when the commune is also an administrative
+  // centre: centre markers are non-interactive, while this bubble is the
+  // user's clickable access to the commune and its examples.
   const showLabel=z>=communePermanentLabelZoom()&&!isKnownAdminCenterCommune(code);
   addMarker(at,g.items,g.name,false,()=>chooseCommune(g),points,showLabel);
   return
