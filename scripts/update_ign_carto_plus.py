@@ -313,6 +313,14 @@ def main() -> int:
         # contains it. Keep a compact SIREN -> seat commune lookup for Carto.
         group_center_layer = pick_layer(names, "chef_lieu_d_epci")
         group_center_map: dict[str, dict[str, Any]] = {}
+        # ADMIN EXPRESS locates the three large city EPCI seats inside a
+        # municipal arrondissement. For Carto the relevant "ville-centre" is
+        # the parent commune itself, not Paris 13e / Lyon 3e / Marseille 7e.
+        parent_city_seats = {
+            "200054781": ("75056", "Paris"),
+            "200046977": ("69123", "Lyon"),
+            "200054807": ("13055", "Marseille"),
+        }
         if group_center_layer:
             raw = ogr_to_geojson(gpkg, group_center_layer, td_path / "group-centers.geojson")
             normalized = normalize_geo(raw, "center")
@@ -324,6 +332,9 @@ def main() -> int:
                 # ("Siège de ..."), not the municipality name shown on the map.
                 name = commune_name_map.get(code) or str(props.get("nom") or code)
                 at = geometry_center(feature.get("geometry"))
+                if siren in parent_city_seats:
+                    code, name = parent_city_seats[siren]
+                    at = center_map.get(code) or at
                 if re.fullmatch(r"\d{9}", siren) and code:
                     item: dict[str, Any] = {"code": code, "name": name}
                     if at:
