@@ -2884,7 +2884,10 @@ async function openCartEditor(item=null){
  if(requestedLevel===1&&!epciGeo)await ensureEpciGeo().catch(()=>null);
  closeTools();closeMapDetail();cartEditedId=item?.id??null;cartEditing={deck:[...(item?.deck||[])],image:[...(item?.image||[])]};
  $('cartFormTitle').textContent=item?'Modifier la fiche':'Nouvelle fiche';$('cartTitle').innerHTML=cleanCartInline(item?.title||'');$('cartSubtitle').innerHTML=cleanCartInline(item?.subtitle||'');
- $('cartMode').value=String(item?.mode??mode);const editUnit=units[item?.unit||''],editLevel=+(item?.mode??mode),freeGroup=editLevel===1&&(editUnit?.fiction||!String(editUnit?.code||'')||!epciGeo?.features?.some(f=>featureAdminCode(f)===String(editUnit?.code||'')));$('cartGroupType').value=freeGroup?'free':'surface';$('cartFreeGroupName').value=freeGroup?String(editUnit?.name||''):'';$('cartFreeGroupCenter').value=freeGroup?String(editUnit?.centerName||adminCatalog?.communeByCode.get(String(editUnit?.centerCode||''))?.name||''):'';$('cartKind').value=item?.kind||'global';$('cartTags').value=(item?.tags||[]).join(', ');
+ $('cartMode').value=String(item?.mode??mode);
+ const editUnit=units[item?.unit||selectedPreset?.key||''],editLevel=+(item?.mode??mode),editCode=String(editUnit?.code||selectedPreset?.code||''),
+       freeGroup=editLevel===1&&(item?(editUnit?.fiction||!editCode||!hasAdministrativeGroupSurface(editCode)):(!!selectedPreset&&(editUnit?.fiction||!editCode)));
+ $('cartGroupType').value=freeGroup?'free':'surface';$('cartFreeGroupName').value=freeGroup?String(editUnit?.name||''):'';$('cartFreeGroupCenter').value=freeGroup?String(editUnit?.centerName||adminCatalog?.communeByCode.get(String(editUnit?.centerCode||''))?.name||''):'';$('cartKind').value=item?.kind||'global';$('cartTags').value=(item?.tags||[]).join(', ');
  $('cartDescription').innerHTML=cleanCartHtml(item?.html||'');setCartEditorColor(item?.color||'#21BCFF');renderCartDeckEditor();renderCartImages();$('cartDeckInput').value='';$('cartEditorError').textContent='';
  $('cartDelete').hidden=!item;$('editorScrim').hidden=false;$('cartEditor').hidden=false;
  await renderCartUnitOptions(item?.unit||selectedPreset?.key||selection?.key||'',true,selectedPreset?.code||'');
