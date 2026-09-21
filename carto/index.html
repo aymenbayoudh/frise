@@ -870,8 +870,8 @@ function migrateLegacyCartDeckPath(value){
  return p
 }
 function migrateLegacyCartDeckPaths(values){return unique((Array.isArray(values)?values:[]).map(migrateLegacyCartDeckPath).filter(Boolean))}
-try{const fs=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');cartFilterVersion=Number(fs.version)||0;selectedTags=new Set(fs.tags||[]);if(Array.isArray(fs.decks)&&(fs.initialized===true||fs.decks.length>0)){selectedDeckPaths=new Set(migrateLegacyCartDeckPaths(fs.decks));deckStateLoaded=true}}catch{}
-function saveFilters(){cartFilterVersion=5;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:5,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}));markCartCloudStateDirty()}
+try{const fs=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');cartFilterVersion=Number(fs.version)||0;selectedTags=new Set(fs.tags||[]);if(Array.isArray(fs.decks)&&(fs.initialized===true||fs.decks.length>0)){const savedDecks=migrateLegacyCartDeckPaths(fs.decks),legacyBugEmpty=cartFilterVersion<6&&fs.initialized===true&&savedDecks.length===0;if(!legacyBugEmpty){selectedDeckPaths=new Set(savedDecks);deckStateLoaded=true}}}catch{}
+function saveFilters(){cartFilterVersion=6;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:6,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}));markCartCloudStateDirty()}
 function itemDecks(d){return normalizeCartDeckList(d?.deck||[])}
 function tagsPass(d){return !selectedTags.size||(d.tags||[]).some(t=>selectedTags.has(t))}
 function decksPass(d){return itemDecks(d).some(p=>selectedDeckPaths.has(p))}
@@ -2988,7 +2988,7 @@ $('cartImage').onchange=()=>{const file=$('cartImage').files[0];if(!file)return;
 $('cartEditor').onsubmit=e=>{e.preventDefault();try{saveCartEditor()}catch(err){$('cartEditorError').textContent=err.message}};
 $('cartDelete').onclick=()=>{if(!cartEditedId||!confirm('Supprimer définitivement cette fiche ?'))return;const old=data.find(d=>d.id===cartEditedId),unit=old?.unit,source=old?._sourcePath;pushCartUndo('Suppression d’une fiche');data=data.filter(d=>d.id!==cartEditedId);persistCartData();const returnedToSummary=closeCartEditor();renderTags();renderDeckTree();if(cartGithubMode&&source)queueCartDataSync([source],'Suppression depuis la carte');if(!returnedToSummary)refreshAfterCartEdit(unit)};
 $('cartCancel').onclick=closeCartEditor;$('editorScrim').onclick=closeCartEditor;
-function refreshDeckPaths(){allDeckPaths=unique(data.flatMap(itemDecks));if(!deckStateLoaded){selectedDeckPaths=new Set(allDeckPaths);deckStateLoaded=true}else{const available=new Set(allDeckPaths);selectedDeckPaths=new Set([...selectedDeckPaths].filter(path=>available.has(path)))}}
+function refreshDeckPaths(){const previous=[...allDeckPaths],hadAllBefore=deckStateLoaded&&previous.length>0&&previous.every(path=>selectedDeckPaths.has(path));allDeckPaths=unique(data.flatMap(itemDecks));if(!allDeckPaths.length)return;if(!deckStateLoaded){selectedDeckPaths=new Set(allDeckPaths);deckStateLoaded=true;return}if(hadAllBefore)for(const path of allDeckPaths)selectedDeckPaths.add(path)}
 let tagEditMode=false;
 function normalizeCartTag(value){const tag=String(value||'').trim();if(!tag)throw Error('Le nom de l’étiquette est vide.');if(tag.length>120)throw Error('Le nom de l’étiquette est trop long.');return tag}
 function renameCartTag(oldTag,newValue){let next;try{oldTag=normalizeCartTag(oldTag);next=normalizeCartTag(newValue)}catch(e){return{ok:false,error:e.message}}if(next===oldTag)return{ok:true,unchanged:true};if(!data.some(d=>(d.tags||[]).includes(oldTag)))return{ok:false,error:'Aucune fiche n’utilise cette étiquette.'};const touched=new Set;pushCartUndo('Renommage d’une étiquette');data=data.map(d=>{if(!(d.tags||[]).includes(oldTag))return d;const tags=unique((d.tags||[]).map(t=>t===oldTag?next:t));if(d._sourcePath)touched.add(d._sourcePath);return{...d,tags,theme:d.theme===oldTag?next:d.theme}});if(selectedTags.delete(oldTag))selectedTags.add(next);persistCartData();saveFilters();renderTags();renderDeckTree();filterChanged();if(cartGithubMode&&touched.size)queueCartDataSync([...touched],'Renommage de l’étiquette '+oldTag+' → '+next);return{ok:true,tag:next}}
@@ -3229,16 +3229,18 @@ function scheduleCartCloudSync(delay=7000){
  cartCloudTimer=setTimeout(()=>{cartCloudTimer=null;syncCartCloudStateToGitHub().catch(()=>{})},Math.max(0,delay))
 }
 function collectCartCloudState(){
- return{version:8,updatedAt:localCartCloudUpdated()||Date.now(),filters:{initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors],boundaryStrokes:normalizeBoundaryStrokes(boundaryStrokes),settingLinks:[...settingLinks]}
+ return{version:9,updatedAt:localCartCloudUpdated()||Date.now(),filters:{initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors],boundaryStrokes:normalizeBoundaryStrokes(boundaryStrokes),settingLinks:[...settingLinks]}
 }
 function applyCartCloudState(state){
  if(!state||typeof state!=='object')return;applyingCartCloudState=true;
  try{
   if(state.filters){
-   const availableDecks=unique(data.flatMap(itemDecks)),availableTags=new Set(unique(data.flatMap(d=>d.tags||[]))),requestedDecks=migrateLegacyCartDeckPaths(state.filters.decks),initialized=state.filters.initialized===true||requestedDecks.length>0;
+   const availableDecks=unique(data.flatMap(itemDecks)),availableTags=new Set(unique(data.flatMap(d=>d.tags||[]))),requestedDecks=migrateLegacyCartDeckPaths(state.filters.decks),initialized=state.filters.initialized===true||requestedDecks.length>0,legacyBugEmpty=Number(state.version||0)<9&&state.filters.initialized===true&&requestedDecks.length===0;
    selectedTags=new Set((state.filters.tags||[]).filter(t=>availableTags.has(String(t))));
-   selectedDeckPaths=new Set(initialized?requestedDecks.filter(p=>availableDecks.includes(String(p))):availableDecks);
-   deckStateLoaded=true;cartFilterVersion=5;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:5,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}))
+   if(legacyBugEmpty){if(!(deckStateLoaded&&selectedDeckPaths.size))selectedDeckPaths=new Set(availableDecks)}
+   else selectedDeckPaths=new Set(initialized?requestedDecks:availableDecks);
+   deckStateLoaded=true;cartFilterVersion=6;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:6,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}));
+   if(legacyBugEmpty)scheduleCartCloudSync(350)
   }
   if(state.gameErrors)localStorage.setItem(CART_GAME_ERROR_KEY,JSON.stringify(state.gameErrors));
   if(Array.isArray(state.gameRecent))localStorage.setItem(CART_GAME_RECENT_KEY,JSON.stringify(state.gameRecent.slice(0,600)));
