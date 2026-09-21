@@ -1377,7 +1377,7 @@ function adminCenterColor(level,code,rank,centerCode='',at=null){
    const n=data.filter(d=>d.mode===2&&displayDepartmentCode(String(keyOf(d)))===effectiveCode&&tagsPass(d)&&decksPass(d)).length;
    base=densityColor(n)
  }else{
-   const effectiveCode=String(code),n=data.filter(d=>d.mode===level&&String(keyOf(d))===effectiveCode&&tagsPass(d)&&decksPass(d)).length;
+   const effectiveCode=String(code),n=mode===3?countCode(effectiveCode):data.filter(d=>d.mode===level&&String(keyOf(d))===effectiveCode&&tagsPass(d)&&decksPass(d)).length;
    base=densityColor(n)
  }
  if(!base){
