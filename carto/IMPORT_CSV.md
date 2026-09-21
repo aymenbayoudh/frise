@@ -25,23 +25,23 @@ id,title,subtitle,mode,unit,unitName,unitCode,kind,lat,lng,departmentCode,region
 - `color` : couleur de fiche au format hexadécimal, par exemple `#4A92D6`.
 - `html` : corps de la fiche. HTML autorisé : paragraphes/divisions, gras, italique, souligné, listes, liens HTTP(S) et images sûres.
 - `source` : sources séparées du corps ; même HTML sûr. Les liens `<a href="https://…">texte affiché</a>` sont cliquables.
-- `deck` : tableau JSON de chemins complets, par exemple `["Culture générale::IA et numérique::I.C - Usages publics et exemples territoriaux"]`.
-- `image` : tableau JSON d'images, le plus souvent `[]`.
+- `deck` : tableau JSON de chemins hiérarchiques complets. **Chaque `::` crée exactement un niveau** : `["ICT::3::3::4"]` donne `ICT → 3 → 3 → 4`. Le site ne déduit aucune signification des noms de niveaux.
+- `image` : tableau JSON d’images. Une image issue d’un paquet Anki peut être référencée par un chemin privé tel que `["ict_timeline_media/mon-image.jpg"]` (ou `ict_carto_media/...`) ; elle est alors chargée via l’accès GitHub privé. Une image ajoutée manuellement dans l’éditeur est intégrée au CSV en data URL, comme dans la frise.
 
 Les champs contenant des virgules, guillemets ou retours à la ligne doivent être correctement échappés selon le standard CSV. Le fichier peut être UTF-8 avec BOM.
 
 ## Règles pour convertir des cartes Anki
 
-1. Le nom d'un deck de copie/filtre n'est jamais utilisé comme deck final. Quand les champs d'origine existent, reconstruire le chemin complet à partir de `Matière::Thème::Chapitre`.
-2. Une note Anki peut produire plusieurs lignes cartographiques lorsqu'elle cite plusieurs exemples territoriaux distincts.
-3. Retenir l'échelon territorial le plus précis qui porte réellement l'exemple : commune, groupement/EPCI, département ou région.
-4. Une carte sans territoire français identifiable n'est pas forcée sur la carte.
-5. Le titre est déclaratif et court, pas formulé comme une question de flashcard. Le sous-titre porte le chiffre, le mécanisme ou le résultat principal.
-6. Le corps conserve l'explication utile et les mises en perspective. Les styles Anki arbitraires, classes CSS, fonds et tailles de police ne sont pas importés : la carte applique sa propre présentation, identique à la logique de la frise.
-7. Conserver seulement la mise en forme sémantique utile : gras, italique, souligné, retours à la ligne, listes et liens.
-8. Les références bibliographiques, rapports, articles et jurisprudences vont dans `source`, afin d'apparaître dans l'onglet **Sources** de la fiche.
-9. Une URL de source doit être enregistrée sous forme de lien HTML avec un libellé lisible ; le modificateur permet ensuite de modifier directement le texte affiché.
-10. Les vrais chemins de decks restent dans la colonne `deck`, même si les CSV sont regroupés par deck racine ou par thème.
+1. **La colonne `deck` du CSV est la seule source de vérité pour l’arborescence.** La cartographie ne tente pas de reconnaître, compléter ou recréer un deck Anki à partir du contenu de la carte.
+2. Un chemin est purement hiérarchique : `ICT::3::3::4` crée quatre niveaux. Un renommage ou déplacement depuis l’arbre modifie ce préfixe pour toutes les fiches concernées ; une modification depuis la fiche ne change que les chemins de cette fiche.
+3. Pour une conversion Anki, utiliser le véritable chemin de deck seulement s’il est réellement présent dans les données exportées. **Ne jamais reconstruire automatiquement un deck à partir des champs `Matière`, `Thème` ou `Chapitre`.** Un export de deck filtré peut avoir perdu le deck d’origine ; dans ce cas il faut une correspondance explicite, pas une inférence.
+4. Une note Anki peut produire plusieurs lignes cartographiques lorsqu'elle cite plusieurs exemples territoriaux distincts.
+5. Retenir l'échelon territorial le plus précis qui porte réellement l'exemple : commune, groupement/EPCI, département ou région. Une carte sans territoire français identifiable n'est pas forcée sur la carte.
+6. Le titre est déclaratif et court, pas formulé comme une question de flashcard. Le sous-titre porte le chiffre, le mécanisme ou le résultat principal.
+7. Le corps conserve l'explication utile et les mises en perspective. Les styles Anki arbitraires, classes CSS, fonds et tailles de police ne sont pas importés ; conserver la mise en forme sémantique utile : gras, italique, souligné, retours à la ligne, listes et liens.
+8. Les références bibliographiques, rapports, articles et jurisprudences vont dans `source`, afin d'apparaître dans l'onglet **Sources** de la fiche. Une URL est stockée comme lien HTML avec un libellé lisible.
+9. Pour les médias Anki, copier les fichiers dans le dépôt privé (par défaut `ict_timeline_media/`, réutilisable par la frise et la cartographie) et mettre leurs chemins relatifs dans `image`. Les mêmes chemins sont aussi acceptés dans les balises `<img>` du HTML.
+10. Les CSV peuvent être découpés physiquement comme on veut : leur nom de fichier ou leur dossier ne crée aucun niveau de deck. Seule la valeur de la colonne `deck` le fait.
 
 ## Import privé
 
