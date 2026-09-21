@@ -2767,7 +2767,7 @@ function undoCartLastChange(){
  try{
    data=JSON.parse(last.data);const restored=JSON.parse(last.units);
    for(const k of Object.keys(units))delete units[k];Object.assign(units,restored);
-   persistCartData();if(cartGithubMode)queueCartDataSync(cartGithubFiles,'Annulation depuis la carte');temporaryPaletteAssignments.clear();selection=null;activeItem=null;closeMapDetail();renderTags();deckStateLoaded=false;renderDeckTree();filterChanged();updateCartUndoButton()
+   persistCartData();if(cartGithubMode)queueCartDataSync(cartGithubFiles,'Annulation depuis la carte');temporaryPaletteAssignments.clear();selection=null;activeItem=null;closeMapDetail();renderTags();cartDeckTreeRoot=null;renderDeckTree();saveCartFilterState();filterChanged();updateCartUndoButton()
  }catch(e){cartUndoStack.push(last);updateCartUndoButton();$('status').textContent='Annulation impossible : '+e.message}
 }
 function persistentCartRows(){return data.filter(d=>!d.generatedDemo)}
@@ -3007,7 +3007,7 @@ function sortCartDeckChildren(node){return[...node.children.values()].sort((a,b)
 function cartDeckNodeForPath(path,root=cartDeckTreeRoot){if(!root)return null;let node=root;for(const part of String(path||'').split('::').filter(Boolean)){node=node.children.get(part);if(!node)return null}return node}
 function syncSelectedDeckPathsFromTree(){allDeckPaths=unique(data.flatMap(itemDecks));selectedDeckPaths=new Set(allDeckPaths.filter(path=>{const node=cartDeckNodeForPath(path);return !node||node.selected||node.indeterminate}))}
 function cartSavedDeckStateMap(){const saved=readCartFilterState().decks;return saved&&typeof saved==='object'&&!Array.isArray(saved)?saved:{}}
-function cartLegacySelectedDecks(){const saved=readCartFilterState().decks;return Array.isArray(saved)?new Set(migrateLegacyCartDeckPaths(saved)):null}
+function cartLegacySelectedDecks(){const saved=readCartFilterState().decks;return Array.isArray(saved)&&saved.length?new Set(migrateLegacyCartDeckPaths(saved)):null}
 function buildCartDeckTree(){const root=createCartDeckNode('__root__','',null),runtime=new Map,savedDecks=cartSavedDeckStateMap(),legacySelected=cartLegacySelectedDecks();if(cartDeckTreeRoot)walkCartDeck(cartDeckTreeRoot,node=>runtime.set(node.path,{selected:node.selected,indeterminate:node.indeterminate,expanded:node.expanded}));for(const e of data){for(const pathStr of itemDecks(e)){const parts=String(pathStr||'').split('::').filter(Boolean);let node=root,current='';for(const part of parts){current=current?current+'::'+part:part;if(!node.children.has(part)){const created=createCartDeckNode(part,current,node),saved=runtime.get(current)||savedDecks[current];if(saved){created.selected=saved.selected!==false;created.indeterminate=!!saved.indeterminate;created.expanded=!!saved.expanded}else if(legacySelected){created.selected=[...legacySelected].some(path=>path===current||path.startsWith(current+'::'))}node.children.set(part,created)}node=node.children.get(part);node.count++}}}cartDeckTreeRoot=root;syncCartDeckAncestors();syncSelectedDeckPathsFromTree();return root}
 function saveCartFilterState(){try{if(!cartDeckTreeRoot&&data.length)buildCartDeckTree();const decks={};if(cartDeckTreeRoot)walkCartDeck(cartDeckTreeRoot,node=>{decks[node.path]={selected:!!node.selected,expanded:!!node.expanded}});localStorage.setItem(CART_FILTER_KEY,JSON.stringify({schema:3,tags:[...selectedTags],decks}));markCartCloudStateDirty();if(cartGithubMode)scheduleCartCloudSync(900)}catch{}}
 function remapCartDeckFilterState(oldPath,newPath){try{const state=readCartFilterState(),decks=state.decks&&typeof state.decks==='object'&&!Array.isArray(state.decks)?state.decks:{},next={};for(const [path,value] of Object.entries(decks)){const mapped=path===oldPath||path.startsWith(oldPath+'::')?newPath+path.slice(oldPath.length):path;if(!(mapped in next))next[mapped]=value;else next[mapped]={selected:next[mapped].selected!==false&&value.selected!==false,expanded:!!next[mapped].expanded||!!value.expanded}}localStorage.setItem(CART_FILTER_KEY,JSON.stringify({...state,schema:3,tags:[...selectedTags],decks:next}))}catch{}}
@@ -3244,19 +3244,12 @@ function scheduleCartCloudSync(delay=7000){
  cartCloudTimer=setTimeout(()=>{cartCloudTimer=null;syncCartCloudStateToGitHub().catch(()=>{})},Math.max(0,delay))
 }
 function collectCartCloudState(){
- return{version:9,updatedAt:localCartCloudUpdated()||Date.now(),filters:{schema:2,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors],boundaryStrokes:normalizeBoundaryStrokes(boundaryStrokes),settingLinks:[...settingLinks]}
-}
-function applyCartCloudFilters(filters,{legacyBugEmpty=false}={}){
- if(!filters||typeof filters!=='object')return;
- const availableDecks=unique(data.flatMap(itemDecks)),availableTags=new Set(unique(data.flatMap(d=>d.tags||[]))),requestedDecks=migrateLegacyCartDeckPaths(filters.decks),initialized=filters.initialized===true||requestedDecks.length>0;
- selectedTags=new Set((filters.tags||[]).filter(t=>availableTags.has(String(t))));
- selectedDeckPaths=new Set(legacyBugEmpty?availableDecks:(initialized?requestedDecks:availableDecks));
- deckStateLoaded=true;cartFilterVersion=6;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:6,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}))
+ return{version:10,updatedAt:localCartCloudUpdated()||Date.now(),filters:readCartFilterState(),gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors],boundaryStrokes:normalizeBoundaryStrokes(boundaryStrokes),settingLinks:[...settingLinks]}
 }
 function applyCartCloudState(state){
  if(!state||typeof state!=='object')return;applyingCartCloudState=true;
  try{
-  if(state.filters)applyCartCloudFilters(state.filters,{legacyBugEmpty:Number(state.version||0)<9&&state.filters.initialized===true&&migrateLegacyCartDeckPaths(state.filters.decks).length===0});
+  if(state.filters&&typeof state.filters==='object')localStorage.setItem(CART_FILTER_KEY,JSON.stringify(state.filters));
   if(state.gameErrors)localStorage.setItem(CART_GAME_ERROR_KEY,JSON.stringify(state.gameErrors));
   if(Array.isArray(state.gameRecent))localStorage.setItem(CART_GAME_RECENT_KEY,JSON.stringify(state.gameRecent.slice(0,600)));
   if(state.gameBests)localStorage.setItem(CART_GAME_KEY,JSON.stringify(state.gameBests));
@@ -3267,13 +3260,13 @@ function applyCartCloudState(state){
   if(Array.isArray(state.settingLinks)){settingLinks=normalizeSettingLinks(state.settingLinks);pendingSettingLinks=new Set(settingLinks);localStorage.setItem(CART_SETTING_LINKS_KEY,JSON.stringify([...settingLinks]))}
   localStorage.setItem(CART_CLOUD_UPDATED_KEY,String(Math.max(0,Number(state.updatedAt)||Date.now())))
  }finally{applyingCartCloudState=false}
+ restoreCartTagFilters();cartDeckTreeRoot=null;buildCartDeckTree()
 }
 async function loadCartCloudStateFromGitHub(){
  const remote=await cartGithubGetOptional(CART_GITHUB_STATE_FILE),localUpdated=localCartCloudUpdated();
  if(!remote){if(hasLocalCartCloudState()){if(!localUpdated)try{localStorage.setItem(CART_CLOUD_UPDATED_KEY,String(Date.now()))}catch{}scheduleCartCloudSync(800)}return}
  let state;try{state=JSON.parse(remote.text)}catch{return}
- const remoteUpdated=Math.max(0,Number(state?.updatedAt)||0),remoteFilterSchema=Math.max(0,Number(state?.filters?.schema)||0),needsFilterMigration=remoteFilterSchema>=2&&cartFilterVersion<6;
- if(needsFilterMigration){applyingCartCloudState=true;try{applyCartCloudFilters(state.filters)}finally{applyingCartCloudState=false}}
+ const remoteUpdated=Math.max(0,Number(state?.updatedAt)||0);
  if(remoteUpdated>localUpdated)applyCartCloudState(state);
  else if(localUpdated>remoteUpdated)scheduleCartCloudSync(800)
 }
