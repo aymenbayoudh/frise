@@ -852,29 +852,6 @@ function applyLabelSizeSettings(){
  el.style.setProperty('--label-pref-size',pref+'px');
  el.style.setProperty('--label-subpref-size',subpref+'px')
 }
-function demoDeckPaths(theme,level,index=0){
- const primary={
-  'Santé':'OGCT::Solidarité::Santé',
-  'Action sociale':'OGCT::Solidarité::Action sociale',
-  'Politique de la ville':'OGCT::Solidarité::Politique de la ville',
-  'Culture':'Compo::Culture::Politiques culturelles',
-  'Patrimoine':'Compo::Culture::Patrimoine et musées',
-  'Éducation':'OGCT::Services publics::Éducation',
-  'Habitat':'OGCT::Urbanisme::Logement',
-  'Urbanisme':'OGCT::Urbanisme::Aménagement',
-  'Mobilités':'OGCT::Aménagement::Mobilités',
-  'Eau':'OGCT::Environnement::Eau',
-  'Nature':'OGCT::Environnement::Biodiversité',
-  'Énergie':'OGCT::Environnement::Énergie',
-  'Réemploi':'OGCT::Environnement::Économie circulaire',
-  'Économie circulaire':'OGCT::Environnement::Économie circulaire',
-  'Aménagement':'OGCT::Urbanisme::Aménagement'
- };
- const out=[primary[theme]||('OGCT::Compétences territoriales::'+String(theme||'Aménagement'))];
- if(Number(index)%7===0)out.push(level===3?'OGCT::Organisation territoriale::Régions':level===2?'OGCT::Organisation territoriale::Départements':level===1?'OGCT::Organisation territoriale::Groupements':'OGCT::Organisation territoriale::Communes');
- return[...new Set(out)]
-}
-for(const d of data){d.subtitle=String(d.subtitle||'');d.tags=Array.isArray(d.tags)&&d.tags.length?d.tags:[d.theme||'Aménagement',modes[d.mode]];d.deck=Array.isArray(d.deck)&&d.deck.length?d.deck:demoDeckPaths(d.theme||'Aménagement',d.mode,d.id||0);d.color=/^#[0-9A-F]{6}$/i.test(d.color||'')?d.color.toUpperCase():defaultColors[d.mode]||'#315EB6';d.html=String(d.html||'<p>Exemple fictif utilisé pour tester la carte.</p>');d.image=Array.isArray(d.image)?d.image:[];d.shape=null}
 let hasImportedCartData=false;
 
 if(!window.L){$('status').textContent='Le moteur cartographique ne se charge pas. Vérifiez votre connexion et rechargez la page.';return;}
@@ -1021,7 +998,7 @@ async function loadIgnOverview(){
 async function ensureOverviewEpciGeo(){
  if(overviewEpciGeo?.features?.length)return overviewEpciGeo;
  if(overviewEpciPromise)return overviewEpciPromise;
- overviewEpciPromise=getJSON(IGN_OVERVIEW_BASE+'epci.geojson').then(j=>{if(!j?.features?.length)throw Error('EPCI CARTO PLUS vide');overviewEpciGeo=filteredOverviewGeo(j);seedOverseasGroupementDemoCoverage();return overviewEpciGeo}).finally(()=>{overviewEpciPromise=null});
+ overviewEpciPromise=getJSON(IGN_OVERVIEW_BASE+'epci.geojson').then(j=>{if(!j?.features?.length)throw Error('EPCI CARTO PLUS vide');overviewEpciGeo=filteredOverviewGeo(j);return overviewEpciGeo}).finally(()=>{overviewEpciPromise=null});
  return overviewEpciPromise
 }
 async function ensureOverviewArrGeo(){
@@ -1479,7 +1456,7 @@ let epciLoadPromise=null;
 async function ensureEpciGeo(){
  if(epciGeo?.features?.length)return epciGeo;
  if(epciLoadPromise)return epciLoadPromise;
- epciLoadPromise=getJSON(IGN_GEO_BASE+'epci.geojson').then(j=>{if(!j?.features?.length)throw Error('EPCI IGN local vide');return j}).then(augmentGrandParisGroups).then(j=>{epciGeo=j;invalidateGroupCache();seedEpciDemoCoverage();return epciGeo}).finally(()=>{epciLoadPromise=null});
+ epciLoadPromise=getJSON(IGN_GEO_BASE+'epci.geojson').then(j=>{if(!j?.features?.length)throw Error('EPCI IGN local vide');return j}).then(augmentGrandParisGroups).then(j=>{epciGeo=j;invalidateGroupCache();return epciGeo}).finally(()=>{epciLoadPromise=null});
  return epciLoadPromise
 }
 
@@ -1507,7 +1484,7 @@ async function ensureOverseasEpciGeometry(d){
        }
      }
      if(d.epciGeo?.features?.length){
-       seedOverseasGroupementDemoCoverage();
+
        if(mode===1){invalidateGroupCache();drawAdmin();updateInsets();updateCenters(true)}
      }
    }catch{}
@@ -2504,205 +2481,7 @@ async function updateCenters(force=false){
    if(mode===0){if(!selection)renderSide();pointRenderKey='';drawPoints();if(selection)updateCommuneLabels(true)}
  }catch(e){$('status').textContent='Les contours restent disponibles ; chargement des chefs-lieux à réessayer.'}
 }
-let demoAdminSeeded=false,demoEpciSeeded=false,demoNextId=Math.max(0,...data.map(d=>Number(d.id)||0))+1;
-const demoThemes=['Mobilités','Éducation','Patrimoine','Eau','Habitat','Culture','Santé','Action sociale','Politique de la ville','Urbanisme','Réemploi','Nature','Énergie'];
-const demoActions=['un réseau de lieux partagés','un programme de renaturation','un fonds de transformation','un atelier mobile','une plateforme de réemploi','un plan de sobriété','une boucle de mobilités','un observatoire territorial','un dispositif culturel','un programme d’adaptation'];
-function demoHash(v){let h=2166136261;for(const c of String(v)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
-function deterministicScaledCount(raw,fraction,seed){
- raw=Math.max(0,Number(raw)||0);fraction=Math.max(0,Math.min(1,Number(fraction)||0));
- const exact=raw*fraction,whole=Math.floor(exact),rest=exact-whole;
- return whole+(rest>0&&(demoHash('thin:'+seed)%10000)<Math.round(rest*10000)?1:0)
-}
-function demoSkew(code,level){
- const h=demoHash(level+':'+code);
- if(level==='region')return h%7===0?8:h%4===0?5:1+h%3;
- if(level==='departement')return h%13===0?8:h%5===0?5:1+h%3;
- if(level==='commune'){
-  // Previous state was already ~1/4 of the original density. Keep another
-  // 40% of that current state (= remove another 60%), deterministically.
-  const former=h%5===0?10:5+h%5,current=Math.max(1,Math.ceil(former/4));
-  return deterministicScaledCount(current,.40,'metro-commune:'+code)
- }
- return h%9===0?5:1+h%3
-}
-function overseasDemoTarget(code,level){
- const ramps={
-  region:[2,4,7,11,16],
-  departement:[1,3,6,10,15],
-  interco:[1,2,4,7,12,18],
-  commune:[1,1,2,3,5,8,13]
- },r=ramps[level]||ramps.commune,h=demoHash('outremer:'+level+':'+String(code)),
-    raw=r[h%r.length];
- if(level!=='commune')return raw;
- // Previous state was already ~1/5 of the original density. Keep another
- // 10% of that current state (= remove another 90%). Zero is now allowed.
- const current=Math.max(1,Math.ceil(raw/5));
- return deterministicScaledCount(current,.10,'overseas-commune:'+code)
-}
-function demoFeatureCenter(feature){const c=featureBounds(feature).getCenter();return[c.lat,c.lng]}
-function unitKeyForModeCode(level,code){const d=data.find(x=>x.mode===level&&String(keyOf(x))===String(code));return d?.unit||null}
-function addGeneratedDemo(level,unit,title,at,theme,index){
- data.push({id:demoNextId++,mode:level,unit,title,subtitle:index%3===0?'Exemple fictif de démonstration':'',kind:'global',at:[...at],shape:null,theme,tags:[theme,modes[level],'Fictif'],color:defaultColors[(level+index)%defaultColors.length],html:'<p>Exemple fictif destiné à visualiser les concentrations, filtres et changements d’échelle de la carte.</p>',deck:demoDeckPaths(theme,level,index),image:[],generatedDemo:true})
-}
-function refreshAfterDemoSeed(){
- // If the user had every existing deck selected, keep the semantic "all decks"
- // after runtime demo decks are added. Otherwise preserve the user's explicit subset.
- const previousDeckPaths=[...allDeckPaths],
-       allPreviouslySelected=previousDeckPaths.length>0&&previousDeckPaths.every(p=>selectedDeckPaths.has(p));
- refreshDeckPaths();
- if(allPreviouslySelected)selectedDeckPaths=new Set(allDeckPaths);
- invalidateGroupCache();renderTags();renderDeckTree();pointRenderKey='';subdivisionKey='';centerKey='';renderSide();draw();updateSubdivisions(true);updateCenters(true);$('visibleCount').textContent=visibleAll().length+' fiches'
-}
-async function seedCommuneDemoCoverageForAnchorEpci(anchorCommuneCode){
- if(!cartGithubMode||hasImportedCartData)return;
- anchorCommuneCode=String(anchorCommuneCode||'');if(!anchorCommuneCode||!epciGeo?.features?.length)return;
- const dept=departmentCodeForCommune(anchorCommuneCode),cgeo=await departmentCommuneGeo(dept);if(!cgeo?.features?.length)return;
- const anchor=cgeo.features.find(f=>featureAdminCode(f)===anchorCommuneCode);if(!anchor)return;
- const anchorAt=demoFeatureCenter(anchor),epciFeature=(epciGeo.features||[]).find(f=>featureBounds(f).contains(L.latLng(anchorAt))&&pointInFeature(anchorAt[0],anchorAt[1],f));if(!epciFeature)return;
- for(const f of cgeo.features||[]){
-  const code=featureAdminCode(f),at=demoFeatureCenter(f);if(!code||!pointInFeature(at[0],at[1],epciFeature))continue;
-  const catalog=adminCatalog?.communeByCode.get(code),name=featureAdminName(f)||catalog?.name||code,
-        communeDept=String(catalog?.dept||departmentCodeForCommune(code)),communeRegion=String(catalog?.region||adminCatalog?.departmentByCode.get(communeDept)?.region||'');
-  let unit=unitKeyForModeCode(0,code);
-  if(!unit){unit='demo-c-'+code;units[unit]={name,code,dept:communeDept,region:communeRegion,at}}
-  else{units[unit].name=name;units[unit].dept=communeDept;units[unit].region=communeRegion;if(!units[unit].at)units[unit].at=at}
-  // Grand Poitiers special test cloud: keep only ~1% of the already-reduced
-  // commune demo density. Most surrounding communes therefore get no demo.
-  const existing=data.filter(x=>x.mode===0&&String(keyOf(x))===code).length,
-        base=demoSkew(code,'commune'),
-        target=deterministicScaledCount(base,.01,'poitiers-epci:'+code);
-  for(let i=existing;i<target;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(code)+i)%demoActions.length]+' dans la commune',units[unit].at||at,demoThemes[(i+4+demoHash(code))%demoThemes.length],i)
- }
-}
-async function pruneGrandPoitiersGeneratedDemos(anchorCommuneCode='86194'){
- if(!epciGeo?.features?.length)return;
- const dept=departmentCodeForCommune(anchorCommuneCode),cgeo=await departmentCommuneGeo(dept);if(!cgeo?.features?.length)return;
- const anchor=cgeo.features.find(f=>featureAdminCode(f)===String(anchorCommuneCode));if(!anchor)return;
- const anchorAt=demoFeatureCenter(anchor),epciFeature=(epciGeo.features||[]).find(f=>featureBounds(f).contains(L.latLng(anchorAt))&&pointInFeature(anchorAt[0],anchorAt[1],f));if(!epciFeature)return;
- const codes=new Set((cgeo.features||[]).filter(f=>{const at=demoFeatureCenter(f);return pointInFeature(at[0],at[1],epciFeature)}).map(featureAdminCode));
- const candidates=data.filter(d=>d.generatedDemo&&d.mode===0&&codes.has(String(keyOf(d)))).sort((a,b)=>a.id-b.id);
- const keepCount=deterministicScaledCount(candidates.length,.01,'grand-poitiers-all');
- const keep=new Set(candidates.slice(0,keepCount).map(d=>d.id));
- data=data.filter(d=>!d.generatedDemo||d.mode!==0||!codes.has(String(keyOf(d)))||keep.has(d.id))
-}
-const MAJOR_DEMO_CITIES=[
- 'Paris','Marseille','Lyon','Toulouse','Nice','Nantes','Montpellier','Strasbourg','Bordeaux','Lille',
- 'Rennes','Toulon','Reims','Saint-Étienne','Le Havre','Villeurbanne','Dijon','Angers','Grenoble','Nîmes'
-];
-const MEDIUM_DEMO_CITIES=[
- 'Aix-en-Provence','Clermont-Ferrand','Le Mans','Brest','Tours','Amiens','Limoges','Perpignan','Metz','Besançon',
- 'Orléans','Rouen','Mulhouse','Caen','Nancy','Avignon','Poitiers','Pau','La Rochelle','Annecy'
-];
-const CITY_OGCT_THEMES=['Mobilités','Urbanisme','Éducation','Habitat','Nature','Eau','Énergie','Santé','Action sociale','Politique de la ville','Réemploi'];
-const CITY_COMPO_THEMES=['Culture','Patrimoine'];
-function catalogCommuneByExactName(name){
- const key=compactName(name);return adminCatalog?.communes?.find(c=>compactName(c.name)===key)||null
-}
-function cityDemoRows(code){return data.filter(d=>d.mode===0&&String(keyOf(d))===String(code))}
-function cityDeckCount(rows,prefix){return rows.filter(d=>(d.deck||[]).some(p=>String(p).startsWith(prefix))).length}
-async function seedNationalCityDemoCoverage(){
- if(!adminCatalog)return;
- const specs=[
-  ...MAJOR_DEMO_CITIES.map(name=>({name,major:true})),
-  ...MEDIUM_DEMO_CITIES.map(name=>({name,major:false}))
- ];
- for(const spec of specs){
-  const catalog=catalogCommuneByExactName(spec.name);if(!catalog)continue;
-  let cgeo=null;try{cgeo=await departmentCommuneGeo(catalog.dept)}catch{}
-  const feature=cgeo?.features?.find(f=>featureAdminCode(f)===catalog.code);if(!feature)continue;
-  const code=String(catalog.code),at=demoFeatureCenter(feature),dept=String(catalog.dept||departmentCodeForCommune(code)),
-        region=String(catalog.region||adminCatalog?.departmentByCode.get(dept)?.region||'');
-  let unit=unitKeyForModeCode(0,code);
-  if(!unit){unit='demo-city-'+code;units[unit]={name:catalog.name,code,dept,region,at}}
-  else{units[unit].name=catalog.name;units[unit].dept=dept;units[unit].region=region;if(!units[unit].at)units[unit].at=at}
-
-  let rows=cityDemoRows(code),serial=rows.filter(d=>d.generatedDemo).length,
-      currentTarget=(spec.major?3:2)+(demoHash('city-total:'+code)%2),
-      target=deterministicScaledCount(currentTarget,.40,'city:'+code);
-  // Poitiers is governed by the much stronger Grand-Poitiers thinning below.
-  if(code==='86194')target=0;
-  while(rows.length<target){
-   const useCompo=(rows.length+demoHash(code))%2===0,
-         theme=useCompo?CITY_COMPO_THEMES[(rows.length+demoHash(code+'c'))%CITY_COMPO_THEMES.length]:CITY_OGCT_THEMES[(rows.length+demoHash(code+'o'))%CITY_OGCT_THEMES.length],
-         action=theme==='Culture'?'un dispositif culturel':theme==='Patrimoine'?'un programme de valorisation patrimoniale':demoActions[(rows.length+demoHash(code+theme))%demoActions.length];
-   addGeneratedDemo(0,unit,action+' · '+catalog.name,units[unit].at||at,theme,serial++);
-   rows.push(data[data.length-1])
-  }
- }
-}
-async function seedAdministrativeDemoCoverage(){
- if(!cartGithubMode||hasImportedCartData||demoAdminSeeded||!regionGeo||!deptGeo)return;
- demoAdminSeeded=true;const meta=await loadAdminMeta(),depMeta=new Map((meta.departements||[]).map(d=>[String(d.code),d]));
- if(!hasImportedCartData){
-  for(const f of regionGeo.features||[]){
-    const code=featureAdminCode(f);if(!code)continue;let unit=unitKeyForModeCode(3,code);if(!unit){unit='demo-r-'+code;units[unit]={name:featureAdminName(f),code,at:demoFeatureCenter(f)}}
-    const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(code,'region');for(let i=0;i<count;i++)addGeneratedDemo(3,unit,(demoActions[(demoHash(code)+i)%demoActions.length])+' à l’échelle régionale',at,demoThemes[(i+demoHash(code))%demoThemes.length],i)
-  }
-  for(const f of deptGeo.features||[]){
-    const code=featureAdminCode(f);if(!code)continue;let unit=unitKeyForModeCode(2,code);if(!unit){unit='demo-d-'+code;units[unit]={name:featureAdminName(f),code,at:demoFeatureCenter(f)}}
-    const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(code,'departement');for(let i=0;i<count;i++)addGeneratedDemo(2,unit,(demoActions[(demoHash(code+'d')+i)%demoActions.length])+' à l’échelle départementale',at,demoThemes[(i+2+demoHash(code))%demoThemes.length],i)
-  }
- }
- // Guarantee visible demo density on every DROM at department and region scales.
- const overseasDemo=doms.filter(d=>['971','972','973','974','976'].includes(String(d.dept)));
- for(const d of overseasDemo){
-  const rf=(regionGeo.features||[]).find(f=>featureAdminCode(f)===String(d.region));
-  const df=(deptGeo.features||[]).find(f=>featureAdminCode(f)===String(d.dept));
-  if(rf){
-   let unit=unitKeyForModeCode(3,d.region);if(!unit){unit='demo-r-'+d.region;units[unit]={name:featureAdminName(rf)||d.name,code:String(d.region),at:demoFeatureCenter(rf)}}
-   const existing=data.filter(x=>x.mode===3&&String(keyOf(x))===String(d.region)).length,target=overseasDemoTarget(d.region,'region');
-   for(let i=existing;i<target;i++)addGeneratedDemo(3,unit,demoActions[(demoHash(d.region+'om')+i)%demoActions.length]+' en '+d.name,units[unit].at||d.at,demoThemes[(i+demoHash(d.region))%demoThemes.length],i)
-  }
-  if(df){
-   let unit=unitKeyForModeCode(2,d.dept);if(!unit){unit='demo-d-'+d.dept;units[unit]={name:featureAdminName(df)||d.name,code:String(d.dept),region:String(d.region),at:demoFeatureCenter(df)}}
-   const existing=data.filter(x=>x.mode===2&&String(itemDisplayAdminCode(x,2))===String(d.dept)).length,target=overseasDemoTarget(d.dept,'departement');
-   for(let i=existing;i<target;i++)addGeneratedDemo(2,unit,demoActions[(demoHash(d.dept+'om')+i)%demoActions.length]+' en '+d.name,units[unit].at||d.at,demoThemes[(i+2+demoHash(d.dept))%demoThemes.length],i)
-  }
- }
- // Every DROM commune gets demo coverage. Counts intentionally vary a lot so
- // the commune gradient can be checked from very pale to saturated.
- for(const d of overseasDemo){
-  let cgeo=null;try{cgeo=await departmentCommuneGeo(d.dept)}catch{}
-  for(const f of cgeo?.features||[]){
-   const code=featureAdminCode(f);if(!code)continue;
-   const name=featureAdminName(f)||adminCatalog?.communeByCode.get(code)?.name||code,
-         at=demoFeatureCenter(f);
-   let unit=unitKeyForModeCode(0,code);
-   if(!unit){unit='demo-om-c-'+code;units[unit]={name,code,dept:String(d.dept),region:String(d.region),at}}
-   else{units[unit].name=name;units[unit].dept=String(d.dept);units[unit].region=String(d.region);if(!units[unit].at)units[unit].at=at}
-   const existing=data.filter(x=>x.mode===0&&String(keyOf(x))===String(code)).length,
-         target=overseasDemoTarget(code,'commune');
-   for(let i=existing;i<target;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(code+'om-c')+i)%demoActions.length]+' · '+name,units[unit].at||at,demoThemes[(i+demoHash(code))%demoThemes.length],i)
-  }
- }
- // Poitiers coverage is derived from the real EPCI geometry: every commune in
- // the group containing Poitiers receives the same generated examples as other communes.
- try{await seedCommuneDemoCoverageForAnchorEpci('86194')}catch{}
- // Add a nationwide test set on 20 major and 20 medium-sized cities. Commune
- // codes and geometries are resolved from the local administrative catalog and
- // IGN ADMIN EXPRESS extracts; the examples themselves are split between OGCT
- // and Compo > Culture decks.
- try{await seedNationalCityDemoCoverage()}catch{}
- if(!hasImportedCartData){
-  const overseasDeptCodes=new Set(doms.map(d=>String(d.dept||'')));
-  const selectedDeps=[...(deptGeo.features||[])].filter(f=>!overseasDeptCodes.has(featureAdminCode(f))&&demoHash(featureAdminCode(f))%3===0).slice(0,42);
-  for(const f of selectedDeps){
-    const dept=featureAdminCode(f),m=depMeta.get(dept),chef=String(m?.chefLieu||'');if(!chef)continue;
-    let unit=unitKeyForModeCode(0,chef);if(!unit){unit='demo-c-'+chef;units[unit]={name:'Chef-lieu de '+featureAdminName(f),code:chef,dept,region:String(m?.region??m?.codeRegion??''),at:demoFeatureCenter(f),generatedChefLieu:true}}
-    const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(chef,'commune');for(let i=0;i<count;i++)addGeneratedDemo(0,unit,(demoActions[(demoHash(chef)+i)%demoActions.length])+' dans la commune',at,demoThemes[(i+4+demoHash(chef))%demoThemes.length],i)
-  }
-  const existingCommuneUnits=[...new Set(data.filter(d=>d.mode===0&&!d.generatedDemo).map(d=>d.unit))];
-  for(const unit of existingCommuneUnits){
-    const u=units[unit];if(!u?.at||overseasDeptCodes.has(String(u.dept||'')))continue;
-    const formerExtra=3+demoHash(unit)%7,current=Math.max(1,Math.ceil(formerExtra/4)),extra=deterministicScaledCount(current,.40,'metro-extra:'+unit);
-    for(let i=0;i<extra;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(unit)+i)%demoActions.length]+' · démonstration locale',u.at,demoThemes[(i+demoHash(unit))%demoThemes.length],i)
-  }
- }
- // Catch every generated source that may have touched Poitiers or another
- // Grand-Poitiers commune (city seed, chef-lieu seed, local extras, etc.).
- try{await pruneGrandPoitiersGeneratedDemos('86194')}catch{}
- refreshAfterDemoSeed()
-}
+function adminFeatureCenter(feature){const c=featureBounds(feature).getCenter();return[c.lat,c.lng]}
 function featureDepartmentHint(f){
  const p=f?.properties||{};
  return String(p.dept??p.departement??p.codeDepartement??p.code_departement??p.code_insee_du_departement??'')
@@ -2717,84 +2496,6 @@ function epciFeaturesForDepartment(d,geo,deptGeoSource){
   const b=featureBounds(f);if(b?.isValid?.()&&b.intersects(db))out.push(f)
  }
  return out
-}
-function overseasEpciFeatures(d){
- if(!d)return[];
- const out=[],seen=new Set(),add=f=>{const code=featureAdminCode(f);if(code&&!seen.has(code)){seen.add(code);out.push(f)}};
- for(const f of epciFeaturesForDepartment(d,d.epciGeo,deptGeo))add(f);
- for(const f of epciFeaturesForDepartment(d,epciGeo,deptGeo))add(f);
- for(const f of epciFeaturesForDepartment(d,overviewEpciGeo,overviewDeptGeo))add(f);
- return out
-}
-function seedOverseasGroupementDemoCoverage(){
- if(!cartGithubMode||hasImportedCartData)return false;
- let added=false;
- const seedFeature=(f,d,prefix='demo-om-e-')=>{
-  const code=featureAdminCode(f);if(!code)return;
-  let unit=unitKeyForModeCode(1,code);
-  const realFeature=(d.epciGeo?.features||[]).find(x=>featureAdminCode(x)===code)||(epciGeo?.features||[]).find(x=>featureAdminCode(x)===code),
-        at=realFeature?demoFeatureCenter(realFeature):(Array.isArray(d.at)?d.at:demoFeatureCenter(f));
-  if(!unit){unit=prefix+code;units[unit]={name:featureAdminName(f),code,dept:String(d.dept),region:String(d.region),at:[...at]}}
-  else{units[unit].name=featureAdminName(f)||units[unit].name;units[unit].dept=String(d.dept);units[unit].region=String(d.region);if(!Array.isArray(units[unit].at))units[unit].at=[...at]}
-  const existing=data.filter(x=>x.mode===1&&String(keyOf(x))===code).length,target=Math.max(2,overseasDemoTarget(code,'interco'));
-  for(let i=existing;i<target;i++){addGeneratedDemo(1,unit,demoActions[(demoHash(code+'om')+i)%demoActions.length]+' dans '+d.name,units[unit].at||at,demoThemes[(i+6+demoHash(code))%demoThemes.length],i);added=true}
- };
- for(const d of doms.filter(x=>x.nationalEpci&&['971','972','973','974','976'].includes(String(x.dept))))for(const f of overseasEpciFeatures(d))seedFeature(f,d);
- for(const [kind,dept,name] of [['pf','987','Polynésie française'],['nc','988','Nouvelle-Calédonie']]){
-  const d=doms.find(x=>String(x.dept)===dept),src=pacificAdmin[kind];if(!d||!src?.groupements?.features?.length)continue;
-  for(const f of src.groupements.features)seedFeature(f,d,'demo-pac-g-')
- }
- if(added)refreshAfterDemoSeed();
- return added
-}
-function seedEpciDemoCoverage(){
- if(!cartGithubMode||hasImportedCartData||demoEpciSeeded||!epciGeo?.features?.length)return;demoEpciSeeded=true;
- if(!hasImportedCartData){
-  const candidates=epciGeo.features.filter(f=>{const c=featureAdminCode(f);return c&&demoHash(c)%8===0}).slice(0,170);
-  for(const f of candidates){
-    const code=featureAdminCode(f);let unit=unitKeyForModeCode(1,code);if(!unit){unit='demo-e-'+code;units[unit]={name:featureAdminName(f),code,at:demoFeatureCenter(f)}}
-    const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(code,'interco');for(let i=0;i<count;i++)addGeneratedDemo(1,unit,demoActions[(demoHash(code)+i)%demoActions.length]+' à l’échelle intercommunale',at,demoThemes[(i+6+demoHash(code))%demoThemes.length],i)
-  }
- }
- refreshAfterDemoSeed();
- seedOverseasGroupementDemoCoverage()
-}
-
-let demoPacificSeeded=false;
-function seedPacificDemoCoverage(){
- if(!cartGithubMode||hasImportedCartData||demoPacificSeeded||!pacificAdmin.pf||!pacificAdmin.nc)return;demoPacificSeeded=true;
- const configs=[['pf','987','Polynésie française'],['nc','988','Nouvelle-Calédonie']];
- const targetCount=(code,level,boost=0)=>{
-  const kind=level===3?'region':level===2?'departement':level===1?'interco':'commune';
-  return overseasDemoTarget(code,kind)+boost
- };
- for(const [kind,regionCode,territoryName] of configs){
-  const src=pacificAdmin[kind];
-  for(const f of src.regions?.features||[]){
-   const code=featureAdminCode(f),at=demoFeatureCenter(f),unit='demo-pac-r-'+code;units[unit]={name:featureAdminName(f)||territoryName,code,region:regionCode,dept:regionCode,at};
-   const count=targetCount(code,3,kind==='pf'?2:0);for(let i=0;i<count;i++)addGeneratedDemo(3,unit,demoActions[(demoHash(code+'pac-r')+i)%demoActions.length]+' en '+territoryName,at,demoThemes[(i+demoHash(code))%demoThemes.length],i)
-  }
-  for(const f of src.departements?.features||[]){
-   const code=featureAdminCode(f),at=demoFeatureCenter(f),unit='demo-pac-d-'+code;units[unit]={name:featureAdminName(f),code,region:regionCode,dept:code,at};
-   const count=targetCount(code,2);for(let i=0;i<count;i++)addGeneratedDemo(2,unit,demoActions[(demoHash(code+'pac-d')+i)%demoActions.length]+' · '+featureAdminName(f),at,demoThemes[(i+2+demoHash(code))%demoThemes.length],i)
-  }
-  for(const f of src.groupements?.features||[]){
-   const code=featureAdminCode(f),at=demoFeatureCenter(f),unit='demo-pac-g-'+code;units[unit]={name:featureAdminName(f),code,region:regionCode,dept:regionCode,at};
-   const count=targetCount(code,1);for(let i=0;i<count;i++)addGeneratedDemo(1,unit,demoActions[(demoHash(code+'pac-g')+i)%demoActions.length]+' · '+featureAdminName(f),at,demoThemes[(i+5+demoHash(code))%demoThemes.length],i)
-  }
-  // Every Pacific commune gets at least one example. Counts deliberately vary
-  // strongly so the density ramps can be checked visually.
-  for(const f of src.communes?.features||[]){
-   const code=featureAdminCode(f),name=featureAdminName(f),at=demoFeatureCenter(f),unit='demo-pac-c-'+code;units[unit]={name,code,region:regionCode,dept:regionCode,at};
-   let count=targetCount(code,0);
-   // Pacific commune boosts are subject to the same additional 90% cut.
-   if(/noum|papeete/i.test(name))count+=deterministicScaledCount(1,.10,'pac-capital:'+code);
-   if(demoHash(code)%17===0)count+=deterministicScaledCount(1,.10,'pac-boost:'+code);
-   for(let i=0;i<count;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(code+'pac-c')+i)%demoActions.length]+' · '+name,at,demoThemes[(i+7+demoHash(code))%demoThemes.length],i)
-  }
- }
- refreshAfterDemoSeed();
- seedOverseasGroupementDemoCoverage()
 }
 
 function domItems(d){return current().filter(x=>{const u=units[x.unit]||{};if(d.pacific)return String(u.region||'')===String(d.region);return mode<2?u.dept===d.dept:String(itemDisplayAdminCode(x,mode))===String(mode===2?d.dept:d.region)});}
@@ -2911,10 +2612,28 @@ function undoCartLastChange(){
  }catch(e){cartUndoStack.push(last);updateCartUndoButton();$('status').textContent='Annulation impossible : '+e.message}
 }
 function persistentCartRows(){return data.filter(d=>!d.generatedDemo)}
-function persistCartData(){invalidateGroupCache();const rows=persistentCartRows(),savedUnits={};for(const [k,u] of Object.entries(units))if(rows.some(d=>d.unit===k))savedUnits[k]=u;localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows,units:savedUnits}));hasImportedCartData=true;cartDataDirty=true}
+function persistCartData(){invalidateGroupCache();const rows=persistentCartRows(),savedUnits={},usedUnits=new Set(rows.map(d=>d.unit));for(const [k,u] of Object.entries(units))if(usedUnits.has(k))savedUnits[k]=u;localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows,units:savedUnits}));hasImportedCartData=true;cartDataDirty=true}
 function safeCartImage(value){const src=String(value??'').trim();if(/^data:image\/(png|jpeg|webp);base64,/i.test(src)||/^https?:\/\/[^\s<>"']+$/i.test(src)||/^(?:\.\/)?(?:[\w .-]+\/)*[\w .-]+\.(?:png|jpe?g|webp)$/i.test(src)&&!src.includes('..'))return src;return''}
 function isCartPrivateMediaPath(src){return cartGithubMode&&/^(?:ict_timeline_media|ict_carto_media)\//i.test(String(src||''))}
-async function cartPrivateMediaUrl(path){if(cartPrivateMediaCache.has(path))return cartPrivateMediaCache.get(path);const response=await fetch(cartGithubUrl(path),{headers:{...cartGithubHeaders(),Accept:'application/vnd.github.raw+json'},cache:'no-store'});if(response.status===401||response.status===403)throw Error('Accès image refusé par GitHub.');if(response.status===404)throw Error('Image privée introuvable : '+path);if(!response.ok)throw Error('Image GitHub HTTP '+response.status);const blob=await response.blob(),url=URL.createObjectURL(blob);cartPrivateMediaCache.set(path,url);return url}
+async function cartPrivateMediaUrl(path){
+ const cache=cartPrivateMediaCache;
+ if(cache.has(path))return cache.get(path);
+ const pending=(async()=>{
+  const response=await fetch(cartGithubUrl(path),{headers:{...cartGithubHeaders(),Accept:'application/vnd.github.raw+json'},cache:'no-store',signal:AbortSignal.timeout(30000)});
+  if(response.status===401||response.status===403)throw Error('Accès image refusé par GitHub.');
+  if(response.status===404)throw Error('Image privée introuvable : '+path);
+  if(!response.ok)throw Error('Image GitHub HTTP '+response.status);
+  const blob=await response.blob();
+  if(cache!==cartPrivateMediaCache)throw Error('Session privée fermée.');
+  return URL.createObjectURL(blob)
+ })();
+ cache.set(path,pending);
+ try{return await pending}catch(e){if(cache.get(path)===pending)cache.delete(path);throw e}
+}
+function clearCartPrivateMedia(){
+ const previous=cartPrivateMediaCache;cartPrivateMediaCache=new Map();
+ for(const pending of previous.values())Promise.resolve(pending).then(url=>URL.revokeObjectURL(url)).catch(()=>{});
+}
 function loadCartImageInto(img,src){src=safeCartImage(src);if(!src){img.removeAttribute('src');return}if(isCartPrivateMediaPath(src)){img.removeAttribute('src');img.dataset.privateMediaPath=src;cartPrivateMediaUrl(src).then(url=>{if(img.dataset.privateMediaPath===src)img.src=url}).catch(()=>{img.alt='Image privée indisponible'})}else img.src=src}
 function hydrateCartPrivateImages(root){if(!root?.querySelectorAll)return;root.querySelectorAll('img[src]').forEach(img=>{const src=img.getAttribute('src')||'';if(isCartPrivateMediaPath(src))loadCartImageInto(img,src)})}
 function cleanCartHtml(html){const t=document.createElement('template');t.innerHTML=String(html||'');const ok=new Set(['P','BR','DIV','B','STRONG','I','EM','U','HR','UL','OL','LI','A','IMG']);function walk(p){for(const el of [...p.children]){if(!ok.has(el.tagName)){el.replaceWith(document.createTextNode(el.textContent));continue}const href=el.getAttribute('href'),src=safeCartImage(el.getAttribute('src')),alt=el.getAttribute('alt');for(const a of [...el.attributes])el.removeAttribute(a.name);if(el.tagName==='A'&&href&&/^https?:\/\//i.test(href)){el.href=href;el.target='_blank';el.rel='noopener noreferrer'}if(el.tagName==='IMG'){if(src){el.src=src;el.alt=alt||'Illustration'}else{el.remove();continue}}walk(el)}}walk(t.content);return t.innerHTML}
@@ -2931,7 +2650,7 @@ function ensureAdminUnit(level,code,name='',preferredUnit=''){
  if(preferredUnit&&String(units[preferredUnit]?.code||'')===code)return[preferredUnit,units[preferredUnit]];
  const overseas=level===2?overseasByDepartment(code):level===3?overseasByRegion(code):null,extra=editorAdminExtra(level,code),
        existing=data.find(d=>d.mode===level&&String(keyOf(d))===code),prefix=level===1?'interco-':level===2?'departement-':'region-',key=existing?.unit||prefix+code,feature=adminFeatureFor(level,code),
-       at=feature?demoFeatureCenter(feature):(overseas?.at||extra?.at||units[key]?.at||[46.6,2.4]),u=units[key]||(units[key]={});
+       at=feature?adminFeatureCenter(feature):(overseas?.at||extra?.at||units[key]?.at||[46.6,2.4]),u=units[key]||(units[key]={});
  u.code=code;u.name=name||(feature?featureAdminName(feature):'')||overseas?.name||extra?.name||u.name||code;u.at=at;
  if(level===2){const d=adminCatalog?.departmentByCode.get(code);if(d)u.region=d.region;if(overseas)u.region=overseas.region;if(extra?.region)u.region=extra.region}
  if(level===3){if(overseas)u.dept=overseas.dept;if(extra)u.dept=extra.code}
@@ -3413,6 +3132,7 @@ async function putPrivateCartSource(path,message='Mise à jour depuis la carte')
  if(!cartGithubMode||!cartGithubConfig||!cartGithubFiles.includes(path))return;
  return withCartGithubSourceLock(path,async()=>{
   let desiredText=makeCartCsvForSource(path),remote=await cartGithubGetOptional(path),baseText=cartGithubFileTexts[path]??remote?.text??desiredText,didMerge=false;
+  if(remote?.text===desiredText){cartGithubFileShas[path]=remote.sha;cartGithubFileTexts[path]=remote.text;return}
   if(remote?.sha&&cartGithubFileShas[path]&&remote.sha!==cartGithubFileShas[path]){
    if(remote.text===desiredText){cartGithubFileShas[path]=remote.sha;cartGithubFileTexts[path]=remote.text;return}
    desiredText=mergeCartCsvVersions(baseText,desiredText,remote.text,path);didMerge=true;baseText=remote.text
@@ -3499,7 +3219,7 @@ async function syncCartCloudStateToGitHub(){
  if(!r.ok)throw Error('Synchronisation de la progression impossible (HTTP '+r.status+')')
 }
 function updateCartPrivateControls(){const connected=!!cartGithubMode;for(const id of ['addItem','sideAdd'])if($(id))$(id).disabled=!connected;if($('importButton'))$('importButton').disabled=!connected}
-function clearPrivateCartView(){data=[];hasImportedCartData=false;cartDataDirty=false;cartGithubFiles=[];cartGithubFileShas={};cartGithubFileMaxIds={};try{localStorage.removeItem(CART_DATA_KEY)}catch{}selectedTags.clear();selectedDeckPaths.clear();allDeckPaths=[];cartDeckTreeRoot=null;invalidateGroupCache();selection=null;activeItem=null;closeMapDetail()}
+function clearPrivateCartView(){clearCartPrivateMedia();cartGithubFileTexts={};data=[];hasImportedCartData=false;cartDataDirty=false;cartGithubFiles=[];cartGithubFileShas={};cartGithubFileMaxIds={};try{localStorage.removeItem(CART_DATA_KEY)}catch{}selectedTags.clear();selectedDeckPaths.clear();allDeckPaths=[];cartDeckTreeRoot=null;invalidateGroupCache();selection=null;activeItem=null;closeMapDetail()}
 function updateCartOwnerUi(message=''){
  const connected=!!cartGithubMode;
  $('cartGhStatus').className='owner-status'+(connected?' ok':'');
@@ -3858,7 +3578,7 @@ async function bootCartography(){
  overviewBootResolved=true;updateInsetVisibility();
  if(mode===1)try{if(overviewReady())await ensureOverviewEpciGeo();else await ensureEpciGeo()}catch{}
  if(cartGithubMode&&hasImportedCartData){
-  const privateUnits=Object.fromEntries(Object.entries(units).filter(([key])=>data.some(d=>d.unit===key)));
+  const usedUnits=new Set(data.map(d=>d.unit)),privateUnits=Object.fromEntries(Object.entries(units).filter(([key])=>usedUnits.has(key)));
   try{await validateCartAdminReferences({rows:data,units:privateUnits})}catch(e){$('status').textContent=e.message}
  }
  hydrateOverseasFromCore();
