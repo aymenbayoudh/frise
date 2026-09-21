@@ -697,11 +697,26 @@ d40:{name:'Landes',code:'40',at:[43.894,-.499]},d33:{name:'Gironde',code:'33',at
 r27:{name:'Bourgogne-Franche-Comté',code:'27',at:[47.325,5.043]},r75:{name:'Nouvelle-Aquitaine',code:'75',at:[44.833,-.586]},r84:{name:'Auvergne-Rhône-Alpes',code:'84',at:[45.740,4.820]},r01:{name:'Guadeloupe',code:'01',at:[16.004,-61.722]},r04:{name:'La Réunion',code:'04',at:[-20.892,55.477]},rpf:{name:'Polynésie française',code:'987',at:[-17.55,-149.56],dept:'987',region:'987'},rnc:{name:'Nouvelle-Calédonie',code:'988',at:[-22.275,166.458],dept:'988',region:'988'}
 };
 const ADMIN_LOCATIONS_URL=projectAsset('admin-locations.json');
+const EDITOR_ADMIN_EXTRAS={
+ regions:[{code:'975',name:'Saint-Pierre-et-Miquelon',zone:'COM',at:[46.885,-56.315]}],
+ departments:[{code:'975',name:'Saint-Pierre-et-Miquelon',region:'975',at:[46.885,-56.315]}],
+ communes:[
+  {code:'97501',name:'Miquelon-Langlade',dept:'975',region:'975',at:[47.100,-56.381]},
+  {code:'97502',name:'Saint-Pierre',dept:'975',region:'975',at:[46.779,-56.177]}
+ ]
+};
+function editorAdminExtra(level,code){
+ code=String(code||'');const list=level===3?EDITOR_ADMIN_EXTRAS.regions:level===2?EDITOR_ADMIN_EXTRAS.departments:level===0?EDITOR_ADMIN_EXTRAS.communes:[];
+ return list.find(x=>x.code===code)||null
+}
 let adminCatalog=null;
 function parseAdminCatalog(raw){
- const regions=(raw?.regions||[]).map(([code,name,zone])=>({code:String(code),name:String(name),zone:String(zone||'')})).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
- const departments=(raw?.departements||[]).map(([code,name,region])=>({code:String(code),name:String(name),region:String(region||'')})).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+ const regions=(raw?.regions||[]).map(([code,name,zone])=>({code:String(code),name:String(name),zone:String(zone||'')}));
+ const departments=(raw?.departements||[]).map(([code,name,region])=>({code:String(code),name:String(name),region:String(region||'')}));
  const communes=(raw?.communes||[]).map(([code,name,dept,region])=>({code:String(code),name:String(name),dept:String(dept||''),region:String(region||'')}));
+ const addUnique=(list,extras)=>{const seen=new Set(list.map(x=>x.code));for(const x of extras)if(!seen.has(x.code)){list.push({...x});seen.add(x.code)}};
+ addUnique(regions,EDITOR_ADMIN_EXTRAS.regions);addUnique(departments,EDITOR_ADMIN_EXTRAS.departments);addUnique(communes,EDITOR_ADMIN_EXTRAS.communes);
+ regions.sort((a,b)=>a.name.localeCompare(b.name,'fr'));departments.sort((a,b)=>a.name.localeCompare(b.name,'fr'));
  const communeByCode=new Map(communes.map(x=>[x.code,x])),regionByCode=new Map(regions.map(x=>[x.code,x])),departmentByCode=new Map(departments.map(x=>[x.code,x]));
  const departmentsByRegion=new Map,communesByDepartment=new Map;
  for(const d of departments){if(!departmentsByRegion.has(d.region))departmentsByRegion.set(d.region,[]);departmentsByRegion.get(d.region).push(d)}
@@ -2158,6 +2173,7 @@ let persistedAdminCenters={};try{persistedAdminCenters=JSON.parse(localStorage.g
 function saveAdminCenterCache(){try{localStorage.setItem(ADMIN_CENTER_CACHE_KEY,JSON.stringify(persistedAdminCenters))}catch{}}
 async function communeCenter(code){
  code=String(code||'');if(!code)return null;
+ const editorExtra=editorAdminExtra(0,code);if(editorExtra?.at)return{name:editorExtra.name,at:[...editorExtra.at]};
  for(const kind of ['pf','nc']){const src=pacificAdmin[kind],at=overviewActive?src?.overviewCommuneCenters?.[code]:src?.communeCenters?.[code];if(Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)){const f=src?.communes?.features?.find(x=>featureAdminCode(x)===code);return{name:featureAdminName(f)||code,at:[Number(at[0]),Number(at[1])]}}}
  if(overviewActive&&overviewCommuneCenters){const at=overviewCommuneCenters[code];if(Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)){const name=adminCatalog?.communeByCode.get(code)?.name||code;return{name,at:[Number(at[0]),Number(at[1])]}}}
  if(communePointCache.has(code))return communePointCache.get(code);
@@ -2715,14 +2731,24 @@ function adminFeatureFor(level,code){const geo=level===3?regionGeo:level===2?dep
 function ensureAdminUnit(level,code,name='',preferredUnit=''){
  code=String(code||'');if(!code)return null;
  if(preferredUnit&&String(units[preferredUnit]?.code||'')===code)return[preferredUnit,units[preferredUnit]];
- const overseas=level===2?overseasByDepartment(code):level===3?overseasByRegion(code):null,existing=data.find(d=>d.mode===level&&String(keyOf(d))===code),prefix=level===1?'interco-':level===2?'departement-':'region-',key=existing?.unit||prefix+code,feature=adminFeatureFor(level,code),at=feature?demoFeatureCenter(feature):(overseas?.at||units[key]?.at||[46.6,2.4]),u=units[key]||(units[key]={});
- u.code=code;u.name=name||(feature?featureAdminName(feature):'')||overseas?.name||u.name||code;u.at=at;if(level===2){const d=adminCatalog?.departmentByCode.get(code);if(d)u.region=d.region;if(overseas)u.region=overseas.region}if(level===3&&overseas)u.dept=overseas.dept;return[key,u]
+ const overseas=level===2?overseasByDepartment(code):level===3?overseasByRegion(code):null,extra=editorAdminExtra(level,code),
+       existing=data.find(d=>d.mode===level&&String(keyOf(d))===code),prefix=level===1?'interco-':level===2?'departement-':'region-',key=existing?.unit||prefix+code,feature=adminFeatureFor(level,code),
+       at=feature?demoFeatureCenter(feature):(overseas?.at||extra?.at||units[key]?.at||[46.6,2.4]),u=units[key]||(units[key]={});
+ u.code=code;u.name=name||(feature?featureAdminName(feature):'')||overseas?.name||extra?.name||u.name||code;u.at=at;
+ if(level===2){const d=adminCatalog?.departmentByCode.get(code);if(d)u.region=d.region;if(overseas)u.region=overseas.region;if(extra?.region)u.region=extra.region}
+ if(level===3){if(overseas)u.dept=overseas.dept;if(extra)u.dept=extra.code}
+ return[key,u]
 }
 function cartUnitsForMode(level,preferred=''){
  if(level===3&&adminCatalog?.regions?.length){const out=adminCatalog.regions.map(r=>ensureAdminUnit(3,r.code,r.name,preferred)).filter(Boolean),seen=new Set(out.map(x=>String(x[1].code)));for(const d of doms)if(!seen.has(String(d.region))){const x=ensureAdminUnit(3,d.region,d.name,preferred);if(x){out.push(x);seen.add(String(d.region))}}return out.sort((a,b)=>a[1].name.localeCompare(b[1].name,'fr'))}
  if(level===2&&adminCatalog?.departments?.length){const out=adminCatalog.departments.map(d=>ensureAdminUnit(2,d.code,d.name,preferred)).filter(Boolean),seen=new Set(out.map(x=>String(x[1].code)));for(const d of doms)if(!seen.has(String(d.dept))){const x=ensureAdminUnit(2,d.dept,d.name,preferred);if(x){out.push(x);seen.add(String(d.dept))}}return out.sort((a,b)=>a[1].name.localeCompare(b[1].name,'fr'))}
- if(level===1&&epciGeo?.features?.length){const seen=new Set,out=[];for(const f of epciGeo.features){const code=featureAdminCode(f);if(!code||seen.has(code))continue;seen.add(code);const x=ensureAdminUnit(1,code,featureAdminName(f),preferred);if(x)out.push(x)}return out.sort((a,b)=>a[1].name.localeCompare(b[1].name,'fr',{numeric:true,sensitivity:'base'}))}
- const used=new Map;for(const d of data.filter(d=>d.mode===level)){const u=units[d.unit];if(u)used.set(d.unit,u)}if(selection&&mode===level){if(!units[selection.key])units[selection.key]={name:selection.name||String(selection.code||selection.key),code:selection.code||selection.key,at:Array.isArray(selection.at)?selection.at:[map.getCenter().lat,map.getCenter().lng]};used.set(selection.key,units[selection.key])}return[...used].sort((a,b)=>String(a[1].name).localeCompare(String(b[1].name),'fr'))
+ if(level===1){
+  const seen=new Set,out=[],geos=[epciGeo,...doms.map(d=>d.epciGeo)].filter(g=>g?.features?.length);
+  for(const geo of geos)for(const f of geo.features){const code=featureAdminCode(f);if(!code||seen.has(code))continue;seen.add(code);const x=ensureAdminUnit(1,code,featureAdminName(f),preferred);if(x)out.push(x)}
+  if(selection&&mode===1&&selection.code&&!seen.has(String(selection.code))){const x=ensureAdminUnit(1,selection.code,selection.name||String(selection.code),preferred);if(x)out.push(x)}
+  if(out.length)return out.sort((a,b)=>a[1].name.localeCompare(b[1].name,'fr',{numeric:true,sensitivity:'base'}))
+ }
+ const used=new Map;for(const d of data.filter(d=>d.mode===level)){const u=units[d.unit];if(u)used.set(d.unit,u)}if(selection&&mode===level){const code=String(selection.code||selection.key),x=ensureAdminUnit(level,code,selection.name||code,preferred);if(x)used.set(x[0],x[1])}return[...used].sort((a,b)=>String(a[1].name).localeCompare(String(b[1].name),'fr'))
 }
 async function preferredFreeGroupCenterCode(preferred=''){
  const u=units[preferred];if(u?.centerCode&&adminCatalog?.communeByCode.has(String(u.centerCode)))return String(u.centerCode);
@@ -2776,7 +2802,9 @@ async function renderCartUnitOptions(preferred='',preserveCoordinates=false){
  }
  $('cartUnitLabel').hidden=false;
  const opts=cartUnitsForMode(level,preferred),select=$('cartUnit');select.innerHTML=opts.map(([key,u])=>'<option value="'+escape(key)+'">'+escape(u.name)+' · '+escape(u.code||key)+'</option>').join('');
- if(preferred&&opts.some(([k])=>k===preferred))select.value=preferred;else if(selection&&mode===level&&opts.some(([k])=>k===selection.key))select.value=selection.key;
+ const wantedCode=String(units[preferred]?.code||((selection&&mode===level)?selection.code:'')||'');
+ if(preferred&&opts.some(([k])=>k===preferred))select.value=preferred;
+ else if(wantedCode){const hit=opts.find(([k,u])=>String(u?.code||k)===wantedCode);if(hit)select.value=hit[0]}
  updateCartLocationFields()
 }
 function communeUnitKey(code,preferredUnit=''){
