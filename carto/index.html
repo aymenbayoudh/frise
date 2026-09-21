@@ -665,7 +665,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
     <label id="cartRegionLabel">Région<select id="cartRegion"></select></label>
     <label id="cartDepartmentLabel">Département<select id="cartDepartment"></select></label>
     <label id="cartUnitLabel"><span id="cartUnitText">Commune</span><select id="cartUnit"></select></label>
-    <label id="cartKindLabel">Localisation<select id="cartKind"><option value="global">Toute la commune / siège</option><option value="point">Lieu précis</option><option value="street">Rue / axe</option><option value="quarter">Quartier</option></select></label>
+    <label id="cartKindLabel">Localisation<select id="cartKind"><option value="global">Toute l’unité</option><option value="point">Lieu précis</option><option value="street">Rue / axe</option><option value="quarter">Quartier</option></select></label>
     <label>Étiquettes<input id="cartTags" placeholder="urbanisme, culture, patrimoine"></label>
     <div id="cartCoordinates" class="full coordinates-grid"><label>Latitude<input id="cartLat" inputmode="decimal" placeholder="48.8566"></label><label>Longitude<input id="cartLng" inputmode="decimal" placeholder="2.3522"></label></div>
     <div id="cartMapField" class="full field cart-map-field"><span>Placement sur la carte</span><div id="cartMiniMap" class="cart-mini-map" aria-label="Choisir la position de la fiche sur une mini-carte"></div><small>Clique sur la carte ou déplace l’épingle. Les coordonnées se mettent à jour automatiquement.</small></div>
@@ -1817,11 +1817,11 @@ function updateLegend(){
  if(mode>=1){
    const min=densityMinCount(),max=densityMaxCount();
    legend.innerHTML='<span class="legend-scale"><b>'+min+'</b><span class="ramp" style="background:'+densityLegendGradient()+';opacity:'+densityLegendOpacity()+'"></span><b>'+max+'</b></span>'
- }else legend.innerHTML='Cercles : nombre de fiches · ◆ au siège · épingles au zoom'
+ }else legend.innerHTML='Cercles : nombre de fiches · épingles aux lieux précis'
 }
 function draw(){drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer()}
 function renderCards(items){$('list').innerHTML=items.length?items.map(d=>{const kind=kindLabel(d),meta=[kind,...(d.tags||[])].filter(Boolean).join(' · ');return '<button class="entry" data-item="'+d.id+'"><strong>'+cleanCartInline(d.title)+'</strong>'+(meta?'<small>'+escape(meta)+'</small>':'')+'</button>'}).join(''):'<p class="empty">Aucune fiche pour ce territoire avec les filtres actuels.</p>';$('list').querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>showItem(data.find(d=>d.id===+b.dataset.item)));}
-function kindLabel(d){return {global:'',point:'Lieu précis',street:'Rue / axe',quarter:'Quartier',area:'Périmètre syndical'}[d.kind]||'';}
+function kindLabel(d){return {global:'',point:'Lieu précis',street:'Rue / axe',quarter:'Quartier',area:''}[d.kind]||'';}
 const relationCache=new Map();
 function regionName(code){return String(code)==='FR'?'France entière':adminCatalog?.regionByCode.get(String(code))?.name||String(code||'')}
 function departmentName(code){const d=adminCatalog?.departmentByCode.get(String(code));return d?d.name+' ('+d.code+')':String(code||'')}
