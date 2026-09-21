@@ -2225,7 +2225,7 @@ function addPacificCenterMarkers(token,z,mobile){
    else if(isSubpref&&mode!==3){show=z>=subprefShow;showLabel=z>=subprefLabel}
    if(!show)continue;
    const k=Math.round(at[0]*1e4)+':'+Math.round(at[1]*1e4);if(seen.has(k))continue;seen.add(k);
-   const centerCode=pacificCenterCommuneCode(kind,e,at);if(centerCode)adminCenterRenderSeen.add(centerCode);
+   const centerCode=pacificCenterCommuneCode(kind,e,e.at);if(centerCode)adminCenterRenderSeen.add(centerCode);
    const visualRank=isRegion?'region':mode===3&&isDepartment?'regionSecondary':rank;
    const color=adminCenterColor(Number(e.level)||2,String(e.code||''),visualRank,centerCode||'',at),zIndexOffset=isRegion?235:isDepartment?195:145;
    L.marker(at,{pane:'centersPane',icon:centerIcon(String(e.name||''),{rank:visualRank,showLabel,color}),interactive:false,zIndexOffset}).addTo(centers)
