@@ -2386,6 +2386,7 @@ function refreshAfterDemoSeed(){
  invalidateGroupCache();renderTags();renderDeckTree();pointRenderKey='';subdivisionKey='';centerKey='';renderSide();draw();updateSubdivisions(true);updateCenters(true);$('visibleCount').textContent=visibleAll().length+' fiches'
 }
 async function seedCommuneDemoCoverageForAnchorEpci(anchorCommuneCode){
+ if(!cartGithubMode||hasImportedCartData)return;
  anchorCommuneCode=String(anchorCommuneCode||'');if(!anchorCommuneCode||!epciGeo?.features?.length)return;
  const dept=departmentCodeForCommune(anchorCommuneCode),cgeo=await departmentCommuneGeo(dept);if(!cgeo?.features?.length)return;
  const anchor=cgeo.features.find(f=>featureAdminCode(f)===anchorCommuneCode);if(!anchor)return;
@@ -2462,7 +2463,7 @@ async function seedNationalCityDemoCoverage(){
  }
 }
 async function seedAdministrativeDemoCoverage(){
- if(hasImportedCartData||demoAdminSeeded||!regionGeo||!deptGeo)return;
+ if(!cartGithubMode||hasImportedCartData||demoAdminSeeded||!regionGeo||!deptGeo)return;
  demoAdminSeeded=true;const meta=await loadAdminMeta(),depMeta=new Map((meta.departements||[]).map(d=>[String(d.code),d]));
  if(!hasImportedCartData){
   for(const f of regionGeo.features||[]){
@@ -2558,7 +2559,7 @@ function overseasEpciFeatures(d){
  return out
 }
 function seedOverseasGroupementDemoCoverage(){
- if(hasImportedCartData)return false;
+ if(!cartGithubMode||hasImportedCartData)return false;
  let added=false;
  const seedFeature=(f,d,prefix='demo-om-e-')=>{
   const code=featureAdminCode(f);if(!code)return;
@@ -2579,7 +2580,7 @@ function seedOverseasGroupementDemoCoverage(){
  return added
 }
 function seedEpciDemoCoverage(){
- if(hasImportedCartData||demoEpciSeeded||!epciGeo?.features?.length)return;demoEpciSeeded=true;
+ if(!cartGithubMode||hasImportedCartData||demoEpciSeeded||!epciGeo?.features?.length)return;demoEpciSeeded=true;
  if(!hasImportedCartData){
   const candidates=epciGeo.features.filter(f=>{const c=featureAdminCode(f);return c&&demoHash(c)%8===0}).slice(0,170);
   for(const f of candidates){
@@ -2593,7 +2594,7 @@ function seedEpciDemoCoverage(){
 
 let demoPacificSeeded=false;
 function seedPacificDemoCoverage(){
- if(hasImportedCartData||demoPacificSeeded||!pacificAdmin.pf||!pacificAdmin.nc)return;demoPacificSeeded=true;
+ if(!cartGithubMode||hasImportedCartData||demoPacificSeeded||!pacificAdmin.pf||!pacificAdmin.nc)return;demoPacificSeeded=true;
  const configs=[['pf','987','Polynésie française'],['nc','988','Nouvelle-Calédonie']];
  const targetCount=(code,level,boost=0)=>{
   const kind=level===3?'region':level===2?'departement':level===1?'interco':'commune';
@@ -2931,7 +2932,7 @@ function saveCartEditor(){
  persistCartData();saveFilters();const returnedToSummary=closeCartEditor();renderTags();renderDeckTree();if(cartGithubMode&&item._sourcePath)queueCartDataSync([item._sourcePath],isNew?'Ajout depuis la carte':'Modification depuis la carte');if(!returnedToSummary){setMode(level);requestAnimationFrame(()=>{const g=groups().find(g=>g.key===unit);if(g)choose(g);showItem(item)})}
 }
 document.querySelectorAll('[data-cart-command]').forEach(b=>b.onclick=()=>{const target=$(b.dataset.cartTarget);target.focus();document.execCommand(b.dataset.cartCommand,false,null)});
-function insertCartRichLink(targetId){const target=$(targetId);if(!target)return;const selected=String(getSelection()?.toString()||'').trim(),label=prompt('Texte affiché :',selected||'Source');if(label==null)return;const url=prompt('Adresse du lien :','https://');if(!url||!/^https?:\/\//i.test(url))return;target.focus();document.execCommand('insertHTML',false,'<a href="'+escape(url)+'" target="_blank" rel="noopener noreferrer">'+escape(label)+'</a>')}
+function insertCartRichLink(targetId){const target=$(targetId);if(!target)return;const sel=getSelection(),node=sel?.anchorNode,existing=(node?.nodeType===1?node:node?.parentElement)?.closest?.('a'),inTarget=existing&&target.contains(existing),selected=String(sel?.toString()||'').trim(),defaultLabel=inTarget?existing.textContent:(selected||'Source'),label=prompt('Texte affiché :',defaultLabel);if(label==null)return;const url=prompt('Adresse du lien :',inTarget?existing.getAttribute('href')||'https://':'https://');if(!url||!/^https?:\/\//i.test(url))return;if(inTarget){existing.textContent=label;existing.href=url;existing.target='_blank';existing.rel='noopener noreferrer';return}target.focus();document.execCommand('insertHTML',false,'<a href="'+escape(url)+'" target="_blank" rel="noopener noreferrer">'+escape(label)+'</a>')}
 $('cartLink').onclick=()=>insertCartRichLink('cartDescription');$('cartSourceLink').onclick=()=>insertCartRichLink('cartSource');
 $('cartEventColor').oninput=()=>{$('cartColorCode').value=$('cartEventColor').value.toUpperCase()};$('cartColorCode').oninput=()=>{if(/^#[0-9a-f]{6}$/i.test($('cartColorCode').value))$('cartEventColor').value=$('cartColorCode').value};
 async function locateFreeGroupCenterByName(){
