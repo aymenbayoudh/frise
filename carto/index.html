@@ -1568,7 +1568,7 @@ async function showGroupCenter(code,persistent=false){
  const alreadyMarked=await groupCenterAlreadyMarked(info.code,info.name);
  if(token!==groupCenterToken||mode!==1)return;
  groupCenter.clearLayers();
- if(info.feature&&!overviewActive)L.geoJSON(info.feature,{pane:'groupCenterPane',interactive:false,style:{pane:'groupCenterPane',color:'#050607',weight:adminStroke(1.75),opacity:1,fillColor:'#ffffff',fillOpacity:.07}}).addTo(groupCenter);
+ if(info.feature)L.geoJSON(info.feature,{pane:'groupCenterPane',interactive:false,style:{pane:'groupCenterPane',color:'#050607',weight:adminStroke(1.75),opacity:1,fillColor:'#ffffff',fillOpacity:.07}}).addTo(groupCenter);
  const labelAt=overviewActive?overviewPointForCommune(info.code,info.at):info.at;
  if(labelAt&&!alreadyMarked)L.marker(labelAt,{icon:groupCenterLabelIcon(info.name),interactive:false,zIndexOffset:120}).addTo(groupCenter)
 }
