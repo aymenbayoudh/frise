@@ -891,7 +891,7 @@ function applySideWidth(width,persist=false){
 try{const saved=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(saved)applySideWidth(saved)}catch{}
 
 const satelliteTiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,keepBuffer:matchMedia('(max-width:640px)').matches?0:1,updateWhenIdle:true,updateWhenZooming:false,className:'satellite-tile',attribution:'Tiles © Esri'});
-map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.getPane('centersPane').style.pointerEvents='none';map.createPane('groupCenterPane');map.getPane('groupCenterPane').style.zIndex='435';map.getPane('groupCenterPane').style.pointerEvents='none';map.createPane('eventPointPane');map.getPane('eventPointPane').style.zIndex='500';map.getPane('eventPointPane').style.pointerEvents='none';map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('arrondissementPane');map.getPane('arrondissementPane').style.zIndex='412';map.getPane('arrondissementPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('selectedGroupPane');map.getPane('selectedGroupPane').style.zIndex='425';map.getPane('selectedGroupPane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
+map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.getPane('centersPane').style.pointerEvents='none';map.createPane('groupCenterPane');map.getPane('groupCenterPane').style.zIndex='660';map.getPane('groupCenterPane').style.pointerEvents='none';map.createPane('eventPointPane');map.getPane('eventPointPane').style.zIndex='500';map.getPane('eventPointPane').style.pointerEvents='none';map.createPane('communeDataPane');map.getPane('communeDataPane').style.zIndex='405';map.getPane('communeDataPane').style.pointerEvents='auto';map.createPane('subAdminPane');map.getPane('subAdminPane').style.zIndex='410';map.getPane('subAdminPane').style.pointerEvents='none';map.createPane('arrondissementPane');map.getPane('arrondissementPane').style.zIndex='412';map.getPane('arrondissementPane').style.pointerEvents='none';map.createPane('communeHitPane');map.getPane('communeHitPane').style.zIndex='415';map.getPane('communeHitPane').style.pointerEvents='auto';map.createPane('mainOutlinePane');map.getPane('mainOutlinePane').style.zIndex='420';map.getPane('mainOutlinePane').style.pointerEvents='none';map.createPane('selectedGroupPane');map.getPane('selectedGroupPane').style.zIndex='425';map.getPane('selectedGroupPane').style.pointerEvents='none';map.createPane('contextAdminPane');map.getPane('contextAdminPane').style.zIndex='430';map.getPane('contextAdminPane').style.pointerEvents='none';map.createPane('adminHitPane');map.getPane('adminHitPane').style.zIndex='460';map.getPane('adminHitPane').style.pointerEvents='auto';
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),selectedGroup=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
 const IGN_ADMIN_BASE=cartoAsset('data/ign/2026/');const IGN_GEO_BASE=IGN_ADMIN_BASE+'geographic/';const IGN_OVERVIEW_BASE=IGN_ADMIN_BASE+'overview/';const PACIFIC_ADMIN_BASE=cartoAsset('data/pacific/');
 let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrGeoPromise=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c',ignAdminManifest=null;
@@ -900,7 +900,7 @@ let pacificAdmin={pf:null,nc:null},pacificOverviewCache=new Map(),pacificLoadPro
 // Must exist before desktop inset maps are initialized below.
 let temporaryPaletteActive=false,temporaryPaletteOpacity=.68;
 
-const communeLabels=L.layerGroup().addTo(map),groupCenterCache=new Map();let groupCenterToken=0,groupCenterHideTimer=null,adminCascadeToken=0;
+const communeLabels=L.layerGroup().addTo(map),groupCenterCache=new Map();let groupCenterToken=0,groupCenterHideTimer=null,adminCascadeToken=0,activeGroupCenterCommuneCode='',mapPointerAvoid={inside:false,x:0,y:0};
 // ADMINEXPRESS-COG-CARTO-PE.2026 still exposes four legacy EPCI polygons
 // that disappeared on 01/01/2026, while CARTO PLUS chef_lieu_d_epci already
 // exposes their two successor EPCI. Keep the legal seats of those four legacy
@@ -1607,13 +1607,16 @@ async function showGroupCenter(code,persistent=false){
  if(!persistent&&selection&&String(selection.code)!==String(code))return;
  const alreadyMarked=await groupCenterAlreadyMarked(info.code,info.name);
  if(token!==groupCenterToken||mode!==1)return;
- groupCenter.clearLayers();
- if(info.feature)L.geoJSON(info.feature,{pane:'groupCenterPane',interactive:false,style:{pane:'groupCenterPane',color:'#050607',weight:adminStroke(1.75),opacity:1,fillColor:'#ffffff',fillOpacity:.07}}).addTo(groupCenter);
- const labelAt=overviewActive?overviewPointForCommune(info.code,info.at):info.at;
- if(labelAt&&!alreadyMarked)L.marker(labelAt,{icon:groupCenterLabelIcon(info.name),interactive:false,zIndexOffset:120}).addTo(groupCenter);
+ groupCenter.clearLayers();activeGroupCenterCommuneCode=String(info.code||'');
+ if(info.feature)L.geoJSON(info.feature,{pane:'groupCenterPane',interactive:false,style:{pane:'groupCenterPane',color:'#050607',weight:adminStroke(1.75),opacity:1,fillColor:'#ffffff',fillOpacity:0}}).addTo(groupCenter);
+ const labelAt=overviewActive?overviewPointForCommune(info.code,info.at):info.at,
+       visibleAdminLabel=alreadyMarked?groupCenterAdminLabelElement():null;
+ // Avoid duplicates when a visible prefecture/subprefecture label already names the city-centre.
+ // If that administrative label is not currently displayed, show the normal city-centre label instead.
+ if(labelAt&&(!alreadyMarked||!visibleAdminLabel))L.marker(labelAt,{icon:groupCenterLabelIcon(info.name),interactive:false,zIndexOffset:120}).addTo(groupCenter);
  scheduleMapLabelCollisions()
 }
-function hideGroupCenterSoon(code){clearTimeout(groupCenterHideTimer);if(selection&&String(selection.code)===String(code))return;groupCenterHideTimer=setTimeout(()=>{if(mode===1&&(!selection||String(selection.code)!==String(code))){groupCenterToken++;groupCenter.clearLayers()}},110)}
+function hideGroupCenterSoon(code){clearTimeout(groupCenterHideTimer);if(selection&&String(selection.code)===String(code))return;groupCenterHideTimer=setTimeout(()=>{if(mode===1&&(!selection||String(selection.code)!==String(code))){groupCenterToken++;groupCenter.clearLayers();activeGroupCenterCommuneCode='';scheduleMapLabelCollisions()}},110)}
 
 function setMainOutlineHover(code,on){
  const visitOutline=layer=>{
@@ -2329,9 +2332,9 @@ function centerSize(rank='department'){
  if(compactMapUi())size*=rank==='subpref'?.75:.62;
  return Math.max(3,Math.round(size*10)/10)
 }
-function centerIcon(name,{rank='department',showLabel=false,color=accent}={}){
- const size=centerSize(rank),label=showLabel?'<span>'+escape(name)+'</span>':'';
- return L.divIcon({className:'admin-center',iconSize:[size,size],iconAnchor:[size/2,size/2],html:'<div class="admin-center-dot rank-'+rank+'" style="--center-color:'+color+';--center-size:'+size+'px">'+label+'</div>'})
+function centerIcon(name,{rank='department',showLabel=false,color=accent,centerCode=''}={}){
+ const size=centerSize(rank),label=showLabel?'<span>'+escape(name)+'</span>':'',codeAttr=centerCode?' data-center-code="'+escape(String(centerCode))+'"':'';
+ return L.divIcon({className:'admin-center',iconSize:[size,size],iconAnchor:[size/2,size/2],html:'<div class="admin-center-dot rank-'+rank+'"'+codeAttr+' style="--center-color:'+color+';--center-size:'+size+'px">'+label+'</div>'})
 }
 let mapLabelCollisionFrame=0;
 function rectsOverlap(a,b,gap=0){return a.left<b.right+gap&&a.right>b.left-gap&&a.top<b.bottom+gap&&a.bottom>b.top-gap}
@@ -2356,27 +2359,43 @@ function bestLabelShift(rect,obstacles,bounds){
  }
  return{dx,dy,rect:current}
 }
+function groupCenterAdminLabelElement(){
+ if(!activeGroupCenterCommuneCode||!groupCenter.getLayers().length)return null;
+ const dots=[...map.getContainer().querySelectorAll('.admin-center-dot[data-center-code]')];
+ const dot=dots.find(el=>String(el.dataset.centerCode||'')===String(activeGroupCenterCommuneCode));
+ return dot?.querySelector('span')||null
+}
+function pointerAvoidRect(){
+ if(!mapPointerAvoid.inside||mode!==1||!groupCenter.getLayers().length)return null;
+ const x=mapPointerAvoid.x,y=mapPointerAvoid.y;
+ // The browser cursor extends mostly to the right/bottom of its hot spot.
+ return{left:x-7,right:x+34,top:y-7,bottom:y+38,width:41,height:45}
+}
 function updateMapLabelCollisions(){
  mapLabelCollisionFrame=0;
  const container=map?.getContainer?.();if(!container)return;
  const bounds=container.getBoundingClientRect(),
-       adminLabels=[...container.querySelectorAll('.admin-center-dot span')],
+       allAdminLabels=[...container.querySelectorAll('.admin-center-dot span')],
        groupLabels=[...container.querySelectorAll('.group-center-label span')],
-       obstacleEls=[...container.querySelectorAll('.bubble-body,.pin-body,.bubble-label,.leaflet-tooltip')].filter(el=>!el.closest('.admin-center-dot,.group-center-label'));
- for(const el of [...adminLabels,...groupLabels]){el.style.removeProperty('--avoid-x');el.style.removeProperty('--avoid-y')}
- const obstacles=obstacleEls.map(el=>el.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0&&rectsOverlap(r,bounds,0)),
+       activeAdminLabel=groupCenterAdminLabelElement(),
+       movable=[...groupLabels,...(activeAdminLabel?[activeAdminLabel]:[])],
+       obstacleEls=[...container.querySelectorAll('.bubble-body,.pin-body,.bubble-label,.leaflet-tooltip')].filter(el=>!el.closest('.group-center-label'));
+ // Administrative labels never slide just because another bubble is nearby.
+ for(const el of allAdminLabels){el.style.removeProperty('--avoid-x');el.style.removeProperty('--avoid-y')}
+ for(const el of groupLabels){el.style.removeProperty('--avoid-x');el.style.removeProperty('--avoid-y')}
+ const fixedAdminRects=allAdminLabels.filter(el=>el!==activeAdminLabel).map(el=>el.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0),
+       ordinaryObstacles=obstacleEls.map(el=>el.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0&&rectsOverlap(r,bounds,0)),
+       pointerRect=pointerAvoidRect(),
+       obstacles=[...ordinaryObstacles,...fixedAdminRects,...(pointerRect?[pointerRect]:[])],
        placed=[];
- const place=(el,extra=[])=>{
-  const base=el.getBoundingClientRect();if(!base.width||!base.height)return;
-  const hitSet=[...obstacles,...extra,...placed];
-  if(!hitSet.some(o=>rectsOverlap(base,o,5))){placed.push(base);return}
+ for(const el of movable){
+  const base=el.getBoundingClientRect();if(!base.width||!base.height)continue;
+  const hitSet=[...obstacles,...placed];
+  if(!hitSet.some(o=>rectsOverlap(base,o,6))){placed.push(base);continue}
   const moved=bestLabelShift(base,hitSet,bounds);
   if(moved.dx||moved.dy){el.style.setProperty('--avoid-x',moved.dx+'px');el.style.setProperty('--avoid-y',moved.dy+'px')}
   placed.push(moved.rect)
- };
- for(const el of adminLabels)place(el);
- const adminRects=adminLabels.map(el=>el.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0);
- for(const el of groupLabels)place(el,adminRects)
+ }
 }
 function scheduleMapLabelCollisions(){
  if(mapLabelCollisionFrame)return;
@@ -2399,7 +2418,7 @@ async function addAdminCenter(code,options,token){
  const color=adminCenterColor(options.adminLevel,options.adminCode,options.rank,code,p.at);
  const showLabel=!!options.showLabel;
  const zIndexOffset=options.rank==='region'?220:options.rank==='department'?190:options.rank==='regionSecondary'?160:130;
- L.marker(p.at,{pane:'centersPane',icon:centerIcon(p.name,{rank:options.rank,showLabel,color}),interactive:false,zIndexOffset}).addTo(centers)
+ L.marker(p.at,{pane:'centersPane',icon:centerIcon(p.name,{rank:options.rank,showLabel,color,centerCode:code}),interactive:false,zIndexOffset}).addTo(centers)
 }
 async function addAdminCenterBatch(entries,token){
  const uniqueEntries=[],seen=new Set();for(const e of entries){const code=String(e.code||'');if(!code||seen.has(code))continue;seen.add(code);uniqueEntries.push({...e,code})}
@@ -2428,7 +2447,7 @@ function addPacificCenterMarkers(token,z,mobile){
    const centerCode=pacificCenterCommuneCode(kind,e,e.at);if(centerCode)adminCenterRenderSeen.add(centerCode);
    const visualRank=isRegion?'region':mode===3&&isDepartment?'regionSecondary':rank;
    const color=adminCenterColor(Number(e.level)||2,String(e.code||''),visualRank,centerCode||'',at),zIndexOffset=isRegion?235:isDepartment?195:145;
-   L.marker(at,{pane:'centersPane',icon:centerIcon(String(e.name||''),{rank:visualRank,showLabel,color}),interactive:false,zIndexOffset}).addTo(centers)
+   L.marker(at,{pane:'centersPane',icon:centerIcon(String(e.name||''),{rank:visualRank,showLabel,color,centerCode:centerCode||''}),interactive:false,zIndexOffset}).addTo(centers)
   }
  }
 }
@@ -3839,7 +3858,8 @@ scaleGlass.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='ArrowDown'){e.preventD
 document.querySelectorAll('.scale-labels [data-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));$('home').onclick=home;$('back').onclick=()=>{if(activeItem){activeItem=null;focus.clearLayers();renderSide();}else{selection=null;local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;subdivisionKey='';communeLabelKey='';centerKey='';renderSide();drawPoints();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);}};document.addEventListener('keydown',e=>{const ae=document.activeElement,tag=(ae?.tagName||'').toLowerCase(),editing=tag==='input'||tag==='textarea'||tag==='select'||ae?.isContentEditable;if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'&&!editing){e.preventDefault();undoCartLastChange();return}if(e.key==='Escape'){$('back').click();}});
 let mapDetailLayerTimer=null;function scheduleDetailLayers(){clearTimeout(mapDetailLayerTimer);mapDetailLayerTimer=setTimeout(()=>{updateSubdivisions(true);updateCommuneLabels();updateCenters();updateCommuneDataLayer();if(mode>=1&&compactMapUi())drawAdminHits();scheduleMapLabelCollisions()},120)}map.on('zoomend',()=>{if(autoSwitchOverview())return;updateBasemap();refreshAdminStyleForZoom();maybeDrawPoints();scheduleDetailLayers();scheduleMapLabelCollisions()});map.on('moveend',()=>{if(autoSwitchOverview())return;scheduleDetailLayers();scheduleMapLabelCollisions()});
 const mapLabelObserver=new MutationObserver(scheduleMapLabelCollisions);mapLabelObserver.observe(map.getContainer(),{childList:true,subtree:true});
-map.getContainer().addEventListener('mousemove',()=>{if(map.getContainer().querySelector('.leaflet-tooltip'))scheduleMapLabelCollisions()},{passive:true});
+map.getContainer().addEventListener('pointermove',e=>{mapPointerAvoid={inside:true,x:e.clientX,y:e.clientY};if(mode===1&&groupCenter.getLayers().length)scheduleMapLabelCollisions()},{passive:true});
+map.getContainer().addEventListener('pointerleave',()=>{mapPointerAvoid.inside=false;if(mode===1&&groupCenter.getLayers().length)scheduleMapLabelCollisions()},{passive:true});
 async function bootCartography(){
  const savedWidth=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(savedWidth)applySideWidth(savedWidth);
  updateScaleSelector(mode,false);
