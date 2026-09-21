@@ -855,7 +855,7 @@ map.createPane('centersPane');map.getPane('centersPane').style.zIndex='440';map.
 const contextAdmin=L.layerGroup().addTo(map),admin=L.layerGroup().addTo(map),communeData=L.layerGroup().addTo(map),subAdmin=L.layerGroup().addTo(map),communeHits=L.layerGroup().addTo(map),mainOutline=L.layerGroup().addTo(map),selectedGroup=L.layerGroup().addTo(map),groupCenter=L.layerGroup().addTo(map),adminHits=L.layerGroup().addTo(map),points=L.layerGroup().addTo(map),focus=L.layerGroup().addTo(map),local=L.layerGroup().addTo(map),centers=L.layerGroup().addTo(map);
 const IGN_ADMIN_BASE=cartoAsset('data/ign/2026/');const IGN_GEO_BASE=IGN_ADMIN_BASE+'geographic/';const IGN_OVERVIEW_BASE=IGN_ADMIN_BASE+'overview/';const PACIFIC_ADMIN_BASE=cartoAsset('data/pacific/');
 let mode=0,selection=null,activeItem=null,epoch=0,pointRenderKey='',subdivisionKey='',communeLabelKey='',communeDataKey='',centerKey='';const cache=new Map(),communePointCache=new Map(),communeOutlineGeoCache=new Map(),departmentCommuneGeoCache=new Map(),epciCommuneGeoCache=new Map(),featureBoundsCache=new WeakMap(),overseasBoundaryCache=new WeakMap();let deptGeo=null,regionGeo=null,epciGeo=null,arrGeo=null,arrGeoPromise=null,arrDeptGeo=null,mgpTrueFeature=null,accent='#265f8c',ignAdminManifest=null;
-let overviewActive=false,overviewRegionGeo=null,overviewDeptGeo=null,overviewCollectiviteGeo=null,overviewEpciGeo=null,overviewArrGeo=null,overviewCommuneCenters=null,ignOverviewManifest=null,overviewDepartmentRenderGeoCache=null,overviewDepartmentOutlineGeoCache=null,overviewEpciPromise=null,overviewArrPromise=null,overviewBootResolved=false;
+let overviewActive=false,overviewRegionGeo=null,overviewDeptGeo=null,overviewCollectiviteGeo=null,overviewEpciGeo=null,overviewArrGeo=null,overviewCommuneCenters=null,overviewGroupCenters=null,ignOverviewManifest=null,overviewDepartmentRenderGeoCache=null,overviewDepartmentOutlineGeoCache=null,overviewEpciPromise=null,overviewArrPromise=null,overviewBootResolved=false;
 let pacificAdmin={pf:null,nc:null},pacificOverviewCache=new Map(),pacificLoadPromise=null;
 // Must exist before desktop inset maps are initialized below.
 let temporaryPaletteActive=false,temporaryPaletteOpacity=.68;
@@ -956,15 +956,16 @@ function getJSON(url){if(!cache.has(url))cache.set(url,fetch(url,{signal:AbortSi
 function overviewReady(){return !!(overviewRegionGeo?.features?.length&&overviewDeptGeo?.features?.length)}
 async function loadIgnOverview(){
  try{
-  const [manifest,regions,departements,collectivites,centers]=await Promise.all([
+  const [manifest,regions,departements,collectivites,centers,groupCenters]=await Promise.all([
    getJSON(IGN_OVERVIEW_BASE+'manifest.json'),
    getJSON(IGN_OVERVIEW_BASE+'regions.geojson'),
    getJSON(IGN_OVERVIEW_BASE+'departements.geojson'),
    getJSON(IGN_OVERVIEW_BASE+'collectivites.geojson').catch(()=>null),
-   getJSON(IGN_OVERVIEW_BASE+'commune-centers.json').catch(()=>({}))
+   getJSON(IGN_OVERVIEW_BASE+'commune-centers.json').catch(()=>({})),
+   getJSON(IGN_OVERVIEW_BASE+'group-centers.json').catch(()=>({}))
   ]);
   if(!regions?.features?.length||!departements?.features?.length)throw Error('Vue CARTO PLUS incomplète');
-  ignOverviewManifest=manifest;overviewRegionGeo=regions;overviewDeptGeo=departements;overviewCollectiviteGeo=collectivites;overviewCommuneCenters=centers||{};overviewDepartmentRenderGeoCache=null;overviewDepartmentOutlineGeoCache=null;return true
+  ignOverviewManifest=manifest;overviewRegionGeo=regions;overviewDeptGeo=departements;overviewCollectiviteGeo=collectivites;overviewCommuneCenters=centers||{};overviewGroupCenters=groupCenters||{};groupCenterCache.clear();overviewDepartmentRenderGeoCache=null;overviewDepartmentOutlineGeoCache=null;return true
  }catch(e){console.warn('IGN CARTO PLUS indisponible',e);return false}
 }
 async function ensureOverviewEpciGeo(){
@@ -1518,6 +1519,17 @@ async function groupCenterCommune(code){
  }
  const pac=pacificGeoForModeCode(1,code);
  if(pac?.features?.length){const f=pac.features[0],b=featureBounds(f),p={code,name:featureAdminName(f),dept:String(f.properties?.dept||''),region:String(f.properties?.region||''),at:b?.isValid?.()?[b.getCenter().lat,b.getCenter().lng]:null,feature:null};groupCenterCache.set(code,Promise.resolve(p));return p}
+ const official=overviewGroupCenters?.[code];
+ if(official?.code){
+   const p=(async()=>{try{
+     const seatCode=String(official.code),seatName=String(official.name||seatCode),
+           center=await communeCenter(seatCode),feature=await communeOutlineGeo(seatCode);
+     let at=Array.isArray(center?.at)?[...center.at]:null;
+     if(!at&&feature){const bb=featureBounds(feature),x=bb.getCenter();at=[x.lat,x.lng]}
+     return{code:seatCode,name:seatName,dept:'',region:'',at,feature}
+   }catch{return null}})();
+   groupCenterCache.set(code,p);return p
+ }
  const p=(async()=>{try{
    let communes=null;try{communes=await getJSON('https://geo.api.gouv.fr/epcis/'+encodeURIComponent(code)+'/communes?fields=nom,code,population,centre,codeDepartement,codeRegion')}catch{}
    let c=Array.isArray(communes)&&communes.length?[...communes].sort((a,b)=>(Number(b.population)||0)-(Number(a.population)||0))[0]:null;
@@ -1545,8 +1557,9 @@ async function showGroupCenter(code,persistent=false){
  const alreadyMarked=await groupCenterAlreadyMarked(info.code,info.name);
  if(token!==groupCenterToken||mode!==1)return;
  groupCenter.clearLayers();
- if(info.feature)L.geoJSON(info.feature,{pane:'groupCenterPane',interactive:false,style:{pane:'groupCenterPane',color:'#050607',weight:adminStroke(1.75),opacity:1,fillColor:'#ffffff',fillOpacity:.07}}).addTo(groupCenter);
- if(info.at&&!alreadyMarked)L.marker(info.at,{icon:groupCenterLabelIcon(info.name),interactive:false,zIndexOffset:120}).addTo(groupCenter)
+ if(info.feature&&!overviewActive)L.geoJSON(info.feature,{pane:'groupCenterPane',interactive:false,style:{pane:'groupCenterPane',color:'#050607',weight:adminStroke(1.75),opacity:1,fillColor:'#ffffff',fillOpacity:.07}}).addTo(groupCenter);
+ const labelAt=overviewActive?overviewPointForCommune(info.code,info.at):info.at;
+ if(labelAt&&!alreadyMarked)L.marker(labelAt,{icon:groupCenterLabelIcon(info.name),interactive:false,zIndexOffset:120}).addTo(groupCenter)
 }
 function hideGroupCenterSoon(code){clearTimeout(groupCenterHideTimer);if(selection&&String(selection.code)===String(code))return;groupCenterHideTimer=setTimeout(()=>{if(mode===1&&(!selection||String(selection.code)!==String(code))){groupCenterToken++;groupCenter.clearLayers()}},110)}
 

@@ -215,12 +215,34 @@ def normalize_feature(feature: dict[str, Any], layer: str) -> dict[str, Any]:
 
     if layer == "epci":
         code = first(props, "code_siren", "siren", "code_epci", "siren_epci", "code")
+    elif layer == "center":
+        # ADMIN EXPRESS 4.0 exposes the EPCI seat through the dedicated
+        # chef_lieu_d_epci class. For that class the useful commune identifier
+        # is code_insee_de_la_commune_siege rather than the generic code_insee.
+        code = first(
+            props,
+            "code_insee_de_la_commune_siege",
+            "code_insee",
+            "code",
+            "insee",
+            "insee_com",
+            "insee_dep",
+            "insee_reg",
+        )
     else:
         code = first(props, "code_insee", "code", "insee", "insee_com", "insee_dep", "insee_reg")
     if code is None and "." in fid:
         code = fid.rsplit(".", 1)[-1]
 
-    name = first(props, "nom_officiel", "nom", "libelle", "name", "nom_usage")
+    name = first(
+        props,
+        "nom_du_siege_de_l_epci" if layer == "center" else "nom_officiel",
+        "nom_officiel",
+        "nom",
+        "libelle",
+        "name",
+        "nom_usage",
+    )
     dept = first(
         props,
         "code_insee_du_departement",
@@ -245,6 +267,7 @@ def normalize_feature(feature: dict[str, Any], layer: str) -> dict[str, Any]:
         "code_siren_epci",
         "siren_epci",
         "code_epci",
+        "code_siren" if layer == "center" else "__unused__",
     )
     chef = first(
         props,

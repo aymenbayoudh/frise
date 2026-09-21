@@ -300,6 +300,29 @@ def main() -> int:
         write_json(OUT / "commune-centers.json", center_map)
         counts["commune_centers"] = len(center_map)
 
+        # Dedicated official EPCI seats. The public CARTO-PE WFS currently
+        # omits chef_lieu_d_epci, while the official CARTO PLUS GeoPackage
+        # contains it. Keep a compact SIREN -> seat commune lookup for Carto.
+        group_center_layer = pick_layer(names, "chef_lieu_d_epci")
+        group_center_map: dict[str, dict[str, Any]] = {}
+        if group_center_layer:
+            raw = ogr_to_geojson(gpkg, group_center_layer, td_path / "group-centers.geojson")
+            normalized = normalize_geo(raw, "center")
+            for feature in normalized.get("features") or []:
+                props = feature.get("properties") or {}
+                siren = str(props.get("epci") or "")
+                code = str(props.get("code") or "")
+                name = str(props.get("nom") or code)
+                at = geometry_center(feature.get("geometry"))
+                if siren and code:
+                    item: dict[str, Any] = {"code": code, "name": name}
+                    if at:
+                        item["at"] = at
+                    group_center_map[siren] = item
+            selected["group_centers"] = group_center_layer
+        write_json(OUT / "group-centers.json", group_center_map)
+        counts["group_centers"] = len(group_center_map)
+
         # Keep every official chief-lieu class locally as well (including
         # chef_lieu_d_epci, which is present in CARTO PLUS even when absent from
         # the public CARTO-PE WFS capabilities).
