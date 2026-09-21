@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-21T16:20:18.193438+00:00",
+  "generated_at": "2026-09-21T16:30:24.205550+00:00",
   "geographic": {
     "counts": {
       "arrondissements": 333,
@@ -10,8 +10,21 @@
       "communes": 34877,
       "communes_associees_deleguees": 2628,
       "departements": 101,
-      "epci": 1266,
+      "epci": 1264,
       "regions": 18
+    },
+    "epci_reconciliation": {
+      "added_codes": [
+        "992367730",
+        "994579670"
+      ],
+      "membership_source": "chef_lieu_d_epci",
+      "removed_codes": [
+        "241200658",
+        "241200765",
+        "245701222",
+        "245701362"
+      ]
     },
     "layers": {
       "arrondissements": "ADMINEXPRESS-COG-CARTO-PE.2026:arrondissement",
