@@ -870,8 +870,9 @@ function migrateLegacyCartDeckPath(value){
  return p
 }
 function migrateLegacyCartDeckPaths(values){return unique((Array.isArray(values)?values:[]).map(migrateLegacyCartDeckPath).filter(Boolean))}
-try{const fs=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');cartFilterVersion=Number(fs.version)||0;selectedTags=new Set(fs.tags||[]);if(Array.isArray(fs.decks)&&(fs.initialized===true||fs.decks.length>0)){const savedDecks=migrateLegacyCartDeckPaths(fs.decks),legacyBugEmpty=cartFilterVersion<6&&fs.initialized===true&&savedDecks.length===0;if(!legacyBugEmpty){selectedDeckPaths=new Set(savedDecks);deckStateLoaded=true}}}catch{}
-function saveFilters(){cartFilterVersion=6;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:6,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}));markCartCloudStateDirty()}
+function restoreCartFiltersFromLocal(){try{const fs=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');cartFilterVersion=Number(fs.version)||0;selectedTags=new Set(Array.isArray(fs.tags)?fs.tags:[]);if(Array.isArray(fs.decks)&&(fs.initialized===true||fs.decks.length>0)){const savedDecks=migrateLegacyCartDeckPaths(fs.decks),legacyBugEmpty=cartFilterVersion<6&&fs.initialized===true&&savedDecks.length===0;if(!legacyBugEmpty){selectedDeckPaths=new Set(savedDecks);deckStateLoaded=true;return true}}}catch{}return false}
+restoreCartFiltersFromLocal();
+function saveFilters(){cartFilterVersion=6;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:6,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}));markCartCloudStateDirty();if(cartGithubMode)scheduleCartCloudSync(900)}
 function itemDecks(d){return normalizeCartDeckList(d?.deck||[])}
 function tagsPass(d){return !selectedTags.size||(d.tags||[]).some(t=>selectedTags.has(t))}
 function decksPass(d){return itemDecks(d).some(p=>selectedDeckPaths.has(p))}
@@ -3229,19 +3230,19 @@ function scheduleCartCloudSync(delay=7000){
  cartCloudTimer=setTimeout(()=>{cartCloudTimer=null;syncCartCloudStateToGitHub().catch(()=>{})},Math.max(0,delay))
 }
 function collectCartCloudState(){
- return{version:9,updatedAt:localCartCloudUpdated()||Date.now(),filters:{initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors],boundaryStrokes:normalizeBoundaryStrokes(boundaryStrokes),settingLinks:[...settingLinks]}
+ return{version:9,updatedAt:localCartCloudUpdated()||Date.now(),filters:{schema:2,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]},gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors],boundaryStrokes:normalizeBoundaryStrokes(boundaryStrokes),settingLinks:[...settingLinks]}
+}
+function applyCartCloudFilters(filters,{legacyBugEmpty=false}={}){
+ if(!filters||typeof filters!=='object')return;
+ const availableDecks=unique(data.flatMap(itemDecks)),availableTags=new Set(unique(data.flatMap(d=>d.tags||[]))),requestedDecks=migrateLegacyCartDeckPaths(filters.decks),initialized=filters.initialized===true||requestedDecks.length>0;
+ selectedTags=new Set((filters.tags||[]).filter(t=>availableTags.has(String(t))));
+ selectedDeckPaths=new Set(legacyBugEmpty?availableDecks:(initialized?requestedDecks:availableDecks));
+ deckStateLoaded=true;cartFilterVersion=6;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:6,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}))
 }
 function applyCartCloudState(state){
  if(!state||typeof state!=='object')return;applyingCartCloudState=true;
  try{
-  if(state.filters){
-   const availableDecks=unique(data.flatMap(itemDecks)),availableTags=new Set(unique(data.flatMap(d=>d.tags||[]))),requestedDecks=migrateLegacyCartDeckPaths(state.filters.decks),initialized=state.filters.initialized===true||requestedDecks.length>0,legacyBugEmpty=Number(state.version||0)<9&&state.filters.initialized===true&&requestedDecks.length===0;
-   selectedTags=new Set((state.filters.tags||[]).filter(t=>availableTags.has(String(t))));
-   if(legacyBugEmpty){if(!(deckStateLoaded&&selectedDeckPaths.size))selectedDeckPaths=new Set(availableDecks)}
-   else selectedDeckPaths=new Set(initialized?requestedDecks:availableDecks);
-   deckStateLoaded=true;cartFilterVersion=6;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:6,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}));
-   if(legacyBugEmpty)scheduleCartCloudSync(350)
-  }
+  if(state.filters)applyCartCloudFilters(state.filters,{legacyBugEmpty:Number(state.version||0)<9&&state.filters.initialized===true&&migrateLegacyCartDeckPaths(state.filters.decks).length===0});
   if(state.gameErrors)localStorage.setItem(CART_GAME_ERROR_KEY,JSON.stringify(state.gameErrors));
   if(Array.isArray(state.gameRecent))localStorage.setItem(CART_GAME_RECENT_KEY,JSON.stringify(state.gameRecent.slice(0,600)));
   if(state.gameBests)localStorage.setItem(CART_GAME_KEY,JSON.stringify(state.gameBests));
@@ -3257,7 +3258,8 @@ async function loadCartCloudStateFromGitHub(){
  const remote=await cartGithubGetOptional(CART_GITHUB_STATE_FILE),localUpdated=localCartCloudUpdated();
  if(!remote){if(hasLocalCartCloudState()){if(!localUpdated)try{localStorage.setItem(CART_CLOUD_UPDATED_KEY,String(Date.now()))}catch{}scheduleCartCloudSync(800)}return}
  let state;try{state=JSON.parse(remote.text)}catch{return}
- const remoteUpdated=Math.max(0,Number(state?.updatedAt)||0);
+ const remoteUpdated=Math.max(0,Number(state?.updatedAt)||0),remoteFilterSchema=Math.max(0,Number(state?.filters?.schema)||0),needsFilterMigration=remoteFilterSchema>=2&&cartFilterVersion<6;
+ if(needsFilterMigration){applyingCartCloudState=true;try{applyCartCloudFilters(state.filters)}finally{applyingCartCloudState=false}}
  if(remoteUpdated>localUpdated)applyCartCloudState(state);
  else if(localUpdated>remoteUpdated)scheduleCartCloudSync(800)
 }
@@ -3286,7 +3288,7 @@ async function connectCartGithub(token,status=$('cartGhStatus')){
  status.className='owner-status';status.textContent='Connexion…';
  try{
   cartGithubConfig={owner:CART_GITHUB_OWNER,repo:CART_GITHUB_REPO,branch:CART_GITHUB_BRANCH,token};
-  await loadPrivateCartData();saveSharedCartGitHubConfig(cartGithubConfig);cartGithubMode=true;await loadCartCloudStateFromGitHub();updateCartOwnerUi();return true
+  restoreCartFiltersFromLocal();await loadPrivateCartData();saveSharedCartGitHubConfig(cartGithubConfig);cartGithubMode=true;await loadCartCloudStateFromGitHub();updateCartOwnerUi();return true
  }catch(e){
   cartGithubMode=false;cartGithubConfig=null;clearPrivateCartView();updateCartOwnerUi();status.className='owner-status bad';status.textContent=e.message;return false
  }
