@@ -851,7 +851,7 @@ let temporaryPaletteActive=false,temporaryPaletteOpacity=.68;
 const communeLabels=L.layerGroup().addTo(map),groupCenterCache=new Map();let groupCenterToken=0,groupCenterHideTimer=null,adminCascadeToken=0;
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stripHtml=html=>{const t=document.createElement('template');t.innerHTML=String(html||'');return t.content.textContent||''},unique=a=>[...new Set((a||[]).filter(Boolean).map(String))];
-let selectedTags=new Set(),selectedDeckPaths=new Set(),allDeckPaths=[],deckStateLoaded=false,cartFilterVersion=0;
+let selectedTags=new Set(),selectedDeckPaths=new Set(),allDeckPaths=[],cartDeckTreeRoot=null;
 function migrateLegacyCartDeckPath(value){
  let p=String(value||'').trim();
  const rules=[
@@ -870,12 +870,12 @@ function migrateLegacyCartDeckPath(value){
  return p
 }
 function migrateLegacyCartDeckPaths(values){return unique((Array.isArray(values)?values:[]).map(migrateLegacyCartDeckPath).filter(Boolean))}
-function restoreCartFiltersFromLocal(){try{const fs=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');cartFilterVersion=Number(fs.version)||0;selectedTags=new Set(Array.isArray(fs.tags)?fs.tags:[]);if(Array.isArray(fs.decks)&&(fs.initialized===true||fs.decks.length>0)){const savedDecks=migrateLegacyCartDeckPaths(fs.decks),legacyBugEmpty=cartFilterVersion<6&&fs.initialized===true&&savedDecks.length===0;if(!legacyBugEmpty){selectedDeckPaths=new Set(savedDecks);deckStateLoaded=true;return true}}}catch{}return false}
-restoreCartFiltersFromLocal();
-function saveFilters(){cartFilterVersion=6;localStorage.setItem(CART_FILTER_KEY,JSON.stringify({version:6,initialized:true,tags:[...selectedTags],decks:[...selectedDeckPaths]}));markCartCloudStateDirty();if(cartGithubMode)scheduleCartCloudSync(900)}
+function readCartFilterState(){try{const state=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');return state&&typeof state==='object'?state:{}}catch{return{}}}
+function restoreCartTagFilters(){const state=readCartFilterState(),available=new Set(data.flatMap(d=>d.tags||[]).map(String));selectedTags=new Set((Array.isArray(state.tags)?state.tags.map(String):[]).filter(tag=>available.has(tag)))}
+function saveFilters(){saveCartFilterState()}
 function itemDecks(d){return normalizeCartDeckList(d?.deck||[])}
 function tagsPass(d){return !selectedTags.size||(d.tags||[]).some(t=>selectedTags.has(t))}
-function decksPass(d){return itemDecks(d).some(p=>selectedDeckPaths.has(p))}
+function decksPass(d){if(!cartDeckTreeRoot)return true;return itemDecks(d).some(pathStr=>{const parts=String(pathStr||'').split('::').filter(Boolean);let node=cartDeckTreeRoot;for(const part of parts){node=node.children.get(part);if(!node)return true}return node.selected||node.indeterminate})}
 function visibleAll(){return data.filter(d=>tagsPass(d)&&decksPass(d))}
 const current=()=>visibleAll().filter(d=>eventVisibleAtMode(d,mode));const keyOf=d=>units[d.unit]?.code||d.unit;
 const SPECIAL_DEPARTMENTS={'2A':'20R','2B':'20R','20R':'20R','67':'6AE','68':'6AE','6AE':'6AE'},SPECIAL_DEPARTMENT_NAMES={'20R':'Collectivité de Corse','6AE':'Collectivité européenne d’Alsace'},SPECIAL_DEPARTMENT_REGIONS={'20R':'94','6AE':'44'};
