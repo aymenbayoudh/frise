@@ -861,6 +861,16 @@ let pacificAdmin={pf:null,nc:null},pacificOverviewCache=new Map(),pacificLoadPro
 let temporaryPaletteActive=false,temporaryPaletteOpacity=.68;
 
 const communeLabels=L.layerGroup().addTo(map),groupCenterCache=new Map();let groupCenterToken=0,groupCenterHideTimer=null,adminCascadeToken=0;
+// ADMINEXPRESS-COG-CARTO-PE.2026 still exposes four legacy EPCI polygons
+// that disappeared on 01/01/2026, while CARTO PLUS chef_lieu_d_epci already
+// exposes their two successor EPCI. Keep the legal seats of those four legacy
+// records so every detailed CARTO-PE groupement has a deterministic centre.
+const LEGACY_EPCI_SEATS_2026={
+ '241200658':{code:'12185',name:'Pont-de-Salars'},
+ '241200765':{code:'12253',name:'Salles-Curan'},
+ '245701222':{code:'57306',name:'Hayange'},
+ '245701362':{code:'57672',name:'Thionville'}
+};
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stripHtml=html=>{const t=document.createElement('template');t.innerHTML=String(html||'');return t.content.textContent||''},unique=a=>[...new Set((a||[]).filter(Boolean).map(String))];
 let selectedTags=new Set(),selectedDeckPaths=new Set(),allDeckPaths=[],cartDeckTreeRoot=null;
@@ -1519,7 +1529,7 @@ async function groupCenterCommune(code){
  }
  const pac=pacificGeoForModeCode(1,code);
  if(pac?.features?.length){const f=pac.features[0],b=featureBounds(f),p={code,name:featureAdminName(f),dept:String(f.properties?.dept||''),region:String(f.properties?.region||''),at:b?.isValid?.()?[b.getCenter().lat,b.getCenter().lng]:null,feature:null};groupCenterCache.set(code,Promise.resolve(p));return p}
- const official=overviewGroupCenters?.[code];
+ const official=overviewGroupCenters?.[code]||LEGACY_EPCI_SEATS_2026[code];
  if(official?.code){
    const p=(async()=>{try{
      const seatCode=String(official.code),center=await communeCenter(seatCode),
