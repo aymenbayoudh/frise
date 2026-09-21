@@ -925,7 +925,7 @@ async function loadIgnOverview(){
 async function ensureOverviewEpciGeo(){
  if(overviewEpciGeo?.features?.length)return overviewEpciGeo;
  if(overviewEpciPromise)return overviewEpciPromise;
- overviewEpciPromise=getJSON(IGN_OVERVIEW_BASE+'epci.geojson').then(j=>{if(!j?.features?.length)throw Error('EPCI CARTO PLUS vide');overviewEpciGeo=filteredOverviewGeo(j);return overviewEpciGeo}).finally(()=>{overviewEpciPromise=null});
+ overviewEpciPromise=getJSON(IGN_OVERVIEW_BASE+'epci.geojson').then(j=>{if(!j?.features?.length)throw Error('EPCI CARTO PLUS vide');overviewEpciGeo=filteredOverviewGeo(j);seedOverseasGroupementDemoCoverage();return overviewEpciGeo}).finally(()=>{overviewEpciPromise=null});
  return overviewEpciPromise
 }
 async function ensureOverviewArrGeo(){
@@ -1394,6 +1394,7 @@ async function ensureOverseasEpciGeometry(d){
      if(geo?.features?.length){
        d.epciGeo=geo;
        d.epciCodes=new Set(geo.features.map(featureAdminCode).filter(Boolean));
+       seedOverseasGroupementDemoCoverage();
        if(mode===1){invalidateGroupCache();drawAdmin();updateInsets();updateCenters(true)}
      }
    }catch{}
@@ -2495,6 +2496,48 @@ async function seedAdministrativeDemoCoverage(){
  try{await pruneGrandPoitiersGeneratedDemos('86194')}catch{}
  refreshAfterDemoSeed()
 }
+function featureDepartmentHint(f){
+ const p=f?.properties||{};
+ return String(p.dept??p.departement??p.codeDepartement??p.code_departement??p.code_insee_du_departement??'')
+}
+function overseasEpciFeatures(d){
+ if(!d)return[];
+ const dept=String(d.dept||''),out=[],seen=new Set(),add=f=>{const code=featureAdminCode(f);if(code&&!seen.has(code)){seen.add(code);out.push(f)}};
+ const inspect=(geo,deptGeoSource)=>{
+  if(!geo?.features?.length)return;
+  const deptFeature=(deptGeoSource?.features||[]).find(f=>featureAdminCode(f)===dept),db=deptFeature?featureBounds(deptFeature):null;
+  for(const f of geo.features||[]){
+   const hint=featureDepartmentHint(f);
+   if(hint){if(hint===dept)add(f);continue}
+   if(!db?.isValid?.())continue;
+   const b=featureBounds(f);if(b?.isValid?.()&&b.intersects(db))add(f)
+  }
+ };
+ inspect(d.epciGeo,deptGeo);
+ inspect(epciGeo,deptGeo);
+ inspect(overviewEpciGeo,overviewDeptGeo);
+ return out
+}
+function seedOverseasGroupementDemoCoverage(){
+ let added=false;
+ const seedFeature=(f,d,prefix='demo-om-e-')=>{
+  const code=featureAdminCode(f);if(!code)return;
+  let unit=unitKeyForModeCode(1,code);
+  const realFeature=(d.epciGeo?.features||[]).find(x=>featureAdminCode(x)===code)||(epciGeo?.features||[]).find(x=>featureAdminCode(x)===code),
+        at=realFeature?demoFeatureCenter(realFeature):(Array.isArray(d.at)?d.at:demoFeatureCenter(f));
+  if(!unit){unit=prefix+code;units[unit]={name:featureAdminName(f),code,dept:String(d.dept),region:String(d.region),at:[...at]}}
+  else{units[unit].name=featureAdminName(f)||units[unit].name;units[unit].dept=String(d.dept);units[unit].region=String(d.region);if(!Array.isArray(units[unit].at))units[unit].at=[...at]}
+  const existing=data.filter(x=>x.mode===1&&String(keyOf(x))===code).length,target=Math.max(2,overseasDemoTarget(code,'interco'));
+  for(let i=existing;i<target;i++){addGeneratedDemo(1,unit,demoActions[(demoHash(code+'om')+i)%demoActions.length]+' dans '+d.name,units[unit].at||at,demoThemes[(i+6+demoHash(code))%demoThemes.length],i);added=true}
+ };
+ for(const d of doms.filter(x=>x.nationalEpci&&['971','972','973','974','976'].includes(String(x.dept))))for(const f of overseasEpciFeatures(d))seedFeature(f,d);
+ for(const [kind,dept,name] of [['pf','987','Polynésie française'],['nc','988','Nouvelle-Calédonie']]){
+  const d=doms.find(x=>String(x.dept)===dept),src=pacificAdmin[kind];if(!d||!src?.groupements?.features?.length)continue;
+  for(const f of src.groupements.features)seedFeature(f,d,'demo-pac-g-')
+ }
+ if(added)refreshAfterDemoSeed();
+ return added
+}
 function seedEpciDemoCoverage(){
  if(demoEpciSeeded||!epciGeo?.features?.length)return;demoEpciSeeded=true;
  if(!hasImportedCartData){
@@ -2504,17 +2547,8 @@ function seedEpciDemoCoverage(){
     const at=units[unit].at||demoFeatureCenter(f),count=demoSkew(code,'interco');for(let i=0;i<count;i++)addGeneratedDemo(1,unit,demoActions[(demoHash(code)+i)%demoActions.length]+' à l’échelle intercommunale',at,demoThemes[(i+6+demoHash(code))%demoThemes.length],i)
   }
  }
- // DROM EPCIs are forced into the demo set (the generic hash sample can miss them).
- for(const d of doms.filter(x=>x.nationalEpci&&['971','972','973','974','976'].includes(String(x.dept)))){
-  const deptFeature=(deptGeo?.features||[]).find(f=>featureAdminCode(f)===String(d.dept));if(!deptFeature)continue;
-  const localEpcis=(epciGeo.features||[]).filter(f=>{const at=demoFeatureCenter(f);return pointInFeature(at[0],at[1],deptFeature)});
-  for(const f of localEpcis){
-   const code=featureAdminCode(f);if(!code)continue;let unit=unitKeyForModeCode(1,code);if(!unit){unit='demo-e-'+code;units[unit]={name:featureAdminName(f),code,dept:String(d.dept),region:String(d.region),at:demoFeatureCenter(f)}}else{units[unit].dept=String(d.dept);units[unit].region=String(d.region)}
-   const existing=data.filter(x=>x.mode===1&&String(keyOf(x))===String(code)).length,target=overseasDemoTarget(code,'interco');
-   for(let i=existing;i<target;i++)addGeneratedDemo(1,unit,demoActions[(demoHash(code+'om')+i)%demoActions.length]+' dans '+d.name,units[unit].at||demoFeatureCenter(f),demoThemes[(i+6+demoHash(code))%demoThemes.length],i)
-  }
- }
- refreshAfterDemoSeed()
+ refreshAfterDemoSeed();
+ seedOverseasGroupementDemoCoverage()
 }
 
 let demoPacificSeeded=false;
@@ -2550,7 +2584,8 @@ function seedPacificDemoCoverage(){
    for(let i=0;i<count;i++)addGeneratedDemo(0,unit,demoActions[(demoHash(code+'pac-c')+i)%demoActions.length]+' · '+name,at,demoThemes[(i+7+demoHash(code))%demoThemes.length],i)
   }
  }
- refreshAfterDemoSeed()
+ refreshAfterDemoSeed();
+ seedOverseasGroupementDemoCoverage()
 }
 
 function domItems(d){return current().filter(x=>{const u=units[x.unit]||{};if(d.pacific)return String(u.region||'')===String(d.region);return mode<2?u.dept===d.dept:String(itemDisplayAdminCode(x,mode))===String(mode===2?d.dept:d.region)});}
