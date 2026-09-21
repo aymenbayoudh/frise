@@ -26,10 +26,11 @@
     "arrondissements_municipaux": 45,
     "centers": 41355,
     "collectivites": 103,
-    "commune_centers": 34878,
+    "commune_centers": 34859,
     "communes_associees_deleguees": 2565,
     "departements": 104,
     "epci": 1267,
+    "group_centers": 1264,
     "regions": 21
   },
   "download_discovery": {
@@ -116,10 +117,10 @@
     ],
     "collectivites": "collectivite_territoriale",
     "commune_centers": "chef_lieu_de_commune",
-    "commune_centers_fallback": "commune",
     "communes_associees_deleguees": "commune_associee_ou_deleguee",
     "departements": "departement",
     "epci": "epci",
+    "group_centers": "chef_lieu_d_epci",
     "regions": "region"
   },
   "source": "IGN ADMIN EXPRESS COG CARTO PLUS 2026",
