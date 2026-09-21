@@ -232,8 +232,9 @@ def main() -> int:
             "collectivites": ("collectivite_territoriale",),
             "communes_associees_deleguees": ("commune_associee_ou_deleguee",),
         }
-        selected: dict[str, str] = {}
+        selected: dict[str, Any] = {}
         counts: dict[str, int] = {}
+        overview_epci_geo: dict[str, Any] | None = None
 
         for output, wanted in specs.items():
             layer = pick_layer(names, *wanted)
@@ -249,6 +250,8 @@ def main() -> int:
             }.get(output, output.rstrip("s"))
             geo = normalize_geo(raw, canonical)
             write_json(OUT / f"{output}.geojson", geo)
+            if output == "epci":
+                overview_epci_geo = geo
             selected[output] = layer
             counts[output] = len(geo.get("features") or [])
 
@@ -272,12 +275,17 @@ def main() -> int:
 
         commune_center_layer = pick_layer(names, "chef_lieu_de_commune")
         center_map: dict[str, list[float]] = {}
+        commune_name_map: dict[str, str] = {}
         if commune_center_layer:
             raw = ogr_to_geojson(gpkg, commune_center_layer, td_path / "commune-centers.geojson")
             normalized = normalize_geo(raw, "center")
             for feature in normalized.get("features") or []:
-                code = str((feature.get("properties") or {}).get("code") or "")
+                props = feature.get("properties") or {}
+                code = str(props.get("code") or "")
+                name = str(props.get("nom") or "")
                 at = geometry_center(feature.get("geometry"))
+                if code and name:
+                    commune_name_map[code] = name
                 if code and at:
                     center_map[code] = at
             selected["commune_centers"] = commune_center_layer
@@ -312,9 +320,11 @@ def main() -> int:
                 props = feature.get("properties") or {}
                 siren = str(props.get("epci") or "")
                 code = str(props.get("code") or "")
-                name = str(props.get("nom") or code)
+                # The EPCI chief-lieu feature name is an institutional label
+                # ("Siège de ..."), not the municipality name shown on the map.
+                name = commune_name_map.get(code) or str(props.get("nom") or code)
                 at = geometry_center(feature.get("geometry"))
-                if siren and code:
+                if re.fullmatch(r"\d{9}", siren) and code:
                     item: dict[str, Any] = {"code": code, "name": name}
                     if at:
                         item["at"] = at
@@ -322,6 +332,62 @@ def main() -> int:
             selected["group_centers"] = group_center_layer
         write_json(OUT / "group-centers.json", group_center_map)
         counts["group_centers"] = len(group_center_map)
+
+        # Reconcile the detailed geographic EPCI layer with the same CARTO PLUS
+        # 2026 membership used by chef_lieu_d_epci. The public CARTO-PE WFS can
+        # lag behind mid-year intercommunal mergers: keep its real-world
+        # geometries for unchanged EPCI, remove dissolved codes, and add only
+        # missing current metropolitan geometries from CARTO PLUS.
+        geographic_epci_path = OUT.parent / "geographic" / "epci.geojson"
+        if geographic_epci_path.exists() and overview_epci_geo and group_center_map:
+            geographic_epci = json.loads(geographic_epci_path.read_text(encoding="utf-8"))
+            current_codes = set(group_center_map)
+            geographic_features = geographic_epci.get("features") or []
+            overview_by_code = {
+                str((feature.get("properties") or {}).get("code") or ""): feature
+                for feature in overview_epci_geo.get("features") or []
+            }
+            kept = [
+                feature for feature in geographic_features
+                if str((feature.get("properties") or {}).get("code") or "") in current_codes
+            ]
+            kept_codes = {
+                str((feature.get("properties") or {}).get("code") or "")
+                for feature in kept
+            }
+            missing_codes = sorted(current_codes - kept_codes)
+            added_codes: list[str] = []
+            for code in missing_codes:
+                feature = overview_by_code.get(code)
+                if not feature:
+                    raise RuntimeError(f"EPCI CARTO PLUS {code} sans géométrie")
+                seat_code = str(group_center_map[code].get("code") or "")
+                if seat_code.startswith(("97", "98")):
+                    raise RuntimeError(
+                        f"EPCI ultramarin {code} absent du WFS : géométrie CARTO PLUS déplacée non utilisable"
+                    )
+                kept.append(feature)
+                added_codes.append(code)
+            removed_codes = sorted({
+                str((feature.get("properties") or {}).get("code") or "")
+                for feature in geographic_features
+                if str((feature.get("properties") or {}).get("code") or "") not in current_codes
+            })
+            reconciled = {"type": "FeatureCollection", "features": kept}
+            write_json(geographic_epci_path, reconciled)
+            counts["epci_geographic"] = len(kept)
+
+            root_manifest_path = OUT.parent / "manifest.json"
+            if root_manifest_path.exists():
+                root_manifest = json.loads(root_manifest_path.read_text(encoding="utf-8"))
+                geographic_manifest = root_manifest.setdefault("geographic", {})
+                geographic_manifest.setdefault("counts", {})["epci"] = len(kept)
+                geographic_manifest["epci_reconciliation"] = {
+                    "membership_source": group_center_layer,
+                    "removed_codes": removed_codes,
+                    "added_codes": added_codes,
+                }
+                write_pretty(root_manifest_path, root_manifest)
 
         # Keep every official chief-lieu class locally as well (including
         # chef_lieu_d_epci, which is present in CARTO PLUS even when absent from

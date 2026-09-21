@@ -1522,8 +1522,9 @@ async function groupCenterCommune(code){
  const official=overviewGroupCenters?.[code];
  if(official?.code){
    const p=(async()=>{try{
-     const seatCode=String(official.code),seatName=String(official.name||seatCode),
-           center=await communeCenter(seatCode),feature=await communeOutlineGeo(seatCode);
+     const seatCode=String(official.code),center=await communeCenter(seatCode),
+           seatName=String(center?.name||adminCatalog?.communeByCode.get(seatCode)?.name||official.name||seatCode),
+           feature=await communeOutlineGeo(seatCode);
      let at=Array.isArray(center?.at)?[...center.at]:null;
      if(!at&&feature){const bb=featureBounds(feature),x=bb.getCenter();at=[x.lat,x.lng]}
      return{code:seatCode,name:seatName,dept:'',region:'',at,feature}
