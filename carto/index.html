@@ -3422,13 +3422,46 @@ function setSettingsColorRow(i,color){
  if(picker)picker.value=value;if(code)code.value=value
 }
 function generateTetradicBasePalette(){
- const base=paletteRandomUnit()*360,split=48+paletteRandomUnit()*38,
-       hues=[base,base+split,base+180,base+180+split],
-       sats=[66+paletteRandomUnit()*12,58+paletteRandomUnit()*14,64+paletteRandomUnit()*14,56+paletteRandomUnit()*16],
-       lights=[62+paletteRandomUnit()*8,43+paletteRandomUnit()*9,68+paletteRandomUnit()*7,49+paletteRandomUnit()*10],
-       colors=hues.map((h,i)=>hex(hsl(paletteHue(h+(paletteRandomUnit()-.5)*8),sats[i],lights[i])));
- const shift=paletteRandomIndex(4),ordered=colors.map((_,i)=>colors[(i+shift)%4]);
- ordered.forEach((color,i)=>setSettingsColorRow(i,color))
+ const rnd=(a,b)=>a+(b-a)*paletteRandomUnit(),base=paletteRandomUnit()*360,profile=paletteRandomIndex(6);
+ let hues,sats,lights;
+ if(profile===0){
+   // Équilibrée : conserve le rendu doux/contrasté déjà utilisé.
+   const split=rnd(48,86);
+   hues=[base,base+split,base+180,base+180+split];
+   sats=[rnd(66,78),rnd(58,72),rnd(64,78),rnd(56,72)];
+   lights=[rnd(62,70),rnd(43,52),rnd(68,75),rnd(49,59)]
+ }else if(profile===1){
+   // Carré vif : quatre familles de couleurs nettement distinctes.
+   hues=[base,base+90+rnd(-8,8),base+180+rnd(-5,5),base+270+rnd(-8,8)];
+   sats=[rnd(80,94),rnd(76,92),rnd(82,96),rnd(76,93)];
+   lights=[rnd(56,66),rnd(45,57),rnd(58,68),rnd(46,59)]
+ }else if(profile===2){
+   // Rectangle vif : deux couples complémentaires avec beaucoup de couleur.
+   const split=rnd(58,80);
+   hues=[base,base+split,base+180,base+180+split];
+   sats=[rnd(76,92),rnd(72,90),rnd(80,95),rnd(72,90)];
+   lights=[rnd(61,70),rnd(47,58),rnd(55,65),rnd(41,53)]
+ }else if(profile===3){
+   // Lumineuse : teintes franches, mais suffisamment claires pour la carte.
+   hues=[base,base+82+rnd(-10,10),base+180+rnd(-7,7),base+262+rnd(-10,10)];
+   sats=[rnd(72,88),rnd(78,94),rnd(70,88),rnd(80,95)];
+   lights=[rnd(68,76),rnd(57,67),rnd(64,73),rnd(52,63)]
+ }else if(profile===4){
+   // Tons "bijou" : plus profonds et saturés.
+   const split=rnd(68,94);
+   hues=[base,base+split,base+180,base+180+split];
+   sats=[rnd(72,88),rnd(76,92),rnd(74,91),rnd(78,94)];
+   lights=[rnd(43,53),rnd(35,46),rnd(50,60),rnd(39,50)]
+ }else{
+   // Tétrade large : accentue encore la variété entre les quatre modes.
+   const turn=rnd(78,102);
+   hues=[base,base+turn,base+180+rnd(-10,10),base+270+rnd(-14,14)];
+   sats=[rnd(84,96),rnd(68,88),rnd(78,94),rnd(72,92)];
+   lights=[rnd(58,68),rnd(42,55),rnd(64,73),rnd(45,58)]
+ }
+ const colors=hues.map((h,i)=>hex(hsl(paletteHue(h+rnd(-4,4)),sats[i],lights[i])));
+ for(let i=colors.length-1;i>0;i--){const j=paletteRandomIndex(i+1);[colors[i],colors[j]]=[colors[j],colors[i]]}
+ colors.forEach((color,i)=>setSettingsColorRow(i,color))
 }
 function formatStrokeInput(v){return String(Math.round(Number(v)*100)/100)}
 function setSettingsStrokeRows(values=boundaryStrokes){
