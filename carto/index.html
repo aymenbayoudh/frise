@@ -1457,7 +1457,20 @@ function pointState(){
  return(overviewActive?'overview:':'geo:')+mode+':'+(selection?.key||'')+':'+(mode===0?communeState:mode===1?'free-interco':selection?'pin':'none')
 }
 function maybeDrawPoints(){const key=pointState();if(key!==pointRenderKey)drawPoints()}
-function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});l.on({mouseover:e=>{l.openTooltip(e.latlng);const selected=mode>=1&&selection&&String(selection.code)===code,base=adminStyle(f),hoverWeight=mode===1?Math.max(primaryAdminStroke(1.15),base.weight+primaryAdminStroke(.25)):Math.max(primaryAdminStroke(2.25),base.weight+primaryAdminStroke(.45));l.setStyle(selected?base:{weight:hoverWeight,color:'#000000',opacity:1});l.bringToFront()},mouseout:()=>{l.closeTooltip();l.setStyle(adminStyle(f))},click:e=>{if(mode<1)return;L.DomEvent.stopPropagation(e);const g=groupByCode(code),fromOverview=overviewActive;if(g?.items?.length)choose(g,fromOverview?null:l.getBounds(),{fromOverview});else clearUnitSelection();}})}}).addTo(target);}
+function bindMapHover(layer,onStart,onEnd){
+ let pressed=false;
+ const start=e=>{if(pressed)return;pressed=true;onStart(e)},
+       end=e=>{if(!pressed)return;pressed=false;onEnd(e)};
+ if(compactMapUi()){
+   // Mobile: hover exists only while the finger / pointer is held down.
+   layer.on('touchstart',start);layer.on('touchend',end);layer.on('touchcancel',end);
+   layer.on('mousedown',start);layer.on('mouseup',end);layer.on('mouseout',end)
+ }else{
+   layer.on('mouseover',onStart);layer.on('mouseout',onEnd)
+ }
+ return layer
+}
+function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});bindMapHover(l,e=>{l.openTooltip(e.latlng);const selected=mode>=1&&selection&&String(selection.code)===code,base=adminStyle(f),hoverWeight=mode===1?Math.max(primaryAdminStroke(1.15),base.weight+primaryAdminStroke(.25)):Math.max(primaryAdminStroke(2.25),base.weight+primaryAdminStroke(.45));l.setStyle(selected?base:{weight:hoverWeight,color:'#000000',opacity:1});l.bringToFront()},()=>{l.closeTooltip();l.setStyle(adminStyle(f))});l.on('click',e=>{if(mode<1)return;L.DomEvent.stopPropagation(e);const g=groupByCode(code),fromOverview=overviewActive;if(g?.items?.length)choose(g,fromOverview?null:l.getBounds(),{fromOverview});else clearUnitSelection()})}}).addTo(target);}
 const GRAND_PARIS_CODE='200054781',EPT_GEO_URL='https://www.carto-metropolegrandparis.fr/server/rest/services/Limites_administratives_MIL1/MapServer/3/query?where=1%3D1&outFields=code_ept%2Clib_ept%2Cterritoire&returnGeometry=true&outSR=4326&f=geojson';
 async function augmentGrandParisGroups(geo){
  if(!geo?.features?.length)return geo;
@@ -1653,11 +1666,8 @@ function addAdminHitGeo(geo){
      const code=featureAdminCode(f),name=featureAdminName(f);
      if(!code)return;
      l.bindTooltip(escape(name)+' · '+countCode(code)+' exemple'+(countCode(code)>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
-     l.on({
-       mouseover:e=>{l.openTooltip(e.latlng);setMainOutlineHover(code,true);if(mode===1)showGroupCenter(code,false)},
-       mouseout:()=>{l.closeTooltip();setMainOutlineHover(code,false);if(mode===1)hideGroupCenterSoon(code)},
-       click:e=>{L.DomEvent.stopPropagation(e);const g=groupByCode(code),fromOverview=overviewActive;if(g?.items?.length)choose(g,fromOverview?null:l.getBounds(),{fromOverview});else clearUnitSelection()}
-     })
+     bindMapHover(l,e=>{l.openTooltip(e.latlng);setMainOutlineHover(code,true);if(mode===1)showGroupCenter(code,false)},()=>{l.closeTooltip();setMainOutlineHover(code,false);if(mode===1)hideGroupCenterSoon(code)});
+     l.on('click',e=>{L.DomEvent.stopPropagation(e);const g=groupByCode(code),fromOverview=overviewActive;if(g?.items?.length)choose(g,fromOverview?null:l.getBounds(),{fromOverview});else clearUnitSelection()})
    }
  }).addTo(adminHits)
 }
@@ -1775,7 +1785,7 @@ function drawAdmin(){
    }else if(mode===3&&d.regionOnly){
      const regionWeight=primaryAdminStroke(strokeSetting(3,'region')),n=domItems(d).length,c=L.circle(d.at,{radius:d.radius||120000,color:'#111315',weight:regionWeight,fillColor:shade(n,d.region),fillOpacity:temporaryPaletteOpacity}).addTo(admin);
      c.bindTooltip(escape(d.name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
-     c.on({mouseover:e=>{c.openTooltip(e.latlng);c.setStyle({weight:regionWeight*1.8,color:'#000000'})},mouseout:()=>{c.closeTooltip();c.setStyle({weight:regionWeight,color:'#111315'})},click:e=>{L.DomEvent.stopPropagation(e);const g=groupByCode(d.region);if(g?.items?.length)choose(g,c.getBounds());else clearUnitSelection()}})
+     bindMapHover(c,e=>{c.openTooltip(e.latlng);c.setStyle({weight:regionWeight*1.8,color:'#000000'})},()=>{c.closeTooltip();c.setStyle({weight:regionWeight,color:'#111315'})});c.on('click',e=>{L.DomEvent.stopPropagation(e);const g=groupByCode(d.region);if(g?.items?.length)choose(g,c.getBounds());else clearUnitSelection()})
    }
  }
  drawMainOutline();drawSelectedGroupOverlay();drawContextAdmin();drawAdminHits()
@@ -2144,11 +2154,8 @@ async function updateCommuneDataLayer(force=false){
     if(!feature)continue;
     L.geoJSON(feature,{pane:'communeDataPane',interactive:true,style:()=>communeDataStyle(g.code),onEachFeature:(_,l)=>{
       l.bindTooltip(escape(g.name)+' · '+g.items.length+' exemple'+(g.items.length>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
-      l.on({
-       mouseover:e=>{l.openTooltip(e.latlng);l.setStyle({...communeDataStyle(g.code),weight:adminStroke(strokeSetting(0,'communeExample'))*1.97,fillOpacity:Math.min(1,(temporaryPaletteOpacity+.10)*.5)})},
-       mouseout:()=>{l.closeTooltip();l.setStyle(communeDataStyle(g.code))},
-       click:e=>{L.DomEvent.stopPropagation(e);chooseCommune(g,l.getBounds())}
-      })
+      bindMapHover(l,e=>{l.openTooltip(e.latlng);l.setStyle({...communeDataStyle(g.code),weight:adminStroke(strokeSetting(0,'communeExample'))*1.97,fillOpacity:Math.min(1,(temporaryPaletteOpacity+.10)*.5)})},()=>{l.closeTooltip();l.setStyle(communeDataStyle(g.code))});
+      l.on('click',e=>{L.DomEvent.stopPropagation(e);chooseCommune(g,l.getBounds())})
     }}).addTo(communeData)
    }
    await new Promise(r=>requestAnimationFrame(r))
@@ -2266,11 +2273,8 @@ async function updateSubdivisions(force=false){
       onEachFeature:(f,l)=>{
        const code=featureAdminCode(f),g=byCode.get(code),name=featureAdminName(f);if(!g)return;
        l.bindTooltip(escape(name)+' · '+g.items.length+' exemple'+(g.items.length>1?'s':''),{sticky:true});
-       l.on({
-        mouseover:()=>l.setStyle({color:'#000000',weight:1.55,opacity:1,fillColor:'#ffffff',fillOpacity:.001}),
-        mouseout:()=>l.setStyle({color:'#000000',weight:0,opacity:0,fillColor:'#ffffff',fillOpacity:.001}),
-        click:e=>{L.DomEvent.stopPropagation(e);chooseCommune(g,l.getBounds())}
-       })
+       bindMapHover(l,()=>l.setStyle({color:'#000000',weight:1.55,opacity:1,fillColor:'#ffffff',fillOpacity:.001}),()=>l.setStyle({color:'#000000',weight:0,opacity:0,fillColor:'#ffffff',fillOpacity:.001}));
+       l.on('click',e=>{L.DomEvent.stopPropagation(e);chooseCommune(g,l.getBounds())})
       }
      }).addTo(communeHits);
      drawCommuneContextLabels(ctx.geo,ctx.epci,true)
@@ -2339,11 +2343,8 @@ async function updateSubdivisions(force=false){
        onEachFeature:(f,l)=>{
          const code=featureAdminCode(f),g=byCode.get(code),name=featureAdminName(f);if(!g)return;
          l.bindTooltip(escape(name)+' · '+g.items.length+' exemple'+(g.items.length>1?'s':''),{sticky:true});
-         l.on({
-           mouseover:()=>l.setStyle({color:'#000000',weight:1.8,opacity:1,fillColor:unitDisplayColor(code),fillOpacity:.08}),
-           mouseout:()=>l.setStyle({color:'#000000',weight:0,opacity:0,fillColor:'#ffffff',fillOpacity:.001}),
-           click:e=>{L.DomEvent.stopPropagation(e);chooseCommune(g,l.getBounds())}
-         })
+         bindMapHover(l,()=>l.setStyle({color:'#000000',weight:1.8,opacity:1,fillColor:unitDisplayColor(code),fillOpacity:.08}),()=>l.setStyle({color:'#000000',weight:0,opacity:0,fillColor:'#ffffff',fillOpacity:.001}));
+         l.on('click',e=>{L.DomEvent.stopPropagation(e);chooseCommune(g,l.getBounds())})
        }
      }).addTo(communeHits)
    }
