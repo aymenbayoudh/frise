@@ -619,6 +619,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
   <div class="deck-filter-menu"><button id="toggleDecks" class="compact-control" type="button" aria-expanded="false">Decks <span class="chevron">⌄</span></button><div id="deckMenu" class="deck-menu-pop" hidden><div class="deck-menu-actions"><button id="checkAllDecks" type="button">Tout cocher</button><button id="uncheckAllDecks" type="button">Tout décocher</button></div><div id="deckTree"></div></div></div>
   <div class="search-box"><input id="search" type="search" placeholder="Rechercher un événement…" autocomplete="off" aria-label="Rechercher un événement"><div id="searchResults" class="search-results" hidden></div></div>
   <div class="search-box admin-search-box"><input id="adminSearch" type="search" placeholder="Collectivité…" autocomplete="off" aria-label="Rechercher une collectivité"><div id="adminSearchResults" class="search-results admin-search-results" hidden></div></div>
+  <span id="cartSyncState" role="status" style="font-size:11px;color:var(--muted)" hidden></span><button id="cartSyncRetry" type="button" hidden>Réessayer</button>
   <span id="visibleCount" class="visible-count"></span>
 </div>
 </section>
@@ -2834,6 +2835,9 @@ function syncCartMiniMapFromInputs(recenter=true){
 }
 function updateCartLocationFields(){const level=+$('cartMode').value,local=level===0,freeGroup=level===1&&$('cartGroupType').value==='free',placed=local||freeGroup;$('cartKindLabel').hidden=!local;$('cartCoordinates').hidden=!placed;$('cartMapField').hidden=!placed;if(!local)$('cartKind').value='global';if(placed&&!$('cartEditor').hidden)requestAnimationFrame(()=>syncCartMiniMapFromInputs(true))}
 function setCartEditorColor(c){c=validColor(c);$('cartEventColor').value=c;$('cartColorCode').value=c}
+let cartEditorBaseline='';
+function cartEditorSnapshot(){return JSON.stringify({fields:[...$('cartEditor').querySelectorAll('input:not([type="file"]),select,[contenteditable]')].map(e=>e.isContentEditable?e.innerHTML:e.value),deck:cartEditing.deck,image:cartEditing.image})}
+function requestCloseCartEditor(){if(cartEditorSnapshot()!==cartEditorBaseline&&!confirm('Fermer sans enregistrer les modifications ?'))return;closeCartEditor()}
 function closeCartEditor(){
  $('cartEditor').hidden=true;$('editorScrim').hidden=true;cartEditedId=null;
  if(!cartGameSummaryReturn)return false;
@@ -2859,10 +2863,13 @@ async function openCartEditor(item=null){
  $('cartDelete').hidden=!item;$('editorScrim').hidden=false;$('cartEditor').hidden=false;
  await renderCartUnitOptions(item?.unit||selectedPreset?.key||selection?.key||'',true,selectedPreset?.code||'');
  const u=units[item?.unit||''];if(item?.at){$('cartLat').value=item.at[0];$('cartLng').value=item.at[1]}else if(+$('cartMode').value===0){await moveCartEditorToSelectedCommune()}else{$('cartLat').value=u?.at?.[0]??'';$('cartLng').value=u?.at?.[1]??''}
- updateCartLocationFields();$('cartTitle').focus();requestAnimationFrame(()=>syncCartMiniMapFromInputs(true))
+ updateCartLocationFields();cartEditorBaseline=cartEditorSnapshot();$('cartTitle').focus();requestAnimationFrame(()=>syncCartMiniMapFromInputs(true))
 }
 function refreshAfterCartEdit(preferredUnit=''){renderTags();renderDeckTree();temporaryPaletteAssignments.clear();pointRenderKey='';subdivisionKey='';communeLabelKey='';centerKey='';const gs=groups(),next=preferredUnit?gs.find(g=>g.key===preferredUnit):null;selection=next||null;renderSide();draw();updateSubdivisions(true);updateCenters(true);$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'')}
 function saveCartEditor(){
+ if($('cartDeckInput').value.trim()){
+  try{const path=normalizeDeckPath($('cartDeckInput').value);cartEditing.deck=normalizeCartDeckList([...cartEditing.deck,path]);$('cartDeckInput').value='';renderCartDeckEditor()}catch(e){setCartDeckError(e.message);$('cartDeckInput').focus();return}
+ }
  if(!validateCartEditorDecks())return;
  const date=normalizeCartDate($('cartDate').value);
  const previous=data.find(d=>d.id===cartEditedId),isNew=!previous,level=+$('cartMode').value,local=level===0,freeGroup=level===1&&$('cartGroupType').value==='free';
@@ -2912,7 +2919,8 @@ for(const id of ['cartLat','cartLng'])$(id).addEventListener('input',()=>syncCar
 $('cartImage').onchange=()=>{const file=$('cartImage').files[0];if(!file)return;if(!/^image\/(png|jpeg|webp)$/.test(file.type)||file.size>700000){$('cartEditorError').textContent='Choisis un PNG, JPEG ou WebP de moins de 700 ko.';$('cartImage').value='';return}const reader=new FileReader;reader.onload=()=>{if(typeof reader.result==='string'){cartEditing.image=unique([...cartEditing.image,String(reader.result)]);renderCartImages();$('cartEditorError').textContent=''}};reader.onerror=()=>{$('cartEditorError').textContent='Impossible de lire cette image.'};reader.readAsDataURL(file);$('cartImage').value=''};
 $('cartEditor').onsubmit=e=>{e.preventDefault();try{saveCartEditor()}catch(err){$('cartEditorError').textContent=err.message}};
 $('cartDelete').onclick=()=>{if(!cartEditedId||!confirm('Supprimer définitivement cette fiche ?'))return;const old=data.find(d=>d.id===cartEditedId),unit=old?.unit,source=old?._sourcePath;pushCartUndo('Suppression d’une fiche');data=data.filter(d=>d.id!==cartEditedId);persistCartData();const returnedToSummary=closeCartEditor();renderTags();renderDeckTree();if(cartGithubMode&&source)queueCartDataSync([source],'Suppression depuis la carte');if(!returnedToSummary)refreshAfterCartEdit(unit)};
-$('cartCancel').onclick=closeCartEditor;$('editorScrim').onclick=closeCartEditor;
+$('cartCancel').onclick=requestCloseCartEditor;$('editorScrim').onclick=requestCloseCartEditor;
+window.addEventListener('beforeunload',e=>{if(!$('cartEditor').hidden&&cartEditorSnapshot()!==cartEditorBaseline){e.preventDefault();e.returnValue=''}});
 function refreshDeckPaths(){allDeckPaths=unique(data.flatMap(itemDecks))}
 let tagEditMode=false;
 function normalizeCartTag(value){const tag=String(value||'').trim();if(!tag)throw Error('Le nom de l’étiquette est vide.');if(tag.length>120)throw Error('Le nom de l’étiquette est trop long.');return tag}
@@ -3224,10 +3232,23 @@ async function putPrivateCartSource(path,message='Mise à jour depuis la carte')
   throw Error('Écriture '+path+' impossible : GitHub a changé ce CSV plusieurs fois pendant la sauvegarde. Réessaie dans un instant.')
  })
 }
+const cartPendingSyncPaths=new Set();
+let cartSyncJobs=0;
+function setCartSyncState(text,retry=false){$('cartSyncState').hidden=!text;$('cartSyncState').textContent=text;$('cartSyncRetry').hidden=!retry}
+$('cartSyncRetry').onclick=()=>queueCartDataSync([...cartPendingSyncPaths]);
 function queueCartDataSync(paths=cartGithubFiles,message='Mise à jour depuis la carte'){
  const unique=[...new Set(Array.isArray(paths)?paths:[paths])].filter(path=>cartGithubFiles.includes(path));if(!cartGithubMode||!unique.length)return Promise.resolve();
- updateCartOwnerUi('GitHub · synchro…');
- cartGithubSyncChain=cartGithubSyncChain.then(async()=>{for(const path of unique)await putPrivateCartSource(path,message);cartDataDirty=false;updateCartOwnerUi('Privé · synchronisé')}).catch(e=>{updateCartOwnerUi('Privé · erreur');$('status').textContent=e.message});
+ unique.forEach(path=>cartPendingSyncPaths.add(path));cartSyncJobs++;
+ setCartSyncState('Enregistré localement · synchronisation…');updateCartOwnerUi('GitHub · synchro…');
+ cartGithubSyncChain=cartGithubSyncChain.then(async()=>{
+  for(const path of unique){await putPrivateCartSource(path,message);cartPendingSyncPaths.delete(path)}
+ }).catch(e=>{unique.forEach(path=>cartPendingSyncPaths.add(path));$('status').textContent=e.message}).finally(()=>{
+  cartSyncJobs--;
+  if(cartSyncJobs)return;
+  cartDataDirty=cartPendingSyncPaths.size>0;
+  setCartSyncState(cartDataDirty?'Enregistré localement · échec de synchronisation':'Enregistré sur GitHub',cartDataDirty);
+  updateCartOwnerUi(cartDataDirty?'Privé · erreur de synchronisation':'Privé · synchronisé');
+ });
  return cartGithubSyncChain
 }
 function cartStatusIsError(message){return /(erreur|impossible|conflit|échou|invalide|introuvable|réessayer|refus|http\s*\d{3}|non disponible)/i.test(String(message||''))}
@@ -3294,7 +3315,8 @@ function updateCartPrivateControls(){const connected=!!cartGithubMode;for(const 
 function clearPrivateCartView(){clearCartPrivateMedia();cartGithubFileTexts={};data=[];hasImportedCartData=false;cartDataDirty=false;cartGithubFiles=[];cartGithubFileShas={};cartGithubFileMaxIds={};try{localStorage.removeItem(CART_DATA_KEY)}catch{}selectedTags.clear();selectedDeckPaths.clear();allDeckPaths=[];cartDeckTreeRoot=null;invalidateGroupCache();selection=null;activeItem=null;closeMapDetail()}
 function updateCartOwnerUi(message=''){
  const connected=!!cartGithubMode;
- $('cartGhStatus').className='owner-status'+(connected?' ok':'');
+ if(!connected)setCartSyncState('');
+ $('cartGhStatus').className='owner-status'+(message.includes('erreur')?' bad':connected?' ok':'');
  $('cartGhStatus').textContent=message||(connected?'Connecté · '+cartGithubFiles.length+' CSV privé'+(cartGithubFiles.length>1?'s':'')+' · synchronisation automatique':'Non connecté.');
  updateCartPrivateControls()
 }
@@ -3713,6 +3735,8 @@ async function bootCartography(){
  updateScaleSelector(mode,false);
  renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');const overviewPromise=loadIgnOverview(),pacificPromise=loadPacificAdmin(),catalogPromise=loadAdminCatalog();home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours administratifs…';
  const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}else{clearPrivateCartView();renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
+ await overviewPromise;
+ if(overviewReady()&&!selection){overviewBootResolved=true;home()}
  const results=await Promise.allSettled([
   loadAdminBoundaryBundle().then(async bundle=>{deptGeo=bundle.departements;regionGeo=bundle.regions;epciGeo=await augmentGrandParisGroups(bundle.epci);departmentRenderGeoCache=null;departmentOutlineGeoCache=null;invalidateGroupCache()})
  ]);
