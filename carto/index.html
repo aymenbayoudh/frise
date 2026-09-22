@@ -1458,16 +1458,7 @@ function pointState(){
 }
 function maybeDrawPoints(){const key=pointState();if(key!==pointRenderKey)drawPoints()}
 function bindMapHover(layer,onStart,onEnd){
- let pressed=false;
- const start=e=>{if(pressed)return;pressed=true;onStart(e)},
-       end=e=>{if(!pressed)return;pressed=false;onEnd(e)};
- if(compactMapUi()){
-   // Mobile: hover exists only while the finger / pointer is held down.
-   layer.on('touchstart',start);layer.on('touchend',end);layer.on('touchcancel',end);
-   layer.on('mousedown',start);layer.on('mouseup',end);layer.on('mouseout',end)
- }else{
-   layer.on('mouseover',onStart);layer.on('mouseout',onEnd)
- }
+ layer.on('mouseover',onStart);layer.on('mouseout',onEnd);
  return layer
 }
 function geoLayer(geo,target,interactive=true){return L.geoJSON(geo,{style:adminStyle,onEachFeature:(f,l)=>{if(!interactive)return;const code=featureAdminCode(f),name=featureAdminName(f),n=countCode(code);l.bindTooltip(escape(name)+' · '+n+' exemple'+(n>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});bindMapHover(l,e=>{l.openTooltip(e.latlng);const selected=mode>=1&&selection&&String(selection.code)===code,base=adminStyle(f),hoverWeight=mode===1?Math.max(primaryAdminStroke(1.15),base.weight+primaryAdminStroke(.25)):Math.max(primaryAdminStroke(2.25),base.weight+primaryAdminStroke(.45));l.setStyle(selected?base:{weight:hoverWeight,color:'#000000',opacity:1});l.bringToFront()},()=>{l.closeTooltip();l.setStyle(adminStyle(f))});l.on('click',e=>{if(mode<1)return;L.DomEvent.stopPropagation(e);const g=groupByCode(code),fromOverview=overviewActive;if(g?.items?.length)choose(g,fromOverview?null:l.getBounds(),{fromOverview});else clearUnitSelection()})}}).addTo(target);}
