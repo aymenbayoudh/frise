@@ -854,7 +854,7 @@ function normalizeBaseColorValue(c,fallback){return /^#[0-9A-F]{6}$/i.test(Strin
 function normalizeBaseColors(values){return BASE_COLOR_DEFAULTS.map((fallback,i)=>normalizeBaseColorValue(Array.isArray(values)?values[i]:'',fallback))}
 function normalizeStrokeValue(v,fallback,kind=''){
  const n=Number(v),isCluster=kind==='clusterRadiusScale',isLabel=/LabelSize$/.test(kind),isSize=/Size$/.test(kind),
-       min=isCluster?.5:isLabel?6:isSize?3:.1,max=isCluster?1.5:isLabel?24:isSize?30:6;
+       min=isCluster ? .5 : isLabel ? 6 : isSize ? 3 : .1,max=isCluster ? 1.5 : isLabel ? 24 : isSize ? 30 : 6;
  return Number.isFinite(n)?Math.max(min,Math.min(max,Math.round(n*100)/100)):fallback
 }
 function normalizeBoundaryStrokes(values){
