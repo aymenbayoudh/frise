@@ -589,6 +589,8 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
  .cart-settings-panel .batch-actions button{width:100%;height:36px;min-height:36px;padding:0 8px;font-size:.72rem}
  #settingsReset{grid-column:1/-1}
 }
+/* Le brouillon/sync reste interne : pas de bandeau "Enregistré localement / Réessayer" dans la barre. */
+#cartSyncState,#cartSyncRetry{display:none!important}
 </style></head><body>
 <header><strong>VUE D’ENSEMBLE</strong><nav><a href="./">Frise</a><a href="./carto" aria-current="page">Carte</a></nav><div class="header-actions">
 <button id="randomItem" type="button" aria-label="Exemple au hasard" title="Exemple au hasard">🎲</button>
@@ -664,6 +666,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
       <span>Régions</span><label class="settings-stroke-control"><input id="settingStrokeCommuneRegion" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des régions en mode Communes"><small>px</small></label>
       <span>Ronds de préfecture</span><label class="settings-stroke-control"><input id="settingSizeCommunePref" type="number" min="3" max="30" step="0.5" inputmode="decimal" aria-label="Taille des ronds de préfecture en mode Communes"><small>px</small></label>
       <span>Ronds de sous-préfecture</span><label class="settings-stroke-control"><input id="settingSizeCommuneSubpref" type="number" min="3" max="30" step="0.5" inputmode="decimal" aria-label="Taille des ronds de sous-préfecture en mode Communes"><small>px</small></label>
+      <span>Distance regroupement bulles</span><label class="settings-stroke-control"><input id="settingCommuneClusterRadius" type="number" min="0.5" max="1.5" step="0.05" inputmode="decimal" aria-label="Distance de regroupement des bulles d’exemples des communes"><small>×</small></label>
       <span>Police · communes avec exemples</span><label class="settings-stroke-control"><input id="settingLabelCommuneEvent" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes des communes avec exemples"><small>px</small></label>
       <span>Police · commune sélectionnée</span><label class="settings-stroke-control"><input id="settingLabelCommuneSelected" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille de l’étiquette de la commune sélectionnée"><small>px</small></label>
       <span>Police · communes alentours</span><label class="settings-stroke-control"><input id="settingLabelCommuneNeighbor" type="number" min="6" max="24" step="0.5" inputmode="decimal" aria-label="Taille des étiquettes des communes alentours"><small>px</small></label>
@@ -831,13 +834,13 @@ const CART_DATA_KEY='cartographie-v2:data',CART_LOCAL_IMPORT_KEY='cartographie-v
 let cartGithubMode=false,cartGithubConfig=null,cartGithubFiles=[],cartGithubFileShas={},cartGithubFileTexts={},cartGithubFileMaxIds={},cartGithubSyncChain=Promise.resolve(),cartPrivateMediaCache=new Map(),cartCloudTimer=null,applyingCartCloudState=false,cartDataDirty=false;
 const modeKeys=['commune','interco','departement','region'],BASE_COLOR_DEFAULTS=['#A8D93F','#245C3D','#D65A94','#1B83B2'];
 const STROKE_DEFAULTS={
- commune:{communeExample:1.65,communeNeighbor:1.05,arrondissement:1,departement:1.1,region:1.45,prefSize:11,subprefSize:6,eventLabelSize:11,selectedLabelSize:9,neighborLabelSize:9,prefLabelSize:9,subprefLabelSize:9},
+ commune:{communeExample:1.65,communeNeighbor:1.05,arrondissement:1,departement:1.1,region:1.45,prefSize:11,subprefSize:6,clusterRadiusScale:.9,eventLabelSize:11,selectedLabelSize:9,neighborLabelSize:9,prefLabelSize:9,subprefLabelSize:9},
  interco:{groupement:.525,departement:.9,region:1.45,prefSize:11,subprefSize:6,unitLabelSize:12,centerLabelSize:10,prefLabelSize:9,subprefLabelSize:9},
  departement:{arrondissement:.9,departement:1.4,region:1.8,prefSize:11,subprefSize:6,unitLabelSize:12,prefLabelSize:9,subprefLabelSize:9},
  region:{departement:.72,region:1.4,prefSize:11,subprefSize:6,unitLabelSize:12,prefLabelSize:9,subprefLabelSize:9}
 };
 const STROKE_SETTINGS_ROWS=[
- ['commune','communeExample','settingStrokeCommuneExample',null],['commune','communeNeighbor','settingStrokeCommuneNeighbor',null],['commune','arrondissement','settingStrokeCommuneArrondissement','arrondissement'],['commune','departement','settingStrokeCommuneDepartement','departement'],['commune','region','settingStrokeCommuneRegion','region'],['commune','prefSize','settingSizeCommunePref','prefSize'],['commune','subprefSize','settingSizeCommuneSubpref','subprefSize'],
+ ['commune','communeExample','settingStrokeCommuneExample',null],['commune','communeNeighbor','settingStrokeCommuneNeighbor',null],['commune','arrondissement','settingStrokeCommuneArrondissement','arrondissement'],['commune','departement','settingStrokeCommuneDepartement','departement'],['commune','region','settingStrokeCommuneRegion','region'],['commune','prefSize','settingSizeCommunePref','prefSize'],['commune','subprefSize','settingSizeCommuneSubpref','subprefSize'],['commune','clusterRadiusScale','settingCommuneClusterRadius',null],
  ['interco','groupement','settingStrokeIntercoGroupement',null],['interco','departement','settingStrokeIntercoDepartement','departement'],['interco','region','settingStrokeIntercoRegion','region'],['interco','prefSize','settingSizeIntercoPref','prefSize'],['interco','subprefSize','settingSizeIntercoSubpref','subprefSize'],
  ['departement','arrondissement','settingStrokeDepartementArrondissement','arrondissement'],['departement','departement','settingStrokeDepartementDepartement','departement'],['departement','region','settingStrokeDepartementRegion','region'],['departement','prefSize','settingSizeDepartementPref','prefSize'],['departement','subprefSize','settingSizeDepartementSubpref','subprefSize'],
  ['region','departement','settingStrokeRegionDepartement','departement'],['region','region','settingStrokeRegionRegion','region'],['region','prefSize','settingSizeRegionPref','prefSize'],['region','subprefSize','settingSizeRegionSubpref','subprefSize'],
@@ -850,7 +853,8 @@ const SETTING_LINK_GROUPS=new Set(['arrondissement','departement','region','pref
 function normalizeBaseColorValue(c,fallback){return /^#[0-9A-F]{6}$/i.test(String(c||''))?String(c).toUpperCase():fallback}
 function normalizeBaseColors(values){return BASE_COLOR_DEFAULTS.map((fallback,i)=>normalizeBaseColorValue(Array.isArray(values)?values[i]:'',fallback))}
 function normalizeStrokeValue(v,fallback,kind=''){
- const n=Number(v),isLabel=/LabelSize$/.test(kind),isSize=/Size$/.test(kind),min=isLabel?6:isSize?3:.1,max=isLabel?24:isSize?30:6;
+ const n=Number(v),isCluster=kind==='clusterRadiusScale',isLabel=/LabelSize$/.test(kind),isSize=/Size$/.test(kind),
+       min=isCluster?.5:isLabel?6:isSize?3:.1,max=isCluster?1.5:isLabel?24:isSize?30:6;
  return Number.isFinite(n)?Math.max(min,Math.min(max,Math.round(n*100)/100)):fallback
 }
 function normalizeBoundaryStrokes(values){
@@ -1791,13 +1795,15 @@ function locationBuckets(items){const b=new Map();items.forEach(d=>{const k=d.at
 function openBucket(items){if(items.length===1){showItem(items[0]);return;}activeItem=null;focus.clearLayers();$('heading').textContent=units[items[0].unit].name;$('context').textContent=items.length+' fiche'+(items.length>1?'s':'');$('back').hidden=false;renderCards(items);}
 function communePermanentLabelZoom(){return compactMapUi()?9.65:9.15}
 function communeClusterRadiusPx(z){
- const mobile=compactMapUi();
- if(z<5.5)return mobile?82:70;
- if(z<6.75)return mobile?74:64;
- if(z<8)return mobile?64:56;
- if(z<9)return mobile?54:48;
- if(z<10)return mobile?46:40;
- return mobile?38:34
+ const mobile=compactMapUi(),scale=strokeSetting(0,'clusterRadiusScale');
+ let radius;
+ if(z<5.5)radius=mobile?82:70;
+ else if(z<6.75)radius=mobile?74:64;
+ else if(z<8)radius=mobile?64:56;
+ else if(z<9)radius=mobile?54:48;
+ else if(z<10)radius=mobile?46:40;
+ else radius=mobile?38:34;
+ return radius*scale
 }
 function communeClusterSize(total,members){
  const mobile=compactMapUi(),count=Math.max(1,Number(total)||1),memberCount=Math.max(1,Number(members)||1),
@@ -3562,8 +3568,8 @@ function installStrokeSteppers(){
          current=Number.isFinite(raw)?raw:fallback,next=normalizeStrokeValue(current+direction*step,fallback,kind);
    input.value=formatStrokeInput(next);input.dispatchEvent(new Event('input',{bubbles:true}))
   };
-  const size=/Size$/.test(kind),minus=document.createElement('button');minus.type='button';minus.className='settings-stepper-button';minus.textContent='−';minus.setAttribute('aria-label',size?'Réduire la taille':'Réduire l’épaisseur');minus.onclick=e=>{e.preventDefault();e.stopPropagation();change(-1)};
-  const plus=document.createElement('button');plus.type='button';plus.className='settings-stepper-button';plus.textContent='+';plus.setAttribute('aria-label',size?'Augmenter la taille':'Augmenter l’épaisseur');plus.onclick=e=>{e.preventDefault();e.stopPropagation();change(1)};
+  const size=/Size$/.test(kind),cluster=kind==='clusterRadiusScale',minus=document.createElement('button');minus.type='button';minus.className='settings-stepper-button';minus.textContent='−';minus.setAttribute('aria-label',cluster?'Réduire la distance de regroupement':size?'Réduire la taille':'Réduire l’épaisseur');minus.onclick=e=>{e.preventDefault();e.stopPropagation();change(-1)};
+  const plus=document.createElement('button');plus.type='button';plus.className='settings-stepper-button';plus.textContent='+';plus.setAttribute('aria-label',cluster?'Augmenter la distance de regroupement':size?'Augmenter la taille':'Augmenter l’épaisseur');plus.onclick=e=>{e.preventDefault();e.stopPropagation();change(1)};
   control.insertBefore(minus,input);input.insertAdjacentElement('afterend',plus)
  }
 }
