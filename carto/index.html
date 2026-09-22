@@ -3140,14 +3140,17 @@ async function loadPrivateCartData(){
   files=entries.filter(entry=>!(entry&&typeof entry==='object'&&entry.enabled===false)).map(cartManifestFilePath)
  }else files=[CART_GITHUB_FALLBACK_FILE];
  if(!files.length)throw Error('Aucun CSV actif dans '+CART_GITHUB_MANIFEST);
- const payloads=await Promise.all(files.map(cartGithubGetFile));cartGithubFiles=files;cartGithubFileShas={};cartGithubFileTexts={};cartGithubFileMaxIds={};
+ const payloads=await Promise.all(files.map(cartGithubGetFile)),drafts=readCartPendingDrafts();
+ const restored=new Map(payloads.map(payload=>{const draft=drafts[payload.path];return[payload.path,draft?mergeCartCsvVersions(draft.base,draft.local,payload.text,payload.path):payload.text]}));
+ cartGithubFiles=files;cartGithubFileShas={};cartGithubFileTexts={};cartGithubFileMaxIds={};
  let nextId=1,merged=[],mergedUnits={};
  for(const payload of payloads){
-  cartGithubFileShas[payload.path]=payload.sha;cartGithubFileTexts[payload.path]=payload.text;const parsed=readCartCsv(payload.text);Object.assign(mergedUnits,parsed.units);let maxId=0;
+  cartGithubFileShas[payload.path]=payload.sha;cartGithubFileTexts[payload.path]=payload.text;const parsed=readCartCsv(restored.get(payload.path));Object.assign(mergedUnits,parsed.units);let maxId=0;
   parsed.rows.forEach((d,index)=>{const sourceId=Number(d.id)||index+1;maxId=Math.max(maxId,sourceId);merged.push({...d,id:nextId++,_sourcePath:payload.path,_sourceId:sourceId,_sourceOrder:index,generatedDemo:false})});
   cartGithubFileMaxIds[payload.path]=maxId
  }
- data=merged;Object.assign(units,mergedUnits);hasImportedCartData=true;cartDataDirty=false;
+ data=merged;Object.assign(units,mergedUnits);hasImportedCartData=true;cartPendingSyncPaths.clear();for(const payload of payloads)if(restored.get(payload.path)!==payload.text)cartPendingSyncPaths.add(payload.path);cartDataDirty=cartPendingSyncPaths.size>0;
+ if(cartDataDirty)setCartSyncState('Brouillon récupéré · à synchroniser',true);
  localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:mergedUnits}));
  return true
 }
@@ -3233,16 +3236,24 @@ async function putPrivateCartSource(path,message='Mise à jour depuis la carte')
   throw Error('Écriture '+path+' impossible : GitHub a changé ce CSV plusieurs fois pendant la sauvegarde. Réessaie dans un instant.')
  })
 }
+const CART_PENDING_DRAFTS_KEY='cartographie:pending-source-drafts-v1';
+function readCartPendingDrafts(){const value=JSON.parse(localStorage.getItem(CART_PENDING_DRAFTS_KEY)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{}}
+function saveCartPendingDraft(path){
+ const drafts=readCartPendingDrafts(),local=makeCartCsvForSource(path),base=cartGithubFileTexts[path];
+ if(base===local)delete drafts[path];else drafts[path]={base:base??local,local};
+ localStorage.setItem(CART_PENDING_DRAFTS_KEY,JSON.stringify(drafts));
+ return !!drafts[path]
+}
 const cartPendingSyncPaths=new Set();
 let cartSyncJobs=0;
 function setCartSyncState(text,retry=false){$('cartSyncState').hidden=!text;$('cartSyncState').textContent=text;$('cartSyncRetry').hidden=!retry}
 $('cartSyncRetry').onclick=()=>queueCartDataSync([...cartPendingSyncPaths]);
 function queueCartDataSync(paths=cartGithubFiles,message='Mise à jour depuis la carte'){
  const unique=[...new Set(Array.isArray(paths)?paths:[paths])].filter(path=>cartGithubFiles.includes(path));if(!cartGithubMode||!unique.length)return Promise.resolve();
- unique.forEach(path=>cartPendingSyncPaths.add(path));cartSyncJobs++;
+ unique.forEach(path=>{cartPendingSyncPaths.add(path);try{saveCartPendingDraft(path)}catch(e){$('status').textContent='Sauvegarde locale impossible : '+e.message}});cartSyncJobs++;
  setCartSyncState('Enregistré localement · synchronisation…');updateCartOwnerUi('GitHub · synchro…');
  cartGithubSyncChain=cartGithubSyncChain.then(async()=>{
-  for(const path of unique){await putPrivateCartSource(path,message);cartPendingSyncPaths.delete(path)}
+  for(const path of unique){await putPrivateCartSource(path,message);if(!saveCartPendingDraft(path))cartPendingSyncPaths.delete(path)}
  }).catch(e=>{unique.forEach(path=>cartPendingSyncPaths.add(path));$('status').textContent=e.message}).finally(()=>{
   cartSyncJobs--;
   if(cartSyncJobs)return;
@@ -3274,7 +3285,7 @@ function markCartCloudStateDirty(){
 function scheduleCartCloudSync(delay=7000){
  if(cartCloudTimer)clearTimeout(cartCloudTimer);
  if(!cartGithubMode)return;
- cartCloudTimer=setTimeout(()=>{cartCloudTimer=null;syncCartCloudStateToGitHub().catch(()=>{})},Math.max(0,delay))
+ cartCloudTimer=setTimeout(()=>{cartCloudTimer=null;syncCartCloudStateToGitHub().catch(e=>{$('status').textContent=e.message})},Math.max(0,delay))
 }
 function collectCartCloudState(){
  return{version:11,updatedAt:localCartCloudUpdated()||Date.now(),filters:readCartFilterState(),gameIdentityVersion:1,gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors],boundaryStrokes:normalizeBoundaryStrokes(boundaryStrokes),settingLinks:[...settingLinks],unitOpacity:temporaryPaletteOpacity}
@@ -3304,7 +3315,12 @@ async function loadCartCloudStateFromGitHub(){
  if(remoteUpdated>localUpdated)applyCartCloudState(state);
  else if(localUpdated>remoteUpdated)scheduleCartCloudSync(800)
 }
-async function syncCartCloudStateToGitHub(){
+let cartCloudSyncChain=Promise.resolve();
+function syncCartCloudStateToGitHub(){
+ const job=cartCloudSyncChain.catch(()=>{}).then(()=>writeCartCloudStateToGitHub());
+ cartCloudSyncChain=job;return job;
+}
+async function writeCartCloudStateToGitHub(){
  if(!cartGithubMode||!cartGithubConfig)return;
  if(cartCloudTimer){clearTimeout(cartCloudTimer);cartCloudTimer=null}
  const snapshot=collectCartCloudState(),remote=await cartGithubGetOptional(CART_GITHUB_STATE_FILE),body={message:'Synchronisation jeu et filtres carte · '+new Date().toLocaleString('fr-FR'),content:encodeCartBase64(JSON.stringify(snapshot,null,2)),branch:CART_GITHUB_BRANCH};
@@ -3316,7 +3332,7 @@ function updateCartPrivateControls(){const connected=!!cartGithubMode;for(const 
 function clearPrivateCartView(){clearCartPrivateMedia();cartGithubFileTexts={};data=[];hasImportedCartData=false;cartDataDirty=false;cartGithubFiles=[];cartGithubFileShas={};cartGithubFileMaxIds={};try{localStorage.removeItem(CART_DATA_KEY)}catch{}selectedTags.clear();selectedDeckPaths.clear();allDeckPaths=[];cartDeckTreeRoot=null;invalidateGroupCache();selection=null;activeItem=null;closeMapDetail()}
 function updateCartOwnerUi(message=''){
  const connected=!!cartGithubMode;
- if(!connected)setCartSyncState('');
+ if(!connected)setCartSyncState('');else if(cartDataDirty)setCartSyncState('Enregistré localement · à synchroniser',true);
  $('cartGhStatus').className='owner-status'+(message.includes('erreur')?' bad':connected?' ok':'');
  $('cartGhStatus').textContent=message||(connected?'Connecté · '+cartGithubFiles.length+' CSV privé'+(cartGithubFiles.length>1?'s':'')+' · synchronisation automatique':'Non connecté.');
  updateCartPrivateControls()
