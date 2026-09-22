@@ -2463,7 +2463,7 @@ function addPacificCenterMarkers(token,z,mobile){
 async function updateCenters(force=false){
  const z=map.getZoom(),mobile=compactMapUi(),focusedOverseas=overviewActive?null:overseasForView(),
        overseasSubprefFocus=(mode===0||mode===1||mode===2)&&!!focusedOverseas?.departmentArrondissements,
-       showRegionNames=z>=(mobile&&mode>=2?4.7:mobile?5.85:6.15),
+       showRegionNames=!mobile&&overviewActive||z>=(mobile&&mode>=2?4.7:mobile?5.85:6.15),
        showDeptNames=z>=(mobile?6.65:7.05),
        showDeptPref=mode===2&&(z>=6||overseasSubprefFocus),
        showSubpref=(mode===0||mode===1||mode===2)&&(z>=7||overseasSubprefFocus),
@@ -2492,7 +2492,7 @@ async function updateCenters(force=false){
    if(mode<=1){
      const u=selection?(units[selection.key]||selection):null,selectedDept=String(u?.dept||''),selectedRegion=String(u?.region||''),
            overseasRegion=focusedOverseas?String(focusedOverseas.region):'';
-     const regionEntries=(overseasRegion?regions.filter(r=>String(r.code)===overseasRegion):selection&&selectedRegion?regions.filter(r=>String(r.code)===selectedRegion):z>=5.05?regions:[])
+     const regionEntries=(overseasRegion?regions.filter(r=>String(r.code)===overseasRegion):selection&&selectedRegion?regions.filter(r=>String(r.code)===selectedRegion):(!mobile&&overviewActive)||z>=5.05?regions:[])
        .map(r=>({code:r.chefLieu,adminLevel:3,adminCode:String(r.code),rank:'region',showLabel:showRegionNames||!!overseasRegion}));
      const departmentEntries=(focusedOverseas?deps.filter(d=>String(d.code)===String(focusedOverseas.dept)):selection&&selectedDept?deps.filter(d=>String(d.code)===selectedDept):z>=6.65?deps:[])
        .filter(d=>!regionCapitalCodes.has(String(d.chefLieu)))
