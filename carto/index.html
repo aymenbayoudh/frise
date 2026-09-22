@@ -1950,6 +1950,9 @@ async function updateAdminCascade(g){const token=++adminCascadeToken,box=$('admi
 
 async function chooseCommune(g,bounds=null){
  if(!g)return;
+ const communeDept=String(g.dept||adminCatalog?.communeByCode.get(String(g.code||''))?.dept||''),
+       communeOverseas=overseasByDepartment(communeDept);
+ if(communeOverseas&&!communeOverseas.geo)await ensureOverseasGeometry(communeOverseas);
  if(!bounds&&g.code){
   const f=await communeOutlineGeo(g.code);
   if(f)bounds=featureBounds(f)
@@ -1980,9 +1983,10 @@ async function choose(g,bounds,options={}){
   const pac=pacificGeoForModeCode(mode,g.code);
   if(pac?.features?.length)bounds=L.geoJSON(pac).getBounds();
   else{
+   const overseas=mode>=2?doms.find(d=>(mode===3?d.region:displayDepartmentCode(d.dept))===String(g.code)):null;
+   if(overseas&&!overseas.geo)await ensureOverseasGeometry(overseas);
    const geo=overviewActive?(mode===3?displayRegionGeo():mode===2?displayDepartmentRenderGeo():displayEpciGeo()):(mode===3?regionGeo:mode===2?departmentRenderGeo():epciGeo),
-         features=geo?.features?.filter(f=>featureAdminCode(f)===String(g.code))||[],
-         overseas=mode>=2?doms.find(d=>(mode===3?d.region:displayDepartmentCode(d.dept))===String(g.code)):null;
+         features=geo?.features?.filter(f=>featureAdminCode(f)===String(g.code))||[];
    if(features.length)bounds=L.geoJSON({type:'FeatureCollection',features}).getBounds();else if(overseas?.geo)bounds=L.geoJSON(overseas.geo).getBounds()
   }
  }
