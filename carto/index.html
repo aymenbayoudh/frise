@@ -43,8 +43,8 @@ header{position:relative;z-index:1600}
 .game-history-entry{margin:4px 0}
 .game-history-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 9px;border:1px solid var(--line);border-radius:9px;background:#f8fafc;cursor:pointer}
 .game-history-card:hover,.game-history-card:focus-visible{background:#f1f5fa;outline:none}
-.game-history-card strong{display:block;overflow-wrap:anywhere;font-size:.75rem;line-height:1.18;letter-spacing:normal}
-.game-history-card small{display:block;margin-top:2px;color:var(--muted);font-size:.65rem;line-height:1.2}
+.game-history-card>div{min-width:0}.game-history-card strong{display:block;white-space:normal;overflow-wrap:anywhere;font-size:.75rem;line-height:1.18;letter-spacing:normal}
+.game-history-card small{display:block;overflow-wrap:anywhere;white-space:normal;margin-top:2px;color:var(--muted);font-size:.65rem;line-height:1.2}
 .game-history-count{min-width:38px;padding:3px 7px;border-radius:999px;background:#fff0f2;color:#9b2438;text-align:center;font-size:.68rem;font-weight:800}
 .game-history-preview{padding:10px 11px 11px;border:1px solid var(--line);border-top:0;border-radius:0 0 9px 9px;background:#fff;font-size:.72rem;line-height:1.4}
 .game-history-preview p{margin:6px 0}.game-history-preview img{display:block;max-width:100%;max-height:190px;margin:7px 0;border-radius:6px}
@@ -1923,6 +1923,8 @@ function overviewSelectionNeedsRealGeography(g){
  if(!g)return false;
  const code=String(g.code||''),u=units[g.key]||g,
        dept=String(u.dept||g.dept||''),region=String(u.region||g.region||'');
+ // Pacific overview polygons use displaced coordinates, even without any cards.
+ if(pacificGeoForModeCode(mode,code)?.features?.length)return true;
  if(mode===3&&doms.some(d=>String(d.region)===code))return true;
  if(mode===2&&doms.some(d=>String(displayDepartmentCode(d.dept))===String(displayDepartmentCode(code))))return true;
  if(dept&&doms.some(d=>String(d.dept)===dept))return true;
@@ -3498,17 +3500,29 @@ function readGameBests(){try{const x=JSON.parse(localStorage.getItem(CART_GAME_K
 function writeGameBest(mode,score){const b=readGameBests();if(score>b[mode]){b[mode]=score;localStorage.setItem(CART_GAME_KEY,JSON.stringify(b));markCartCloudStateDirty()}updateGameRecords();return b[mode]}
 function updateGameRecords(){const b=readGameBests();$('gameBestWhere').textContent=b.where;$('gameBestExample').textContent=b.example;if(gameState.mode)$('gameBest').textContent=b[gameState.mode]||0}
 function readGameErrors(){try{const x=JSON.parse(localStorage.getItem(CART_GAME_ERROR_KEY)||'{}');return x&&typeof x==='object'?x:{}}catch{return{}}}
-function recordGameAttempt(e,mode,correct){const all=readGameErrors(),key=String(e.id),x=all[key]||{total:0,attempts:0,correct:0,where:0,example:0,last:0};x.attempts=(Number(x.attempts)||0)+1;if(correct)x.correct=(Number(x.correct)||0)+1;else{x.total=(Number(x.total)||0)+1;x[mode]=(Number(x[mode])||0)+1}x.last=Date.now();all[key]=x;localStorage.setItem(CART_GAME_ERROR_KEY,JSON.stringify(all));markCartCloudStateDirty()}
+function recordGameAttempt(e,mode,correct){const all=readGameErrors(),key=String(e.id),x=all[key]||{total:0,attempts:0,correct:0,where:0,example:0,last:0};x.attempts=(Number(x.attempts)||0)+1;if(correct)x.correct=(Number(x.correct)||0)+1;else{x.total=(Number(x.total)||0)+1;x[mode]=(Number(x[mode])||0)+1}x.successStreak=correct?(Number(x.successStreak)||0)+1:0;x.last=Date.now();x.nextReview=x.last+(correct?Math.min(30,2**Math.min(5,x.successStreak-1))*86400000:600000);all[key]=x;localStorage.setItem(CART_GAME_ERROR_KEY,JSON.stringify(all));markCartCloudStateDirty()}
 function readGameRecent(){try{const x=JSON.parse(localStorage.getItem(CART_GAME_RECENT_KEY)||'[]');return Array.isArray(x)?x.map(String):[]}catch{return[]}}
 function rememberGameQuestion(e){let r=readGameRecent().filter(x=>x!==String(e.id));r.unshift(String(e.id));if(r.length>600)r.length=600;localStorage.setItem(CART_GAME_RECENT_KEY,JSON.stringify(r));markCartCloudStateDirty()}
 function shuffleGame(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=paletteRandomIndex(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
 function gamePool(mode=gameState.mode){const pool=current();if(mode==='where'&&groups().length<2)return[];if(mode==='example'&&new Set(pool.map(d=>d.unit)).size<2)return[];return pool}
-function buildGameBag(pool){const recent=readGameRecent(),rank=new Map(recent.map((id,i)=>[id,i])),fresh=[],seen=[];for(const e of pool){const i=rank.get(String(e.id));i==null?fresh.push(e):seen.push({e,i})}seen.sort((a,b)=>b.i-a.i);return[...shuffleGame(fresh),...seen.map(x=>x.e)]}
+function buildGameBag(pool){
+ const recent=readGameRecent(),rank=new Map(recent.map((id,i)=>[id,i])),errors=readGameErrors(),now=Date.now(),
+       cooldown=Math.min(20,Math.max(1,Math.floor(pool.length/4)));
+ // Every card appears at most once. New/due cards precede mastered cards;
+ // the most recently shown cards are postponed even after an interrupted game.
+ return shuffleGame(pool).map(e=>{
+  const id=String(e.id),x=errors[id],i=rank.get(id),attempts=Number(x?.attempts)||Number(x?.total)||0,
+        fresh=!attempts&&i==null,due=Number(x?.nextReview)||0,
+        tier=i!=null&&i<cooldown?2:fresh||due<=now?0:1,
+        priority=fresh?Infinity:(now-(due||Number(x?.last)||now))/86400000+gameDifficulty(x)/100;
+  return{e,tier,priority,i:i??Infinity}
+ }).sort((a,b)=>a.tier-b.tier||(a.tier===2?b.i-a.i:0)||b.priority-a.priority).map(x=>x.e)
+}
 function gameDifficulty(x){const err=Number(x?.total)||0,att=Math.max(err,Number(x?.attempts)||0);return att?Math.round(err/att*100):0}
 function errorReviewPool(){const errors=readGameErrors();return current().filter(e=>(Number(errors[String(e.id)]?.total)||0)>0).sort((a,b)=>(Number(errors[String(b.id)]?.total)||0)-(Number(errors[String(a.id)]?.total)||0))}
 function showGameMenuTab(tab){const history=tab==='history';$('gamePlayPane').hidden=history;$('gameHistoryPane').hidden=!history;$('gameTabPlay').classList.toggle('active',!history);$('gameTabHistory').classList.toggle('active',history);if(history)renderGameHistory()}
 function renderGameHistory(){const box=$('gameHistoryList'),errors=readGameErrors(),items=current().map(e=>({e,x:errors[String(e.id)]})).filter(o=>(Number(o.x?.total)||0)>0).sort((a,b)=>(Number(b.x.total)||0)-(Number(a.x.total)||0)||gameDifficulty(b.x)-gameDifficulty(a.x));box.innerHTML='';$('reviewErrors').disabled=!items.length;if(!items.length){box.innerHTML='<div class="game-history-empty">Aucune erreur avec les filtres actuels.</div>';return}for(const {e,x} of items){const entry=document.createElement('div');entry.className='game-history-entry';const card=document.createElement('div');card.className='game-history-card';card.tabIndex=0;card.setAttribute('role','button');card.setAttribute('aria-expanded','false');const left=document.createElement('div'),title=document.createElement('strong');title.textContent=e.title;left.append(title);const sub=document.createElement('small');sub.textContent=(units[e.unit]?.name||e.unit)+' · '+modes[e.mode]+' · difficulté '+gameDifficulty(x)+' %';left.append(sub);const count=document.createElement('span');count.className='game-history-count';count.textContent='× '+Number(x.total);card.append(left,count);const preview=document.createElement('div');preview.className='game-history-preview';preview.hidden=true;preview.innerHTML=cleanCartHtml(e.html||'');hydrateCartPrivateImages(preview);for(const src of e.image||[]){const img=document.createElement('img');loadCartImageInto(img,src);img.alt=e.title;preview.append(img)}const toggle=()=>{preview.hidden=!preview.hidden;card.setAttribute('aria-expanded',String(!preview.hidden))};card.onclick=toggle;card.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();toggle()}};entry.append(card,preview);box.append(entry)}}
-function openGame(mode,reviewOnly=false){closeTools();const pool=reviewOnly?errorReviewPool():gamePool(mode);if(!pool.length){$('status').textContent='Pas assez de fiches visibles pour ce jeu.';return}clearTimeout(gameNextTimer);gameState={mode,active:true,streak:0,mistakes:0,total:pool.length,current:null,pool,bag:reviewOnly?[...pool]:buildGameBag(pool),locked:false,answers:[],reviewOnly};$('gameModeTitle').textContent=reviewOnly?'↻ Réviser mes erreurs':mode==='where'?'🧭 Fiche → territoire':'🗺️ Territoire → fiche';$('gamePanel').hidden=false;$('gameScrim').hidden=false;$('gameStop').hidden=false;$('gameOver').hidden=true;updateGameRecords();nextGameQuestion()}
+function openGame(mode,reviewOnly=false){closeTools();const pool=reviewOnly?errorReviewPool():gamePool(mode);if(!pool.length){$('status').textContent='Pas assez de fiches visibles pour ce jeu.';return}clearTimeout(gameNextTimer);gameState={mode,active:true,streak:0,mistakes:0,total:pool.length,current:null,pool,bag:buildGameBag(pool),locked:false,answers:[],reviewOnly};$('gameModeTitle').textContent=reviewOnly?'↻ Réviser mes erreurs':mode==='where'?'🧭 Fiche → territoire':'🗺️ Territoire → fiche';$('gamePanel').hidden=false;$('gameScrim').hidden=false;$('gameStop').hidden=false;$('gameOver').hidden=true;updateGameRecords();nextGameQuestion()}
 function closeGamePreview(){$('gamePreview').hidden=true;$('gameQuestion').setAttribute('aria-expanded','false')}
 function renderGamePreview(){const e=gameState.current;if(!e||(!gameState.locked&&gameState.active))return;const p=$('gamePreview');if(!p.hidden){closeGamePreview();return}$('gamePreviewBody').innerHTML=cleanCartHtml(e.html||'');hydrateCartPrivateImages($('gamePreviewBody'));const imgs=$('gamePreviewImages');imgs.innerHTML='';for(const src of e.image||[]){const img=document.createElement('img');loadCartImageInto(img,src);img.alt=e.title;img.loading='lazy';imgs.append(img)}p.hidden=false;$('gameQuestion').setAttribute('aria-expanded','true')}
 function pickGameQuestion(){return gameState.bag.shift()||null}
