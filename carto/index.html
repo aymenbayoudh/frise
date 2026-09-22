@@ -811,6 +811,7 @@ const doms=[
  {name:'Martinique',dept:'972',region:'02',at:[14.65,-61.02],z:8,nationalEpci:true,departmentArrondissements:true},
  {name:'Guyane',dept:'973',region:'03',at:[4,-53.2],z:5,nationalEpci:true,departmentArrondissements:true},
  {name:'La Réunion',dept:'974',region:'04',at:[-21.12,55.53],z:8,nationalEpci:true,departmentArrondissements:true},
+ {name:'Saint-Pierre-et-Miquelon',dept:'975',region:'975',at:[46.885,-56.315],z:8,focusWhole:true,focusZ:9,nationalEpci:false,departmentArrondissements:false,syntheticSubprefCenters:true},
  {name:'Mayotte',dept:'976',region:'06',at:[-12.83,45.15],z:9,nationalEpci:true,departmentArrondissements:false},
  {name:'Polynésie française',dept:'987',region:'987',at:[-17.55,-149.56],z:5,focusWhole:true,focusZ:5,nationalEpci:false,departmentArrondissements:false},
  {name:'Nouvelle-Calédonie',dept:'988',region:'988',at:[-22.275,166.458],z:7,focusWhole:true,focusZ:7,nationalEpci:false,departmentArrondissements:false}
@@ -949,7 +950,8 @@ const OVERSEAS_ARRONDISSEMENT_CENTERS={
  '971':['97105','97120'],
  '972':['97209','97230','97217','97225'],
  '973':['97302','97311','97308'],
- '974':['97411','97416','97410','97415']
+ '974':['97411','97416','97410','97415'],
+ '975':['97501']
 };
 function subprefEntriesForDepartments(meta,wanted,depCapitalByCode,showLabel){
  const out=[],seen=new Set();
@@ -2014,6 +2016,8 @@ function loadAdminMeta(){if(metaPromise)return metaPromise;metaPromise=(async()=
  const departements=d.status==='fulfilled'&&Array.isArray(d.value)?d.value.map(x=>({...x,region:x.region??x.codeRegion})):[],
        regions=r.status==='fulfilled'&&Array.isArray(r.value)?r.value:[],
        arrondissements=a.status==='fulfilled'&&Array.isArray(a.value)?a.value:[];
+ if(!departements.some(x=>String(x.code)==='975'))departements.push({code:'975',nom:'Saint-Pierre-et-Miquelon',region:'975',chefLieu:'97502'});
+ if(!regions.some(x=>String(x.code)==='975'))regions.push({code:'975',nom:'Saint-Pierre-et-Miquelon',chefLieu:'97502'});
  adminCenterCommuneCodes=new Set([
    ...regions.map(x=>String(x.chefLieu||'')),
    ...departements.map(x=>String(x.chefLieu||'')),
@@ -2143,7 +2147,16 @@ async function updateCommuneDataLayer(force=false){
 async function departmentCommuneGeo(dept){
  dept=String(dept||'');if(!dept)return null;
  if(departmentCommuneGeoCache.has(dept))return departmentCommuneGeoCache.get(dept);
- const p=getJSON(IGN_GEO_BASE+'communes/'+encodeURIComponent(dept)+'.geojson').catch(()=>null);
+ const p=(async()=>{
+   try{const local=await getJSON(IGN_GEO_BASE+'communes/'+encodeURIComponent(dept)+'.geojson');if(local?.features?.length)return local}catch{}
+   // ADMIN EXPRESS local does not ship a 975 commune file. Keep the two
+   // official communes selectable by using the State commune API only here.
+   if(dept==='975')try{
+     const remote=await getJSON('https://geo.api.gouv.fr/communes?codeDepartement=975&fields=nom,code&format=geojson&geometry=contour');
+     if(remote?.features?.length)return remote
+   }catch{}
+   return null
+ })();
  departmentCommuneGeoCache.set(dept,p);return p
 }
 async function epciCommuneGeo(code){
@@ -2462,7 +2475,7 @@ function addPacificCenterMarkers(token,z,mobile){
 }
 async function updateCenters(force=false){
  const z=map.getZoom(),mobile=compactMapUi(),focusedOverseas=overviewActive?null:overseasForView(),
-       overseasSubprefFocus=(mode===0||mode===1||mode===2)&&!!focusedOverseas?.departmentArrondissements,
+       overseasSubprefFocus=(mode===0||mode===1||mode===2)&&!!(focusedOverseas?.departmentArrondissements||focusedOverseas?.syntheticSubprefCenters),
        showRegionNames=!mobile&&overviewActive||z>=(mobile&&mode>=2?4.7:mobile?5.85:6.15),
        showDeptNames=z>=(mobile?6.65:7.05),
        showDeptPref=mode===2&&(z>=6||overseasSubprefFocus),
@@ -2473,7 +2486,7 @@ async function updateCenters(force=false){
  let visibleRegions=[],visibleDepts=[],visibleKey='national';
  if(showRegionDeptSecondary)visibleRegions=selection?[String(selection.code)]:visibleCodesFromGeo(displayRegionGeo()).sort();
  if(showDeptPref||showSubpref){
-   if(focusedOverseas?.departmentArrondissements)visibleDepts=[String(focusedOverseas.dept)];
+   if(focusedOverseas&&(focusedOverseas.departmentArrondissements||focusedOverseas.syntheticSubprefCenters))visibleDepts=[String(focusedOverseas.dept)];
    else if(mode===2&&selection)visibleDepts=rawDepartmentCodes(String(selection.code));
    else if(mode===0&&selection){
      const u=units[selection.key]||selection,dep=String(u?.dept||'');
@@ -2988,6 +3001,7 @@ async function navigateToCollectivity(entry){
  closeMapDetail();setMode(entry.mode);
  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
  if(entry.mode===0){
+   const communeOverseas=overseasByDepartment(String(entry.dept||''));if(communeOverseas&&!communeOverseas.geo)await ensureOverseasGeometry(communeOverseas);
    const feature=await communeOutlineGeo(entry.code),bounds=feature?featureBounds(feature):null;
    const g={key:'search-commune-'+entry.code,name:entry.name,code:entry.code,dept:entry.dept,region:entry.region,items:data.filter(d=>d.mode===0&&String(keyOf(d))===String(entry.code))};
    if(feature){const c=featureBounds(feature).getCenter();g.at=[c.lat,c.lng]}
