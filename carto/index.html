@@ -2102,8 +2102,9 @@ async function communeOutlineGeo(code){
  communeOutlineGeoCache.set(code,p);return p
 }
 function communeDataStyle(code){
- const g=groupByCode(code),selected=!!selection&&String(selection.code)===String(code),n=g?.items?.length||0,color=n?densityContinuousColor(n):defaultColors[0],base=adminStroke(strokeSetting(0,'communeExample'));
- return{pane:'communeDataPane',color:'#090B0D',weight:selected?base*1.88:base,opacity:1,fillColor:color,fillOpacity:selected?Math.min(1,temporaryPaletteOpacity+.10):temporaryPaletteOpacity}
+ const g=groupByCode(code),selected=!!selection&&String(selection.code)===String(code),n=g?.items?.length||0,color=n?densityContinuousColor(n):defaultColors[0],base=adminStroke(strokeSetting(0,'communeExample')),
+       fillOpacity=Math.min(1,(temporaryPaletteOpacity+(selected?.10:0))*.5);
+ return{pane:'communeDataPane',color:'#090B0D',weight:selected?base*1.88:base,opacity:1,fillColor:color,fillOpacity}
 }
 function individualizedCommuneTargets(){
  if(mode!==0)return[];
@@ -2130,7 +2131,7 @@ async function updateCommuneDataLayer(force=false){
     L.geoJSON(feature,{pane:'communeDataPane',interactive:true,style:()=>communeDataStyle(g.code),onEachFeature:(_,l)=>{
       l.bindTooltip(escape(g.name)+' · '+g.items.length+' exemple'+(g.items.length>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
       l.on({
-       mouseover:e=>{l.openTooltip(e.latlng);l.setStyle({...communeDataStyle(g.code),weight:adminStroke(strokeSetting(0,'communeExample'))*1.97,fillOpacity:Math.min(1,temporaryPaletteOpacity+.10)})},
+       mouseover:e=>{l.openTooltip(e.latlng);l.setStyle({...communeDataStyle(g.code),weight:adminStroke(strokeSetting(0,'communeExample'))*1.97,fillOpacity:Math.min(1,(temporaryPaletteOpacity+.10)*.5)})},
        mouseout:()=>{l.closeTooltip();l.setStyle(communeDataStyle(g.code))},
        click:e=>{L.DomEvent.stopPropagation(e);chooseCommune(g,l.getBounds())}
       })
