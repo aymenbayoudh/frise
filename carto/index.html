@@ -1600,7 +1600,14 @@ async function groupCenterAlreadyMarked(code,name=''){
   for(const kind of ['pf','nc'])if((pacificAdmin[kind]?.centers||[]).some(e=>compactName(e?.name)===normalized))return true
  }
  if(!code)return false;
- try{const meta=await loadAdminMeta();return(meta.regions||[]).some(r=>String(r.chefLieu||'')===code)||(meta.departements||[]).some(d=>String(d.chefLieu||'')===code)}catch{return false}
+ try{
+  const meta=await loadAdminMeta();
+  return isKnownAdminCenterCommune(code)||
+    (meta.regions||[]).some(r=>String(r.chefLieu||'')===code)||
+    (meta.departements||[]).some(d=>String(d.chefLieu||'')===code)||
+    (meta.arrondissements||[]).some(a=>String(a.chefLieu||'')===code)||
+    Object.values(OVERSEAS_ARRONDISSEMENT_CENTERS).flat().map(String).includes(code)
+ }catch{return false}
 }
 async function showGroupCenter(code,persistent=false){
  if(mode!==1||!code)return;clearTimeout(groupCenterHideTimer);
@@ -1611,11 +1618,10 @@ async function showGroupCenter(code,persistent=false){
  if(token!==groupCenterToken||mode!==1)return;
  groupCenter.clearLayers();activeGroupCenterCommuneCode=String(info.code||'');
  if(info.feature)L.geoJSON(info.feature,{pane:'groupCenterPane',interactive:false,style:{pane:'groupCenterPane',color:'#050607',weight:adminStroke(1.75),opacity:1,fillColor:'#ffffff',fillOpacity:.07}}).addTo(groupCenter);
- const labelAt=overviewActive?overviewPointForCommune(info.code,info.at):info.at,
-       visibleAdminLabel=alreadyMarked?groupCenterAdminLabelElement():null;
- // Avoid duplicates when a visible prefecture/subprefecture label already names the city-centre.
- // If that administrative label is not currently displayed, show the normal city-centre label instead.
- if(labelAt&&(!alreadyMarked||!visibleAdminLabel))L.marker(labelAt,{icon:groupCenterLabelIcon(info.name),interactive:false,zIndexOffset:120}).addTo(groupCenter);
+ const labelAt=overviewActive?overviewPointForCommune(info.code,info.at):info.at;
+ // A prefecture/subprefecture keeps its administrative label only. Never add
+ // a second city-centre label, even if center rendering finishes a frame later.
+ if(labelAt&&!alreadyMarked)L.marker(labelAt,{icon:groupCenterLabelIcon(info.name),interactive:false,zIndexOffset:120}).addTo(groupCenter);
  scheduleMapLabelCollisions()
 }
 function hideGroupCenterSoon(code){clearTimeout(groupCenterHideTimer);if(selection&&String(selection.code)===String(code))return;groupCenterHideTimer=setTimeout(()=>{if(mode===1&&(!selection||String(selection.code)!==String(code))){groupCenterToken++;groupCenter.clearLayers();activeGroupCenterCommuneCode='';scheduleMapLabelCollisions()}},110)}
