@@ -2193,6 +2193,9 @@ function drawCommuneContextLabels(geo,epci,force=false){
  for(const f of geo.features){
   const code=featureAdminCode(f),at=featureBounds(f).getCenter();
   if(code===selected){selectedEntry=[code,f,at];continue}
+  // A prefecture/subprefecture already has its permanent administrative
+  // label: never add a second "commune de l'EPCI" label for the same city.
+  if(isKnownAdminCenterCommune(code))continue;
   if(view.contains(at))visible.push([code,f,at])
  }
  const selectedHasOwnAdminLabel=isKnownAdminCenterCommune(selected),
