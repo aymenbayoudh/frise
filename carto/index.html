@@ -2356,9 +2356,12 @@ let persistedAdminCenters={};try{persistedAdminCenters=JSON.parse(localStorage.g
 function saveAdminCenterCache(){try{localStorage.setItem(ADMIN_CENTER_CACHE_KEY,JSON.stringify(persistedAdminCenters))}catch{}}
 async function communeCenter(code){
  code=String(code||'');if(!code)return null;
- const editorExtra=editorAdminExtra(0,code);if(editorExtra?.at)return{name:editorExtra.name,at:[...editorExtra.at]};
- for(const kind of ['pf','nc']){const src=pacificAdmin[kind],at=overviewActive?src?.overviewCommuneCenters?.[code]:src?.communeCenters?.[code];if(Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)){const f=src?.communes?.features?.find(x=>featureAdminCode(x)===code);return{name:featureAdminName(f)||code,at:[Number(at[0]),Number(at[1])]}}}
- if(overviewActive&&overviewCommuneCenters){const at=overviewCommuneCenters[code];if(Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)){const name=adminCatalog?.communeByCode.get(code)?.name||code;return{name,at:[Number(at[0]),Number(at[1])]}}}
+ const editorExtra=editorAdminExtra(0,code);
+ for(const kind of ['pf','nc']){const src=pacificAdmin[kind],at=overviewActive?src?.overviewCommuneCenters?.[code]:src?.communeCenters?.[code];if(Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)){const f=src?.communes?.features?.find(x=>featureAdminCode(x)===code);return{name:featureAdminName(f)||editorExtra?.name||code,at:[Number(at[0]),Number(at[1])]}}}
+ // Overview centers are already positioned inside the national layout. Prefer
+ // them to editor fallbacks, whose coordinates describe the real territory.
+ if(overviewActive&&overviewCommuneCenters){const at=overviewCommuneCenters[code];if(Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)){const name=editorExtra?.name||adminCatalog?.communeByCode.get(code)?.name||code;return{name,at:[Number(at[0]),Number(at[1])]}}}
+ if(editorExtra?.at)return{name:editorExtra.name,at:[...editorExtra.at]}
  if(communePointCache.has(code))return communePointCache.get(code);
  if(persistedAdminCenters[code]){const p=Promise.resolve(persistedAdminCenters[code]);communePointCache.set(code,p);return p}
  const p=(async()=>{
