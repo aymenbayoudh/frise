@@ -2525,9 +2525,11 @@ async function updateCenters(force=false){
        .filter(d=>!regionCapitalCodes.has(String(d.chefLieu)))
        .map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:showDeptNames||!!focusedOverseas}));
      await addAdminCenterBatch([...regionEntries,...departmentEntries],token);
-     if(token!==centerKey||!showSubpref)return;
-     const wanted=new Set(visibleDepts),depCapitalByCode=new Map(deps.map(d=>[String(d.code),String(d.chefLieu||'')]));
-     await addAdminCenterBatch(subprefEntriesForDepartments(meta,wanted,depCapitalByCode,showSubprefNames),token)
+     const showOverviewSpmSubpref=overviewActive;
+     if(token!==centerKey||(!showSubpref&&!showOverviewSpmSubpref))return;
+     const wanted=new Set(showSubpref?visibleDepts:[]),depCapitalByCode=new Map(deps.map(d=>[String(d.code),String(d.chefLieu||'')]));
+     if(showOverviewSpmSubpref)wanted.add('975');
+     await addAdminCenterBatch(subprefEntriesForDepartments(meta,wanted,depCapitalByCode,showSubprefNames||showOverviewSpmSubpref),token)
    }else if(mode===3){
      await addAdminCenterBatch(regions.map(r=>({code:r.chefLieu,adminLevel:3,adminCode:String(r.code),rank:'region',showLabel:showRegionNames})),token);
      if(token!==centerKey||!showRegionDeptSecondary)return;
@@ -2541,14 +2543,16 @@ async function updateCenters(force=false){
        regionPrefEntries.push({code:r.chefLieu,adminLevel:2,adminCode:String(host?.code||''),rank:'region',showLabel:showRegionNames||!!focusedOverseas})
      }
      await addAdminCenterBatch(regionPrefEntries,token);
-     if(token!==centerKey||!showDeptPref)return;
-
-     const wanted=new Set(visibleDepts),visibleDeps=deps.filter(d=>wanted.has(String(d.code)));
-     await addAdminCenterBatch(visibleDeps.filter(d=>!regionCapitalCodes.has(String(d.chefLieu))).map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:showDeptNames||!!focusedOverseas})),token);
-     if(token!==centerKey||!showSubpref)return;
-
-     const depCapitalByCode=new Map(deps.map(d=>[String(d.code),String(d.chefLieu||'')]));
-     await addAdminCenterBatch(subprefEntriesForDepartments(meta,wanted,depCapitalByCode,showSubprefNames),token)
+     if(token!==centerKey)return;
+     if(showDeptPref){
+       const wantedDepts=new Set(visibleDepts),visibleDeps=deps.filter(d=>wantedDepts.has(String(d.code)));
+       await addAdminCenterBatch(visibleDeps.filter(d=>!regionCapitalCodes.has(String(d.chefLieu))).map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:showDeptNames||!!focusedOverseas})),token)
+     }
+     const showOverviewSpmSubpref=overviewActive;
+     if(token!==centerKey||(!showSubpref&&!showOverviewSpmSubpref))return;
+     const wanted=new Set(showSubpref?visibleDepts:[]),depCapitalByCode=new Map(deps.map(d=>[String(d.code),String(d.chefLieu||'')]));
+     if(showOverviewSpmSubpref)wanted.add('975');
+     await addAdminCenterBatch(subprefEntriesForDepartments(meta,wanted,depCapitalByCode,showSubprefNames||showOverviewSpmSubpref),token)
    }
    if(mode===0){if(!selection)renderSide();pointRenderKey='';drawPoints();if(selection)updateCommuneLabels(true)}
  }catch(e){$('status').textContent='Les contours restent disponibles ; chargement des chefs-lieux à réessayer.'}
