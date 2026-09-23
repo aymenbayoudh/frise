@@ -1157,10 +1157,14 @@ function overviewDepartmentOutlineGeo(){
  for(const code of ['20R','6AE']){const raw=rawDepartmentCodes(code),parts=(base.features||[]).filter(f=>raw.includes(featureAdminCode(f))),boundary=parts.length?overseasOuterBoundary({type:'FeatureCollection',features:parts}):null;if(boundary)features.push({...boundary,properties:{code,nom:SPECIAL_DEPARTMENT_NAMES[code]}})}
  return overviewDepartmentOutlineGeoCache={type:'FeatureCollection',features}
 }
-function displayRegionGeo(){return overviewActive&&overviewRegionGeo?mergeFeatureCollections(filteredOverviewGeo(overviewRegionGeo),pacificOverviewLevel(3)):regionGeo}
-function displayDepartmentRenderGeo(){return overviewActive&&overviewDeptGeo?mergeFeatureCollections(filteredOverviewGeo(overviewDepartmentRenderGeo()),pacificOverviewLevel(2)):departmentRenderGeo()}
-function displayDepartmentOutlineGeo(){return overviewActive&&overviewDeptGeo?mergeFeatureCollections(filteredOverviewGeo(overviewDepartmentOutlineGeo()),pacificOverviewLevel(2)):departmentOutlineGeo()}
-function displayEpciGeo(){return overviewActive?mergeFeatureCollections(filteredOverviewGeo(overviewEpciGeo),pacificOverviewLevel(1)):filteredOverviewGeo(epciGeo)}
+function recodeSpmOverviewGeo(geo){
+ if(!geo?.features?.length)return geo;
+ return{type:'FeatureCollection',features:geo.features.map(f=>compactName(featureAdminName(f))==='saintpierreetmiquelon'?{...f,properties:{...(f.properties||{}),code:'975',nom:'Saint-Pierre-et-Miquelon'}}:f)}
+}
+function displayRegionGeo(){return overviewActive&&overviewRegionGeo?mergeFeatureCollections(recodeSpmOverviewGeo(filteredOverviewGeo(overviewRegionGeo)),pacificOverviewLevel(3)):regionGeo}
+function displayDepartmentRenderGeo(){return overviewActive&&overviewDeptGeo?mergeFeatureCollections(recodeSpmOverviewGeo(filteredOverviewGeo(overviewDepartmentRenderGeo())),pacificOverviewLevel(2)):departmentRenderGeo()}
+function displayDepartmentOutlineGeo(){return overviewActive&&overviewDeptGeo?mergeFeatureCollections(recodeSpmOverviewGeo(filteredOverviewGeo(overviewDepartmentOutlineGeo())),pacificOverviewLevel(2)):departmentOutlineGeo()}
+function displayEpciGeo(){return overviewActive?mergeFeatureCollections({type:'FeatureCollection',features:(filteredOverviewGeo(overviewEpciGeo)?.features||[]).filter(f=>compactName(featureAdminName(f))!=='saintpierreetmiquelon')},pacificOverviewLevel(1)):filteredOverviewGeo(epciGeo)}
 function overviewPointForCommune(code,fallback){const p=pacificOverviewCommunePoint(code)||pacificOverviewFeatureCenter(0,code);if(p)return p;const at=overviewActive&&overviewCommuneCenters?overviewCommuneCenters[String(code||'')]:null;return Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)?at:fallback}
 function overviewFeatureCenter(geo,code,fallback){const f=geo?.features?.find(x=>featureAdminCode(x)===String(code||''));if(!f)return fallback;const b=featureBounds(f);return b?.isValid?.()?[b.getCenter().lat,b.getCenter().lng]:fallback}
 
@@ -3626,25 +3630,25 @@ $('settingsApply').onclick=()=>{
  markCartCloudStateDirty();closeCartSettings();refreshDisplaySettings();
 };
 $('moreButton').onclick=e=>{e.stopPropagation();toggleTool($('moreMenu'))};$('toggleFilters').onclick=e=>{e.stopPropagation();const pop=$('tagFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleFilters').setAttribute('aria-expanded',String(open))};$('toggleDecks').onclick=e=>{e.stopPropagation();toggleTool($('deckMenu'))};$('tagFilters').onclick=e=>e.stopPropagation();$('deckMenu').onclick=e=>e.stopPropagation();$('searchResults').onclick=e=>e.stopPropagation();$('adminSearchResults').onclick=e=>e.stopPropagation();$('adminSearch').onclick=e=>e.stopPropagation();
-async function focusItemFromNavigation(d){
+async function focusItemFromNavigation(d,targetMode=d?.mode){
  if(!d)return;
- setMode(d.mode);
+ const level=Math.max(0,Math.min(3,Number(targetMode)||0));setMode(level);
  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
- const u=units[d.unit]||{},code=String(u.code||d.unit),g=groups().find(g=>g.key===d.unit)||{key:d.unit,...u,code,items:data.filter(x=>x.mode===d.mode&&x.unit===d.unit)};
- if(d.mode===0){
+ const code=itemDisplayAdminCode(d,level),g=groups().find(group=>group.items.some(item=>item.id===d.id))||{key:d.unit,...(units[d.unit]||{}),code,items:[d]};
+ if(level===0){
   await chooseCommune(g);
  }else{
-  const wanted=d.mode===2?displayDepartmentCode(code):code,
-        geo=d.mode===3?regionGeo:d.mode===2?departmentRenderGeo():epciGeo,
+  const wanted=level===2?displayDepartmentCode(code):code,
+        geo=level===3?displayRegionGeo():level===2?displayDepartmentRenderGeo():displayEpciGeo(),
         fs=geo?.features?.filter(f=>featureAdminCode(f)===wanted)||[],
         bounds=fs.length?L.geoJSON({type:'FeatureCollection',features:fs}).getBounds():null,
-        maxZoom=d.mode===1?7.8:d.mode===2?6.6:5.7;
+        maxZoom=level===1?7.8:level===2?6.6:5.7;
   await choose(g,bounds||undefined,{maxZoom})
  }
  showItem(d,{recenter:false})
 }
 
-function randomCurrentItem(){const pool=current();if(!pool.length)return;const a=new Uint32Array(1);crypto.getRandomValues(a);focusItemFromNavigation(pool[a[0]%pool.length])}
+function randomCurrentItem(){const pool=current();if(!pool.length)return;const a=new Uint32Array(1);crypto.getRandomValues(a);focusItemFromNavigation(pool[a[0]%pool.length],mode)}
 const sideResize=$('sideResize');let sideResizeActive=false,sideResizeMobile=false;
 function applyMobileSideHeight(px,persist=false){if(innerWidth>640)return;const ws=document.querySelector('.workspace'),r=ws.getBoundingClientRect(),h=Math.max(105,Math.min(r.height*.72,Number(px)||r.height*.38));ws.style.setProperty('--mobile-side-height',Math.round(h)+'px');if(persist)try{localStorage.setItem(MOBILE_SIDE_HEIGHT_KEY,String(Math.round(h)));markCartCloudStateDirty()}catch{};requestAnimationFrame(()=>map.invalidateSize({pan:false,animate:false}))}
 try{const h=Number(localStorage.getItem(MOBILE_SIDE_HEIGHT_KEY));if(h&&innerWidth<=640)applyMobileSideHeight(h)}catch{}
