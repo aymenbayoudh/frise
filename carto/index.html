@@ -3639,7 +3639,7 @@ async function focusItemFromNavigation(d,targetMode=d?.mode){
   await chooseCommune(g);
  }else{
   const wanted=level===2?displayDepartmentCode(code):code,
-        geo=level===3?displayRegionGeo():level===2?displayDepartmentRenderGeo():displayEpciGeo(),
+        geo=level===3?regionGeo:level===2?departmentRenderGeo():epciGeo,
         fs=geo?.features?.filter(f=>featureAdminCode(f)===wanted)||[],
         bounds=fs.length?L.geoJSON({type:'FeatureCollection',features:fs}).getBounds():null,
         maxZoom=level===1?7.8:level===2?6.6:5.7;
