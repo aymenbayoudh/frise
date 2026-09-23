@@ -3632,7 +3632,7 @@ $('settingsApply').onclick=()=>{
 $('moreButton').onclick=e=>{e.stopPropagation();toggleTool($('moreMenu'))};$('toggleFilters').onclick=e=>{e.stopPropagation();const pop=$('tagFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleFilters').setAttribute('aria-expanded',String(open))};$('toggleDecks').onclick=e=>{e.stopPropagation();toggleTool($('deckMenu'))};$('tagFilters').onclick=e=>e.stopPropagation();$('deckMenu').onclick=e=>e.stopPropagation();$('searchResults').onclick=e=>e.stopPropagation();$('adminSearchResults').onclick=e=>e.stopPropagation();$('adminSearch').onclick=e=>e.stopPropagation();
 async function focusItemFromNavigation(d,targetMode=d?.mode){
  if(!d)return;
- const level=Math.max(0,Math.min(3,Number(targetMode)||0));setMode(level);
+ const level=Math.max(0,Math.min(3,Number(targetMode)||0));if(mode!==level)setMode(level);
  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
  const code=itemDisplayAdminCode(d,level),g=groups().find(group=>group.items.some(item=>item.id===d.id))||{key:d.unit,...(units[d.unit]||{}),code,items:[d]};
  if(level===0){
