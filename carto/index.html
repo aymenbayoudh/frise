@@ -1978,6 +1978,7 @@ function updateLegend(){
 function draw(){applyLabelSizeSettings();drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer()}
 function parseCartDate(value){
  const text=String(value||'').trim();if(!text)return null;
+ const range=/^(\d{4})\s*[-–—]\s*(\d{4})$/.exec(text);if(range){const start=Number(range[1]),end=Number(range[2]);if(start<1||end<start)return null;return{text:start+'-'+end,key:start*10000,range:[start,end]}}
  const match=/^(?:(?:(\d{2})\/)?(\d{2})\/)?(\d{4})$/.exec(text);
  if(!match)return null;
  const year=Number(match[3]),month=Number(match[2]||0),day=Number(match[1]||0);
@@ -1988,7 +1989,7 @@ function parseCartDate(value){
 }
 function normalizeCartDate(value){
  const text=String(value||'').trim();if(!text)return '';
- const parsed=parseCartDate(text);if(!parsed)throw Error('Date invalide : utilise JJ/MM/AAAA, MM/AAAA ou AAAA.');
+ const parsed=parseCartDate(text);if(!parsed)throw Error('Date invalide : utilise JJ/MM/AAAA, MM/AAAA, AAAA ou AAAA-AAAA.');
  return parsed.text;
 }
 function sortCartItemsByDate(items){return [...items].sort((a,b)=>(parseCartDate(b.date)?.key||0)-(parseCartDate(a.date)?.key||0))}
