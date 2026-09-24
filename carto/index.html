@@ -3221,18 +3221,24 @@ async function loadPrivateCartData(){
   files=entries.filter(entry=>!(entry&&typeof entry==='object'&&entry.enabled===false)).map(cartManifestFilePath)
  }else files=[CART_GITHUB_FALLBACK_FILE];
  if(!files.length)throw Error('Aucun CSV actif dans '+CART_GITHUB_MANIFEST);
- const payloads=await Promise.all(files.map(cartGithubGetFile)),drafts=readCartPendingDrafts(),draftWarnings=[];
+ const settled=await Promise.allSettled(files.map(cartGithubGetFile)),drafts=readCartPendingDrafts(),draftWarnings=[],loadWarnings=[];
+ const payloads=[];settled.forEach((result,index)=>{if(result.status==='fulfilled')payloads.push(result.value);else loadWarnings.push(files[index]+' : '+(result.reason?.message||result.reason))});
+ if(!payloads.length)throw Error('Aucun CSV privé n’a pu être chargé'+(loadWarnings.length?' · '+loadWarnings.slice(0,2).join(' · '):''));
  const restored=new Map(payloads.map(payload=>{const draft=drafts[payload.path];if(!draft)return[payload.path,payload.text];try{return[payload.path,mergeCartCsvVersions(draft.base,draft.local,payload.text,payload.path)]}catch(e){draftWarnings.push(payload.path+' : '+e.message);return[payload.path,payload.text]}}));
- cartGithubFiles=files;cartGithubFileShas={};cartGithubFileTexts={};cartGithubFileMaxIds={};
+ cartGithubFiles=payloads.map(p=>p.path);cartGithubFileShas={};cartGithubFileTexts={};cartGithubFileMaxIds={};
  let nextId=1,merged=[],mergedUnits={};
  for(const payload of payloads){
-  cartGithubFileShas[payload.path]=payload.sha;cartGithubFileTexts[payload.path]=payload.text;const parsed=readCartCsv(restored.get(payload.path));Object.assign(mergedUnits,parsed.units);let maxId=0;
-  parsed.rows.forEach((d,index)=>{const sourceId=Number(d.id)||index+1;maxId=Math.max(maxId,sourceId);merged.push({...d,id:nextId++,_sourcePath:payload.path,_sourceId:sourceId,_sourceOrder:index,generatedDemo:false})});
-  cartGithubFileMaxIds[payload.path]=maxId
+  try{
+   cartGithubFileShas[payload.path]=payload.sha;cartGithubFileTexts[payload.path]=payload.text;const parsed=readCartCsv(restored.get(payload.path));Object.assign(mergedUnits,parsed.units);let maxId=0;
+   parsed.rows.forEach((d,index)=>{const sourceId=Number(d.id)||index+1;maxId=Math.max(maxId,sourceId);merged.push({...d,id:nextId++,_sourcePath:payload.path,_sourceId:sourceId,_sourceOrder:index,generatedDemo:false})});
+   cartGithubFileMaxIds[payload.path]=maxId
+  }catch(e){loadWarnings.push(payload.path+' : '+e.message)}
  }
+ if(!merged.length)throw Error('Les CSV ont répondu mais aucune fiche n’a pu être lue'+(loadWarnings.length?' · '+loadWarnings.slice(0,2).join(' · '):''));
  data=merged;Object.assign(units,mergedUnits);hasImportedCartData=true;cartDeckTreeRoot=null;cartPendingSyncPaths.clear();for(const payload of payloads)if(restored.get(payload.path)!==payload.text)cartPendingSyncPaths.add(payload.path);cartDataDirty=cartPendingSyncPaths.size>0;
  if(cartDataDirty)setCartSyncState('Brouillon récupéré · à synchroniser',true);
  if(draftWarnings.length){console.warn('Brouillons carto ignorés temporairement pour le chargement',draftWarnings);$('status').textContent='Les cartes GitHub ont été chargées. Un ancien brouillon local est en conflit et a été conservé sans bloquer l’affichage.'}
+ if(loadWarnings.length){console.warn('Sources carto partiellement ignorées',loadWarnings);$('status').textContent=merged.length+' fiches chargées ; '+loadWarnings.length+' source(s) ont été ignorées temporairement.'}
  localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:mergedUnits}));
  return true
 }
@@ -3421,8 +3427,16 @@ async function writeCartCloudStateToGitHub(){
  };
  if(navigator.locks?.request)await navigator.locks.request('frise-cart-cloud-state',{mode:'exclusive'},write);else await write()
 }
+function restoreCachedCartData(){
+ try{
+  const cached=JSON.parse(localStorage.getItem(CART_DATA_KEY)||'null');
+  if(!Array.isArray(cached?.rows)||!cached.rows.length)return false;
+  data=cached.rows.map(d=>({...d,deck:normalizeCartDeckList(d.deck||[]),tags:unique(d.tags||[]),image:unique(d.image||[])}));
+  Object.assign(units,cached.units||{});hasImportedCartData=true;cartDeckTreeRoot=null;invalidateGroupCache();return true
+ }catch{return false}
+}
 function updateCartPrivateControls(){const connected=!!cartGithubMode;for(const id of ['addItem','sideAdd'])if($(id))$(id).disabled=!connected;if($('importButton'))$('importButton').disabled=false}
-function clearPrivateCartView(){clearCartPrivateMedia();cartGithubFileTexts={};data=[];hasImportedCartData=false;cartDataDirty=false;cartGithubFiles=[];cartGithubFileShas={};cartGithubFileMaxIds={};try{localStorage.removeItem(CART_DATA_KEY);const local=JSON.parse(localStorage.getItem(CART_LOCAL_IMPORT_KEY)||'null');if(Array.isArray(local?.rows)&&local.rows.length){data=local.rows.map(d=>({...d,_localOnly:true}));Object.assign(units,local.units||{});if(Number.isInteger(local.mode)&&local.mode>=0&&local.mode<=3)mode=local.mode;hasImportedCartData=true}}catch{}updateScaleSelector(mode,false);selectedTags.clear();selectedDeckPaths.clear();allDeckPaths=[];cartDeckTreeRoot=null;invalidateGroupCache();selection=null;activeItem=null;closeMapDetail()}
+function clearPrivateCartView(){clearCartPrivateMedia();cartGithubFileTexts={};data=[];hasImportedCartData=false;cartDataDirty=false;cartGithubFiles=[];cartGithubFileShas={};cartGithubFileMaxIds={};try{const cached=JSON.parse(localStorage.getItem(CART_DATA_KEY)||'null');if(Array.isArray(cached?.rows)&&cached.rows.length){data=cached.rows;Object.assign(units,cached.units||{});hasImportedCartData=true}const local=JSON.parse(localStorage.getItem(CART_LOCAL_IMPORT_KEY)||'null');if(Array.isArray(local?.rows)&&local.rows.length){data=local.rows.map(d=>({...d,_localOnly:true}));Object.assign(units,local.units||{});if(Number.isInteger(local.mode)&&local.mode>=0&&local.mode<=3)mode=local.mode;hasImportedCartData=true}}catch{}updateScaleSelector(mode,false);selectedTags.clear();selectedDeckPaths.clear();allDeckPaths=[];cartDeckTreeRoot=null;invalidateGroupCache();selection=null;activeItem=null;closeMapDetail()}
 function updateCartOwnerUi(message=''){
  const connected=!!cartGithubMode;
  if(!connected)setCartSyncState('');else if(cartDataDirty)setCartSyncState('Enregistré localement · à synchroniser',true);
@@ -3441,7 +3455,7 @@ async function connectCartGithub(token,status=$('cartGhStatus')){
  try{
   await loadPrivateCartData()
  }catch(e){
-  cartGithubMode=false;cartGithubConfig=null;clearPrivateCartView();updateCartOwnerUi();status.className='owner-status bad';status.textContent=e.message;return false
+  cartGithubMode=false;cartGithubConfig=null;if(!data.length)restoreCachedCartData();updateCartOwnerUi();status.className='owner-status bad';status.textContent=e.message;$('status').textContent='Connexion GitHub privée impossible : '+e.message+(data.length?' · affichage du dernier cache local.':'');return false
  }
  saveSharedCartGitHubConfig(cartGithubConfig);cartGithubMode=true;
  try{
@@ -3852,9 +3866,9 @@ let cartBootInteracted=false;
 for(const event of ['pointerdown','wheel','keydown'])$('map').addEventListener(event,()=>{cartBootInteracted=true},{passive:true});
 async function bootCartography(){
  const savedWidth=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(savedWidth)applySideWidth(savedWidth);
- updateScaleSelector(mode,false);
+ restoreCachedCartData();updateScaleSelector(mode,false);
  renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');const overviewPromise=loadIgnOverview(),pacificPromise=loadPacificAdmin(),catalogPromise=loadAdminCatalog(),seatPromise=loadIgnCommuneSeats();home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours administratifs…';
- const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}else{clearPrivateCartView();renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
+ const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}else{renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
  await overviewPromise;
  if(overviewReady()&&!selection&&!cartBootInteracted){overviewBootResolved=true;home()}
  const results=await Promise.allSettled([
