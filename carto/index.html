@@ -2130,7 +2130,7 @@ function bindMapDetailInlineEditing(){
  const detail=$('mapDetail');detail.classList.toggle('inline-edit-enabled',cartGithubMode);
  for(const el of detail.querySelectorAll('[data-inline-field]')){
   el.contentEditable='false';setMapInlineEmptyState(el);
-  el.onclick=e=>{if(!cartGithubMode)return;if(e.target.closest('a')&&!mapInlineEditState)return; e.stopPropagation();beginMapInlineEdit(el)};
+  el.onclick=e=>{if(!cartGithubMode)return;const link=e.target.closest('a');if(link&&(e.ctrlKey||e.metaKey))return;if(link)e.preventDefault();e.stopPropagation();beginMapInlineEdit(el)};
   el.onkeydown=e=>{
    if(!mapInlineEditState||mapInlineEditState.el!==el)return;const mod=e.ctrlKey||e.metaKey,key=e.key.toLowerCase();
    if(mod&&['b','i','u','k','s'].includes(key)){e.preventDefault();if(key==='b')runMapInlineCommand('bold');else if(key==='i')runMapInlineCommand('italic');else if(key==='u')runMapInlineCommand('underline');else if(key==='k')runMapInlineCommand('createLink');else finishMapInlineEdit(true);return}
