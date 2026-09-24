@@ -1801,7 +1801,15 @@ function densityContinuousColor(n){const ramp=densityPalette();if(!ramp.length)r
 function communeBubbleSize(n){const t=densityProgress(n);return compactMapUi()?Math.round(14+20*t):Math.round(22+36*t)}
 function icon(items,label,pin=false,showLabel=true){const n=items.length,global=items.every(x=>x.kind==='global'),s=pin?(global?35:26):communeBubbleSize(n),c=pin?itemDisplayColor(items[0]):densityContinuousColor(n),bubbleLabel=showLabel?'<span class="bubble-label">'+escape(label)+'</span>':'';return L.divIcon({className:pin?'pin-wrap':'bubble',iconSize:[s,s],iconAnchor:[s/2,pin?s:s/2],html:pin?'<div class="pin-body '+(global?'global':'')+'" style="--unit-color:'+c+'"><span>'+(n>1?n:global?'◆':'')+'</span></div>':'<div class="bubble-body" style="--unit-color:'+c+';width:'+s+'px;height:'+s+'px">'+n+'</div>'+bubbleLabel});}
 function addMarker(at,items,label,pin,fn,target=points,showLabel=true){const marker=L.marker(at,{pane:'eventPointPane',icon:icon(items,label,pin,showLabel),title:label,alt:label,keyboard:true}).addTo(target);marker.bindTooltip(escape(label)+' · '+items.length+' exemple'+(items.length>1?'s':''));marker.on('click',fn);}
-function locationBuckets(items){const b=new Map();items.forEach(d=>{const k=d.at.join(',');if(!b.has(k))b.set(k,[]);b.get(k).push(d)});return [...b.values()];}
+function communeWideDisplayAt(d){
+ if(!d||d.mode!==0||d.kind!=='global')return d?.at;
+ const u=units[d.unit]||{},code=String(u.code||keyOf(d)||''),dep=departmentCodeForCommune(code);
+ for(const kind of ['pf','nc']){const src=pacificAdmin[kind],at=src?.communeCenters?.[code];if(Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite))return at}
+ if(!/^9(?:7|8)/.test(dep)){const at=overviewCommuneCenters?.[code];if(Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite))return at}
+ if(Array.isArray(u._mapCenter)&&u._mapCenter.length>=2&&u._mapCenter.every(Number.isFinite))return u._mapCenter;
+ return d.at
+}
+function locationBuckets(items){const b=new Map();items.forEach(d=>{const at=communeWideDisplayAt(d)||d.at,k=at.join(',');if(!b.has(k))b.set(k,[]);b.get(k).push(d)});return [...b.values()];}
 function openBucket(items){if(items.length===1){showItem(items[0]);return;}activeItem=null;focus.clearLayers();$('heading').textContent=units[items[0].unit].name;$('context').textContent=items.length+' fiche'+(items.length>1?'s':'');$('back').hidden=false;renderCards(items);}
 function communePermanentLabelZoom(){return compactMapUi()?9.65:9.15}
 function communeClusterRadiusPx(z){
@@ -1912,7 +1920,7 @@ function drawPoints(){
   if(!g.items.length)continue;
   for(const bucket of locationBuckets(g.items)){
    const label=bucket.length>1?'Siège · '+g.name:bucket[0].title;
-   addMarker(bucket[0].at,bucket,label,true,()=>{if(!selection||selection.key!==g.key){selection=g;renderSide();subdivisionKey='';communeLabelKey='';centerKey='';updateSubdivisions(true);updateCenters(true)}openBucket(bucket)})
+   addMarker(communeWideDisplayAt(bucket[0])||bucket[0].at,bucket,label,true,()=>{if(!selection||selection.key!==g.key){selection=g;renderSide();subdivisionKey='';communeLabelKey='';centerKey='';updateSubdivisions(true);updateCenters(true)}openBucket(bucket)})
   }
  }
 }
@@ -2025,7 +2033,7 @@ async function choose(g,bounds,options={}){
 }
 function closeMapDetail(){$('mapDetail').hidden=true;activeItem=null;focus.clearLayers()}
 function closeMapDetailFromUser(){const hadReveal=endCartSearchReveal();closeMapDetail();if(hadReveal)filterChanged()}
-function showItem(d,options={}){if(!d)return;if(cartSearchRevealIdentity&&!isCartSearchReveal(d)){endCartSearchReveal();filterChanged()}focus.clearLayers();const g=groups().find(g=>g.key===d.unit||g.items?.some(x=>x.id===d.id))||{key:d.unit,...units[d.unit],items:[d]};selection=g;renderSide();activeItem=d;refreshAdminStyle();const mapColor=itemDisplayColor(d),detail=$('mapDetail');detail.style.setProperty('--event-color',mapColor);$('mapDetailTitle').innerHTML=cleanCartInline(d.title);const kind=kindLabel(d),place=units[d.unit]?.name||d.unit;$('mapDetailPlace').textContent=[place,d.date,kind].filter(Boolean).join(' · ');$('mapDetailSubtitle').innerHTML=cleanCartInline(d.subtitle||'');$('mapDetailSubtitle').hidden=!d.subtitle;const body=$('mapDetailBody');body.innerHTML=cleanCartHtml(d.html||'');hydrateCartPrivateImages(body);for(const src of d.image||[]){const img=document.createElement('img');loadCartImageInto(img,src);img.alt=stripHtml(d.title);img.loading='lazy';body.append(img)}const sourceHtml=cleanCartHtml(d.source||''),sourcePanel=$('mapDetailSources');sourcePanel.innerHTML=sourceHtml;sourcePanel.hidden=!sourceHtml;hydrateCartPrivateImages(sourcePanel);$('mapDetailEdit').hidden=!cartGithubMode;detail.hidden=false;detail.scrollTop=0;if(mode===0&&options.recenter!==false){map.setView(d.at,Math.max(map.getZoom(),d.kind==='global'?13:14));L.circleMarker(d.at,{radius:18,color:mapColor,weight:2,fillColor:mapColor,fillOpacity:.12,interactive:false}).addTo(focus);drawPoints();updateBasemap()}}
+function showItem(d,options={}){if(!d)return;if(cartSearchRevealIdentity&&!isCartSearchReveal(d)){endCartSearchReveal();filterChanged()}focus.clearLayers();const g=groups().find(g=>g.key===d.unit||g.items?.some(x=>x.id===d.id))||{key:d.unit,...units[d.unit],items:[d]};selection=g;renderSide();activeItem=d;refreshAdminStyle();const mapColor=itemDisplayColor(d),detail=$('mapDetail');detail.style.setProperty('--event-color',mapColor);$('mapDetailTitle').innerHTML=cleanCartInline(d.title);const kind=kindLabel(d),place=units[d.unit]?.name||d.unit;$('mapDetailPlace').textContent=[place,d.date,kind].filter(Boolean).join(' · ');$('mapDetailSubtitle').innerHTML=cleanCartInline(d.subtitle||'');$('mapDetailSubtitle').hidden=!d.subtitle;const body=$('mapDetailBody');body.innerHTML=cleanCartHtml(d.html||'');hydrateCartPrivateImages(body);for(const src of d.image||[]){const img=document.createElement('img');loadCartImageInto(img,src);img.alt=stripHtml(d.title);img.loading='lazy';body.append(img)}const sourceHtml=cleanCartHtml(d.source||''),sourcePanel=$('mapDetailSources');sourcePanel.innerHTML=sourceHtml;sourcePanel.hidden=!sourceHtml;hydrateCartPrivateImages(sourcePanel);$('mapDetailEdit').hidden=!cartGithubMode;detail.hidden=false;detail.scrollTop=0;if(mode===0&&options.recenter!==false){const displayAt=communeWideDisplayAt(d)||d.at;map.setView(displayAt,Math.max(map.getZoom(),d.kind==='global'?13:14));L.circleMarker(displayAt,{radius:18,color:mapColor,weight:2,fillColor:mapColor,fillOpacity:.12,interactive:false}).addTo(focus);drawPoints();updateBasemap()}}
 function updateScaleSelector(value=mode,animate=true){
  const selector=$('scaleSelector'),glass=$('scaleGlass'),v=Math.max(0,Math.min(3,Number(value)||0));
  if(selector){selector.style.setProperty('--scale-position',String(v));selector.classList.toggle('instant',!animate)}
@@ -2161,6 +2169,7 @@ async function updateCommuneDataLayer(force=false){
    if(token!==communeDataKey||mode!==0)return;
    for(const [g,feature] of loaded){
     if(!feature)continue;
+    const fb=featureBounds(feature),fc=fb?.isValid?.()?fb.getCenter():null,gu=units[g.key];if(fc&&gu)gu._mapCenter=[fc.lat,fc.lng];
     L.geoJSON(feature,{pane:'communeDataPane',interactive:true,style:()=>communeDataStyle(g.code),onEachFeature:(_,l)=>{
       l.bindTooltip(escape(g.name)+' · '+g.items.length+' exemple'+(g.items.length>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
       bindMapHover(l,e=>{l.openTooltip(e.latlng);l.setStyle({...communeDataStyle(g.code),weight:adminStroke(strokeSetting(0,'communeExample'))*1.97,fillOpacity:Math.min(1,(temporaryPaletteOpacity+.10)*.5)})},()=>{l.closeTooltip();l.setStyle(communeDataStyle(g.code))});
@@ -2825,9 +2834,7 @@ async function moveCartEditorToSelectedCommune(){
  const code=$('cartUnit').value,c=adminCatalog?.communeByCode.get(code);if(!c)return;
  if(freeGroup){const p=await communeCenter(code);if(p?.at)setCartCoordinates(p.at[0],p.at[1],true);return}
  const preferred=data.find(d=>d.id===cartEditedId)?.unit||'',entry=ensureCommuneUnit(code,preferred);if(!entry)return;
- let at=Array.isArray(entry.u.at)?entry.u.at:null;
- if(!at){const p=await communeCenter(code);if(p?.at){at=[...p.at];entry.u.at=at}}
- if(at)setCartCoordinates(at[0],at[1],true)
+ let at=null;const p=await communeCenter(code);if(p?.at)at=[...p.at];if(!at&&Array.isArray(entry.u.at))at=[...entry.u.at];if(at){entry.u.at=[...at];setCartCoordinates(at[0],at[1],true)}
 }
 let cartMiniMap=null,cartMiniMarker=null;
 function cartCoordinateValues(){const lat=Number(String($('cartLat').value).replace(',','.')),lng=Number(String($('cartLng').value).replace(',','.'));return Number.isFinite(lat)&&Number.isFinite(lng)?[lat,lng]:null}
