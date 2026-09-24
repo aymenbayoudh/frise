@@ -969,7 +969,7 @@ function migrateLegacyCartDeckPaths(values){return unique((Array.isArray(values)
 function readCartFilterState(){try{const state=JSON.parse(localStorage.getItem(CART_FILTER_KEY)||'{}');return state&&typeof state==='object'?state:{}}catch{return{}}}
 function restoreCartTagFilters(){const state=readCartFilterState(),available=new Set(data.flatMap(d=>d.tags||[]).map(String));selectedTags=new Set((Array.isArray(state.tags)?state.tags.map(String):[]).filter(tag=>available.has(tag)))}
 function saveFilters(){saveCartFilterState()}
-function itemDecks(d){return normalizeCartDeckList(d?.deck||[])}
+function itemDecks(d){return migrateLegacyCartDeckPaths(normalizeCartDeckList(d?.deck||[]))}
 function tagsPass(d){return !selectedTags.size||(d.tags||[]).some(t=>selectedTags.has(t))}
 function decksPass(d){if(!cartDeckTreeRoot)return true;return itemDecks(d).some(pathStr=>{const parts=String(pathStr||'').split('::').filter(Boolean);let node=cartDeckTreeRoot;for(const part of parts){node=node.children.get(part);if(!node)return true}return node.selected||node.indeterminate})}
 function cartSearchIdentity(d){return d?._sourcePath&&d?._sourceId!=null?d._sourcePath+"#"+String(d._sourceId):d?"id#"+String(d.id):""}
