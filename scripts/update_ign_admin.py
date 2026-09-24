@@ -387,7 +387,28 @@ def build_standard(names: list[str]) -> dict[str, Any]:
             center_features.append(nf)
     if center_features:
         write_json(base / "centers.geojson", {"type": "FeatureCollection", "features": center_features})
+
+    # Compact lookup used by the web map for cards located at the administrative
+    # seat rather than at a precise place. These are the official IGN
+    # chef_lieu_de_commune points (mairie / hôtel de ville), not polygon centroids.
+    commune_seats: dict[str, list[float]] = {}
+    for f in center_features:
+        props = f.get("properties") or {}
+        geom = f.get("geometry") or {}
+        if props.get("kind") != "chef_lieu_de_commune" or geom.get("type") != "Point":
+            continue
+        coords = geom.get("coordinates") or []
+        code = str(props.get("code") or "")
+        if code and len(coords) >= 2:
+            try:
+                lon, lat = float(coords[0]), float(coords[1])
+                commune_seats[code] = [lat, lon]
+            except (TypeError, ValueError):
+                pass
+    write_json(base / "commune-seats.json", commune_seats)
+
     counts["centers"] = len(center_features)
+    counts["commune_seats"] = len(commune_seats)
     selected["centers"] = sorted(center_names)
 
     return {"layers": selected, "counts": counts}
