@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-21T17:47:03.644162+00:00",
+  "generated_at": "2026-09-24T10:09:44.225983+00:00",
   "geographic": {
     "counts": {
       "arrondissements": 333,
@@ -7,6 +7,7 @@
       "centers": 38099,
       "collectivites": 103,
       "commune_departments": 102,
+      "commune_seats": 34871,
       "communes": 34877,
       "communes_associees_deleguees": 2628,
       "departements": 101,
