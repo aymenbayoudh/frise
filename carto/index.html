@@ -1836,12 +1836,13 @@ function densityProgress(n){const max=densityMaxCount();return max<=1?1:Math.max
 function densityContinuousColor(n){const ramp=densityPalette();if(!ramp.length)return accent;if(ramp.length===1)return ramp[0];const x=densityProgress(n)*(ramp.length-1),i=Math.floor(x),j=Math.min(ramp.length-1,i+1);return mixHex(ramp[i],ramp[j],x-i)}
 function communeBubbleSize(n){const t=densityProgress(n);return compactMapUi()?Math.round(14+20*t):Math.round(22+36*t)}
 function icon(items,label,pin=false,showLabel=true){const n=items.length,global=items.every(x=>x.kind==='global'),s=pin?(global?35:26):communeBubbleSize(n),c=pin?itemDisplayColor(items[0]):densityContinuousColor(n),bubbleLabel=showLabel?'<span class="bubble-label">'+escape(label)+'</span>':'';return L.divIcon({className:pin?'pin-wrap':'bubble',iconSize:[s,s],iconAnchor:[s/2,pin?s:s/2],html:pin?'<div class="pin-body '+(global?'global':'')+'" style="--unit-color:'+c+'"><span>'+(n>1?n:global?'◆':'')+'</span></div>':'<div class="bubble-body" style="--unit-color:'+c+';width:'+s+'px;height:'+s+'px">'+n+'</div>'+bubbleLabel});}
-function addMarker(at,items,label,pin,fn,target=points,showLabel=true){const marker=L.marker(at,{pane:'eventPointPane',icon:icon(items,label,pin,showLabel),title:label,alt:label,keyboard:true}).addTo(target);marker.bindTooltip(escape(label)+' · '+items.length+' exemple'+(items.length>1?'s':''));marker.on('click',fn);}
+function addMarker(at,items,label,pin,fn,target=points,showLabel=true,tooltipText=''){const marker=L.marker(at,{pane:'eventPointPane',icon:icon(items,label,pin,showLabel),title:stripHtml(label),alt:stripHtml(label),keyboard:true}).addTo(target);marker.bindTooltip(escape(tooltipText||stripHtml(label)+' · '+items.length+' exemple'+(items.length>1?'s':'')));marker.on('click',fn);}
 function communeWideDisplayAt(d){
  if(!d||d.mode!==0||d.kind!=='global')return d?.at;
  const u=units[d.unit]||{},code=String(u.code||keyOf(d)||'');
  if(overviewActive)return overviewPointForCommune(code,d.at);
  for(const kind of ['pf','nc']){const src=pacificAdmin[kind],at=src?.communeCenters?.[code];if(validSeatAt(at))return at}
+ const override=communeSeatOverrideAt(code);if(override)return override;
  if(validSeatAt(u._seatAt))return u._seatAt;
  const ign=ignCommuneSeatAt(code);if(ign)return ign;
  return d.at
@@ -1964,9 +1965,10 @@ function drawPoints(){
  for(const g of gs){
   if(!g.items.length)continue;
   for(const bucket of locationBuckets(g.items)){
-   const label=bucket.length>1?'Siège · '+g.name:bucket[0].title;
+   const label=bucket.length>1?g.name:bucket[0].title,
+         tooltip=bucket.length>1?g.name+' · '+bucket.length+' exemples':g.name+' · '+stripHtml(bucket[0].title);
    const first=bucket[0];if(first.kind==='global'&&!validSeatAt(units[first.unit]?._seatAt)&&!ignCommuneSeatAt(units[first.unit]?.code||keyOf(first)))resolveCommuneWideSeat(first).then(()=>{if(mode===0&&map.getZoom()>=11){pointRenderKey='';drawPoints()}});
-   addMarker(communeWideDisplayAt(first)||first.at,bucket,label,true,()=>{if(!selection||selection.key!==g.key){selection=g;renderSide();subdivisionKey='';communeLabelKey='';centerKey='';updateSubdivisions(true);updateCenters(true)}openBucket(bucket)})
+   addMarker(communeWideDisplayAt(first)||first.at,bucket,label,true,()=>{if(!selection||selection.key!==g.key){selection=g;renderSide();subdivisionKey='';communeLabelKey='';centerKey='';updateSubdivisions(true);updateCenters(true)}openBucket(bucket)},points,true,tooltip)
   }
  }
 }
@@ -2498,7 +2500,9 @@ const ADMIN_CENTER_CACHE_KEY='cartographie-v3:admin-centers';
 let persistedAdminCenters={};try{persistedAdminCenters=JSON.parse(localStorage.getItem(ADMIN_CENTER_CACHE_KEY)||'{}')||{}}catch{}
 function saveAdminCenterCache(){try{localStorage.setItem(ADMIN_CENTER_CACHE_KEY,JSON.stringify(persistedAdminCenters))}catch{}}
 function validSeatAt(at){return Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)}
-function ignCommuneSeatAt(code){const at=ignCommuneSeats?.[String(code||'')];return validSeatAt(at)?[Number(at[0]),Number(at[1])]:null}
+const COMMUNE_SEAT_OVERRIDES={'75056':[48.8566,2.3522]};
+function communeSeatOverrideAt(code){const at=COMMUNE_SEAT_OVERRIDES[String(code||'')];return validSeatAt(at)?[...at]:null}
+function ignCommuneSeatAt(code){const override=communeSeatOverrideAt(code);if(override)return override;const at=ignCommuneSeats?.[String(code||'')];return validSeatAt(at)?[Number(at[0]),Number(at[1])]:null}
 async function loadIgnCommuneSeats(){
  if(ignCommuneSeats)return ignCommuneSeats;
  if(ignCommuneSeatsPromise)return ignCommuneSeatsPromise;
