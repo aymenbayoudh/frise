@@ -3221,8 +3221,8 @@ async function loadPrivateCartData(){
   files=entries.filter(entry=>!(entry&&typeof entry==='object'&&entry.enabled===false)).map(cartManifestFilePath)
  }else files=[CART_GITHUB_FALLBACK_FILE];
  if(!files.length)throw Error('Aucun CSV actif dans '+CART_GITHUB_MANIFEST);
- const payloads=await Promise.all(files.map(cartGithubGetFile)),drafts=readCartPendingDrafts();
- const restored=new Map(payloads.map(payload=>{const draft=drafts[payload.path];return[payload.path,draft?mergeCartCsvVersions(draft.base,draft.local,payload.text,payload.path):payload.text]}));
+ const payloads=await Promise.all(files.map(cartGithubGetFile)),drafts=readCartPendingDrafts(),draftWarnings=[];
+ const restored=new Map(payloads.map(payload=>{const draft=drafts[payload.path];if(!draft)return[payload.path,payload.text];try{return[payload.path,mergeCartCsvVersions(draft.base,draft.local,payload.text,payload.path)]}catch(e){draftWarnings.push(payload.path+' : '+e.message);return[payload.path,payload.text]}}));
  cartGithubFiles=files;cartGithubFileShas={};cartGithubFileTexts={};cartGithubFileMaxIds={};
  let nextId=1,merged=[],mergedUnits={};
  for(const payload of payloads){
@@ -3230,8 +3230,9 @@ async function loadPrivateCartData(){
   parsed.rows.forEach((d,index)=>{const sourceId=Number(d.id)||index+1;maxId=Math.max(maxId,sourceId);merged.push({...d,id:nextId++,_sourcePath:payload.path,_sourceId:sourceId,_sourceOrder:index,generatedDemo:false})});
   cartGithubFileMaxIds[payload.path]=maxId
  }
- data=merged;Object.assign(units,mergedUnits);hasImportedCartData=true;cartPendingSyncPaths.clear();for(const payload of payloads)if(restored.get(payload.path)!==payload.text)cartPendingSyncPaths.add(payload.path);cartDataDirty=cartPendingSyncPaths.size>0;
+ data=merged;Object.assign(units,mergedUnits);hasImportedCartData=true;cartDeckTreeRoot=null;cartPendingSyncPaths.clear();for(const payload of payloads)if(restored.get(payload.path)!==payload.text)cartPendingSyncPaths.add(payload.path);cartDataDirty=cartPendingSyncPaths.size>0;
  if(cartDataDirty)setCartSyncState('Brouillon récupéré · à synchroniser',true);
+ if(draftWarnings.length){console.warn('Brouillons carto ignorés temporairement pour le chargement',draftWarnings);$('status').textContent='Les cartes GitHub ont été chargées. Un ancien brouillon local est en conflit et a été conservé sans bloquer l’affichage.'}
  localStorage.setItem(CART_DATA_KEY,JSON.stringify({rows:data,units:mergedUnits}));
  return true
 }
@@ -3436,12 +3437,19 @@ function closeCartGithubPanel(){$('privateScrim').hidden=true;$('cartGithubPanel
 async function connectCartGithub(token,status=$('cartGhStatus')){
  if(!token){status.className='owner-status bad';status.textContent='Token requis.';return false}
  status.className='owner-status';status.textContent='Connexion…';
+ cartGithubConfig={owner:CART_GITHUB_OWNER,repo:CART_GITHUB_REPO,branch:CART_GITHUB_BRANCH,token};
  try{
-  cartGithubConfig={owner:CART_GITHUB_OWNER,repo:CART_GITHUB_REPO,branch:CART_GITHUB_BRANCH,token};
-  await loadPrivateCartData();saveSharedCartGitHubConfig(cartGithubConfig);cartGithubMode=true;await loadCartCloudStateFromGitHub();restoreCartTagFilters();const migrateFilters=cartFilterStateNeedsTreeMigration();cartDeckTreeRoot=null;buildCartDeckTree();if(migrateFilters)saveCartFilterState();updateCartOwnerUi();return true
+  await loadPrivateCartData()
  }catch(e){
   cartGithubMode=false;cartGithubConfig=null;clearPrivateCartView();updateCartOwnerUi();status.className='owner-status bad';status.textContent=e.message;return false
  }
+ saveSharedCartGitHubConfig(cartGithubConfig);cartGithubMode=true;
+ try{
+  await loadCartCloudStateFromGitHub();restoreCartTagFilters();const migrateFilters=cartFilterStateNeedsTreeMigration();cartDeckTreeRoot=null;buildCartDeckTree();if(migrateFilters)saveCartFilterState()
+ }catch(e){
+  console.warn('État local/filtres carto non chargé, données conservées',e);selectedTags.clear();cartDeckTreeRoot=null;try{buildCartDeckTree()}catch{};$('status').textContent='Les cartes sont chargées ; l’état des filtres n’a pas pu être restauré.'
+ }
+ updateCartOwnerUi();return true
 }
 async function autoConnectCartGithub(){const c=readSharedCartGitHubConfig();if(!c)return false;return connectCartGithub(c.token)}
 function forgetCartGithub(){
