@@ -2645,7 +2645,21 @@ function addPacificCenterMarkers(token,z,mobile){
   }
  }
 }
+async function selectedCenterContextDepartments(){
+ if(!selection||!(mode===0||mode===1))return[];
+ const u=units[selection.key]||selection,fallback=String(u?.dept||'');
+ try{
+  const epci=mode===0?contextEpci():String(selection.code||u.code||'');
+  if(epci&&!u?.fiction){
+   const geo=await epciCommuneGeo(epci),out=new Set();
+   for(const f of geo?.features||[]){const dept=departmentCodeForCommune(featureAdminCode(f));if(dept)out.add(String(dept))}
+   if(out.size)return[...out].sort()
+  }
+ }catch{}
+ return fallback?rawDepartmentCodes(fallback):[]
+}
 async function updateCenters(force=false){
+ const contextDepts=await selectedCenterContextDepartments();
  const z=map.getZoom(),mobile=compactMapUi(),focusedOverseas=overviewActive?null:overseasForView(),
        overseasSubprefFocus=(mode===0||mode===1||mode===2)&&!!(focusedOverseas?.departmentArrondissements||focusedOverseas?.syntheticSubprefCenters),
        showRegionNames=!mobile&&overviewActive||z>=(mobile&&mode>=2?4.7:mobile?5.85:6.15),
@@ -2660,9 +2674,8 @@ async function updateCenters(force=false){
  if(showDeptPref||showSubpref){
    if(focusedOverseas&&(focusedOverseas.departmentArrondissements||focusedOverseas.syntheticSubprefCenters))visibleDepts=[String(focusedOverseas.dept)];
    else if(mode===2&&selection)visibleDepts=rawDepartmentCodes(String(selection.code));
-   else if(mode===0&&selection){
-     const u=units[selection.key]||selection,dep=String(u?.dept||'');
-     visibleDepts=dep?rawDepartmentCodes(dep):visibleCodesFromGeo(displayDepartmentRenderGeo()).sort()
+   else if((mode===0||mode===1)&&selection){
+     visibleDepts=contextDepts.length?contextDepts:visibleCodesFromGeo(displayDepartmentRenderGeo()).sort()
    }else visibleDepts=visibleCodesFromGeo(displayDepartmentRenderGeo()).sort()
  }
  if(showRegionDeptSecondary||showDeptPref||showSubpref)visibleKey=(showRegionDeptSecondary?visibleRegions:visibleDepts).join(',');
@@ -2676,10 +2689,11 @@ async function updateCenters(force=false){
 
    if(mode<=1){
      const u=selection?(units[selection.key]||selection):null,selectedDept=String(u?.dept||''),selectedRegion=String(u?.region||''),
+           selectedDeptSet=new Set(contextDepts.length?contextDepts:(selectedDept?rawDepartmentCodes(selectedDept):[])),
            overseasRegion=focusedOverseas?String(focusedOverseas.region):'';
      const regionEntries=(overseasRegion?regions.filter(r=>String(r.code)===overseasRegion):selection&&selectedRegion?regions.filter(r=>String(r.code)===selectedRegion):(!mobile&&overviewActive)||z>=5.05?regions:[])
        .map(r=>({code:r.chefLieu,adminLevel:3,adminCode:String(r.code),rank:'region',showLabel:showRegionNames||!!overseasRegion}));
-     const departmentEntries=(focusedOverseas?deps.filter(d=>String(d.code)===String(focusedOverseas.dept)):selection&&selectedDept?deps.filter(d=>String(d.code)===selectedDept):z>=6.65?deps:[])
+     const departmentEntries=(focusedOverseas?deps.filter(d=>String(d.code)===String(focusedOverseas.dept)):selection&&selectedDeptSet.size?deps.filter(d=>selectedDeptSet.has(String(d.code))):z>=6.65?deps:[])
        .filter(d=>!regionCapitalCodes.has(String(d.chefLieu)))
        .map(d=>({code:d.chefLieu,adminLevel:2,adminCode:String(d.code),rank:'department',showLabel:showDeptNames||!!focusedOverseas}));
      await addAdminCenterBatch([...regionEntries,...departmentEntries],token);
