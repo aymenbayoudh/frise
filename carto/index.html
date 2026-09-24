@@ -3337,7 +3337,7 @@ const cartPendingSyncPaths=new Set();
 let cartSyncJobs=0;
 function setCartSyncState(text,retry=false){$('cartSyncState').hidden=!text;$('cartSyncState').textContent=text;$('cartSyncRetry').hidden=!retry}
 $('cartSyncRetry').onclick=()=>queueCartDataSync([...cartPendingSyncPaths]);
-function queueCartDataSync(paths=cartGithubFiles,message='Mise à jour depuis la carte'){
+function queueCartDataSync(paths=[...cartPendingSyncPaths],message='Mise à jour depuis la carte'){
  const unique=[...new Set(Array.isArray(paths)?paths:[paths])].filter(path=>cartGithubFiles.includes(path));if(!cartGithubMode||!unique.length)return Promise.resolve();
  unique.forEach(path=>{cartPendingSyncPaths.add(path);try{saveCartPendingDraft(path)}catch(e){$('status').textContent='Sauvegarde locale impossible : '+e.message}});cartSyncJobs++;
  setCartSyncState('Enregistré localement · synchronisation…');updateCartOwnerUi('GitHub · synchro…');
@@ -3890,7 +3890,7 @@ async function bootCartography(){
  if(!$('status').textContent||$('status').textContent==='Chargement des contours administratifs…'||$('status').textContent==='Chargement des contours IGN…'||$('status').textContent==='Chargement des contours…')$('status').textContent=failed?'Impossible de charger le référentiel administratif local. Les sources de secours restent disponibles.':''
 }
 bootCartography();
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&cartGithubMode){scheduleCartCloudSync(0);queueCartDataSync()}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&cartGithubMode){scheduleCartCloudSync(0);if(cartPendingSyncPaths.size)queueCartDataSync([...cartPendingSyncPaths])}});
 // Polynésie française et Nouvelle-Calédonie : référentiels locaux chargés au démarrage.
 
 })();
