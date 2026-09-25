@@ -799,7 +799,7 @@ function loadAdminCatalog(){
  if(adminCatalogPromise)return adminCatalogPromise;
  const urls=[ADMIN_LOCATIONS_URL,'https://raw.githubusercontent.com/aymenbayoudh/frise/main/admin-locations.json'];
  adminCatalogPromise=(async()=>{
-   let last=null;for(const url of urls){try{const r=await fetch(url,{cache:'force-cache',signal:AbortSignal.timeout(25000)});if(!r.ok)throw Error(r.status);return await r.json()}catch(e){last=e}}
+   let last=null;for(const url of urls){try{return await persistentCartoJson(url)}catch(e){last=e}}
    throw(last||Error('Référentiel administratif local introuvable'))
  })().then(raw=>{adminCatalog=parseAdminCatalog(raw);hydrateCommuneUnitsFromCatalog();invalidateGroupCache();return adminCatalog}).catch(e=>{console.warn(e);adminCatalogPromise=null;return null});
  return adminCatalogPromise
@@ -1046,7 +1046,25 @@ function groups(list){
 function groupByCode(code){groups();return groupByCodeCache.get(String(code))||null}
 let adminDrawTimer;function scheduleAdminDraw(){clearTimeout(adminDrawTimer);adminDrawTimer=setTimeout(()=>drawAdmin(),120)}
 function home(){closeMapDetail();selection=null;local.clearLayers();focus.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;subdivisionKey='';communeLabelKey='';centerKey='';overviewActive=overviewReady();pointRenderKey='';updateInsetVisibility();const overview=overviewActive?(overviewDeptGeo||overviewRegionGeo):null;if(overview?.features?.length){const b=L.geoJSON(overview).getBounds();if(b.isValid())map.fitBounds(b,{paddingTopLeft:[innerWidth<640?8:125,55],paddingBottomRight:[25,innerWidth<640?82:35],maxZoom:6})}else map.fitBounds([[41.3,-5.3],[51.2,9.8]],{paddingTopLeft:[innerWidth<640?10:125,85],paddingBottomRight:[25,innerWidth<640?100:45]});updateBasemap();renderSide();draw();if(mode===1&&overviewActive&&!overviewEpciGeo)ensureOverviewEpciGeo().then(()=>{if(overviewActive&&mode===1){draw();updateCenters(true)}}).catch(()=>{});requestAnimationFrame(()=>{updateSubdivisions(true);updateCenters(true)})}
-function getJSON(url){if(!cache.has(url))cache.set(url,fetch(url,{signal:AbortSignal.timeout(45000)}).then(r=>{if(!r.ok)throw Error(r.status);return r.json()}).catch(e=>{cache.delete(url);throw e}));return cache.get(url)}
+const CARTO_PERSISTENT_JSON_CACHE='cartographie-v1:geo-json';
+function cartoPersistentJsonUrl(url){
+ try{
+  const u=new URL(url,location.href),same=u.origin===location.origin,p=u.pathname;
+  return same&&(p.includes('/carto/data/ign/')||p.includes('/carto/data/pacific/')||p.endsWith('/admin-locations.json'))
+ }catch{return false}
+}
+async function fetchJsonResponse(url,options={}){const r=await fetch(url,{signal:AbortSignal.timeout(45000),...options});if(!r.ok)throw Error(r.status);return r}
+async function persistentCartoJson(url){
+ if(!cartoPersistentJsonUrl(url)||!('caches' in window))return(await fetchJsonResponse(url)).json();
+ const store=await caches.open(CARTO_PERSISTENT_JSON_CACHE),request=new Request(url,{credentials:'same-origin'}),hit=await store.match(request);
+ if(hit){
+  // Stale-while-revalidate: immediate local display, silent refresh for the next use.
+  fetchJsonResponse(url,{cache:'no-cache'}).then(r=>store.put(request,r.clone())).catch(()=>{});
+  return hit.json()
+ }
+ const r=await fetchJsonResponse(url);try{await store.put(request,r.clone())}catch{}return r.json()
+}
+function getJSON(url){if(!cache.has(url))cache.set(url,persistentCartoJson(url).catch(e=>{cache.delete(url);throw e}));return cache.get(url)}
 function overviewReady(){return !!(overviewRegionGeo?.features?.length&&overviewDeptGeo?.features?.length)}
 async function loadIgnOverview(){
  try{
