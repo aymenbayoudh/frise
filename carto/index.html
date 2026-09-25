@@ -1229,13 +1229,17 @@ async function loadPacificAdmin(){
 }
 function pacificCommuneFeatureByName(kind,name){
  const target=compactName(name);if(!target)return null;
- return pacificAdmin[kind]?.communes?.features?.find(f=>compactName(featureAdminName(f))===target)||null
+ const src=pacificAdmin[kind],geo=overviewActive?(src?.overview?.communes||src?.communes):(src?.communes||src?.overview?.communes);
+ return geo?.features?.find(f=>compactName(featureAdminName(f))===target)||null
 }
 function pacificCenterCommuneCode(kind,entry,at=null){
  const f=pacificCommuneFeatureByName(kind,entry?.name),direct=featureAdminCode(f);if(direct)return direct;
- const src=pacificAdmin[kind],p=Array.isArray(at)?at:entry?.at;if(!src?.communeCenters||!Array.isArray(p))return'';
+ const src=pacificAdmin[kind],useOverview=overviewActive&&src?.overviewCommuneCenters,
+       centersMap=useOverview?src.overviewCommuneCenters:src?.communeCenters,
+       p=useOverview?(entry?.overview_at||at||entry?.at):(Array.isArray(at)?at:entry?.at);
+ if(!centersMap||!Array.isArray(p))return'';
  let best='',bestDist=Infinity;
- for(const [code,c] of Object.entries(src.communeCenters)){if(!Array.isArray(c)||c.length<2)continue;const d=map.distance(L.latLng(p),L.latLng(c));if(d<bestDist){best=String(code);bestDist=d}}
+ for(const [code,c] of Object.entries(centersMap)){if(!Array.isArray(c)||c.length<2)continue;const d=map.distance(L.latLng(p),L.latLng(c));if(d<bestDist){best=String(code);bestDist=d}}
  return bestDist<=150000?best:''
 }
 function pacificAdminCenterCommuneCodes(){
@@ -2598,7 +2602,7 @@ async function loadIgnCommuneSeats(){
 async function communeCenter(code){
  code=String(code||'');if(!code)return null;
  const editorExtra=editorAdminExtra(0,code);
- for(const kind of ['pf','nc']){const src=pacificAdmin[kind],at=overviewActive?src?.overviewCommuneCenters?.[code]:src?.communeCenters?.[code];if(Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)){const f=src?.communes?.features?.find(x=>featureAdminCode(x)===code);return{name:featureAdminName(f)||editorExtra?.name||code,at:[Number(at[0]),Number(at[1])]}}}
+ for(const kind of ['pf','nc']){const src=pacificAdmin[kind],at=overviewActive?src?.overviewCommuneCenters?.[code]:src?.communeCenters?.[code];if(Array.isArray(at)&&at.length>=2&&at.every(Number.isFinite)){const geo=overviewActive?(src?.overview?.communes||src?.communes):(src?.communes||src?.overview?.communes),f=geo?.features?.find(x=>featureAdminCode(x)===code);return{name:featureAdminName(f)||editorExtra?.name||code,at:[Number(at[0]),Number(at[1])]}}}
  // Overview centers are already positioned inside the national layout. Prefer
  // them only while the schematic overview is active.
  if(overviewActive&&overviewCommuneCenters){const at=overviewCommuneCenters[code];if(validSeatAt(at)){const name=editorExtra?.name||adminCatalog?.communeByCode.get(code)?.name||code;return{name,at:[Number(at[0]),Number(at[1])]}}}
