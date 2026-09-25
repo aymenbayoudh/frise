@@ -209,6 +209,29 @@ def derive_department(code: str) -> str:
     return code[:2]
 
 
+COORDINATE_DECIMALS = 5
+
+
+def round_geo_coordinates(value: Any) -> Any:
+    """Keep metre-scale precision while dropping useless GeoJSON decimals."""
+    if isinstance(value, list):
+        return [round_geo_coordinates(v) for v in value]
+    if isinstance(value, float):
+        return round(value, COORDINATE_DECIMALS)
+    return value
+
+
+def compact_geometry(geometry: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not geometry:
+        return geometry
+    out = dict(geometry)
+    if "coordinates" in out:
+        out["coordinates"] = round_geo_coordinates(out["coordinates"])
+    if out.get("type") == "GeometryCollection":
+        out["geometries"] = [compact_geometry(g) for g in out.get("geometries") or []]
+    return out
+
+
 def normalize_feature(feature: dict[str, Any], layer: str) -> dict[str, Any]:
     props = feature.get("properties") or {}
     fid = str(feature.get("id") or "")
@@ -301,7 +324,7 @@ def normalize_feature(feature: dict[str, Any], layer: str) -> dict[str, Any]:
     return {
         "type": "Feature",
         "properties": out_props,
-        "geometry": feature.get("geometry"),
+        "geometry": compact_geometry(feature.get("geometry")),
     }
 
 
