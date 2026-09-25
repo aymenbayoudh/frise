@@ -1696,17 +1696,17 @@ function ensureFocusedOverseasModeGeometry(){
 }
 
 async function groupCenterCommune(code){
- code=String(code||'');if(!code)return null;if(groupCenterCache.has(code))return groupCenterCache.get(code);
+ code=String(code||'');if(!code)return null;const cacheKey=(overviewActive?'overview:':'geo:')+code;if(groupCenterCache.has(cacheKey))return groupCenterCache.get(cacheKey);
  for(const kind of ['pf','nc']){
   const src=pacificAdmin[kind],gc=overviewActive?(src?.overviewGroupCenters?.[code]||src?.groupCenters?.[code]):(src?.groupCenters?.[code]||src?.overviewGroupCenters?.[code]);
   if(gc?.at){
    const centerFeature=pacificCommuneFeatureByName(kind,gc.name),centerCode=featureAdminCode(centerFeature)||code,
          p={code:centerCode,name:String(gc.name||code),dept:kind==='pf'?'987':'988',region:kind==='pf'?'987':'988',at:gc.at,feature:centerFeature||null};
-   groupCenterCache.set(code,Promise.resolve(p));return p
+   groupCenterCache.set(cacheKey,Promise.resolve(p));return p
   }
  }
  const pac=pacificGeoForModeCode(1,code);
- if(pac?.features?.length){const f=pac.features[0],b=featureBounds(f),p={code,name:featureAdminName(f),dept:String(f.properties?.dept||''),region:String(f.properties?.region||''),at:b?.isValid?.()?[b.getCenter().lat,b.getCenter().lng]:null,feature:null};groupCenterCache.set(code,Promise.resolve(p));return p}
+ if(pac?.features?.length){const f=pac.features[0],b=featureBounds(f),p={code,name:featureAdminName(f),dept:String(f.properties?.dept||''),region:String(f.properties?.region||''),at:b?.isValid?.()?[b.getCenter().lat,b.getCenter().lng]:null,feature:null};groupCenterCache.set(cacheKey,Promise.resolve(p));return p}
  const official=overviewGroupCenters?.[code]||LEGACY_EPCI_SEATS_2026[code];
  if(official?.code){
    const p=(async()=>{try{
@@ -1717,7 +1717,7 @@ async function groupCenterCommune(code){
      if(!at&&feature){const bb=featureBounds(feature),x=bb.getCenter();at=[x.lat,x.lng]}
      return{code:seatCode,name:seatName,dept:'',region:'',at,feature}
    }catch{return null}})();
-   groupCenterCache.set(code,p);return p
+   groupCenterCache.set(cacheKey,p);return p
  }
  const p=(async()=>{try{
    let communes=null;try{communes=await getJSON('https://geo.api.gouv.fr/epcis/'+encodeURIComponent(code)+'/communes?fields=nom,code,population,centre,codeDepartement,codeRegion')}catch{}
@@ -1726,7 +1726,7 @@ async function groupCenterCommune(code){
    if(!c)return null;const feature=await communeOutlineGeo(c.code);let at=null;
    if(Array.isArray(c.centre?.coordinates))at=[c.centre.coordinates[1],c.centre.coordinates[0]];else if(feature){const bb=featureBounds(feature),x=bb.getCenter();at=[x.lat,x.lng]}
    return{code:String(c.code),name:String(c.nom||c.code),dept:String(c.codeDepartement||''),region:String(c.codeRegion||''),at,feature}
- }catch{return null}})();groupCenterCache.set(code,p);return p
+ }catch{return null}})();groupCenterCache.set(cacheKey,p);return p
 }
 function groupCenterLabelIcon(name){return L.divIcon({className:'group-center-label',iconSize:null,html:'<span>'+escape(name)+'</span>'})}
 async function groupCenterAlreadyMarked(code,name=''){
