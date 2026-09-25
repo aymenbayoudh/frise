@@ -4078,12 +4078,16 @@ async function bootCartography(){
   const usedUnits=new Set(data.map(d=>d.unit)),privateUnits=Object.fromEntries(Object.entries(units).filter(([key])=>usedUnits.has(key)));
   try{await validateCartAdminReferences({rows:data,units:privateUnits})}catch(e){$('status').textContent=e.message}
  },{timeout:4200,delay:900});
- // Préchauffage des couches susceptibles d'être utilisées ensuite. Elles sont
- // alors déjà en mémoire/cache quand l'utilisateur zoome ou change de mode.
+ // Les EPCI détaillés sont le prochain gros besoin probable après la vue
+ // nationale : on les préchauffe seuls, avant les fichiers secondaires.
  runCartoBackground(async()=>{
-  await Promise.allSettled([ensureEpciGeo(),loadIgnCommuneSeats(),loadPacificAdmin()]);
-  if(overviewActive||mode===1){pointRenderKey='';draw();updateCenters(true)}
- },{timeout:6500,delay:1800});
+  try{await ensureEpciGeo();if(mode===1&&!overviewActive){pointRenderKey='';draw();updateCenters(true)}}catch{}
+ },{timeout:3200,delay:650});
+ // Si le navigateur reste libre, préparer ensuite les sièges et le Pacifique.
+ runCartoBackground(async()=>{
+  await Promise.allSettled([loadIgnCommuneSeats(),loadPacificAdmin()]);
+  if(overviewActive){pointRenderKey='';draw();updateCenters(true)}
+ },{timeout:7200,delay:2400});
  // Les EPCI des DROM sont encore moins urgents : les charger seulement quand
  // le navigateur est libre, sans bloquer le premier écran.
  runCartoBackground(()=>Promise.allSettled(doms.filter(d=>d.nationalEpci&&['971','972','973','974','976'].includes(String(d.dept))).map(d=>ensureOverseasEpciGeometry(d))),{timeout:10000,delay:4200});
