@@ -166,11 +166,14 @@ def merge_same(items, default_region: str, preserve=("subdivision_code", "subdiv
 
 
 NC_GROUPS = [
-    ("NC-SIGN", "Syndicat intercommunal du Grand Nouméa (SIGN)", ["Nouméa", "Dumbéa", "Mont-Dore", "Païta"], "Nouméa"),
-    ("NC-SIVMSUD", "SIVM Sud", ["Bourail", "Boulouparis", "Farino", "La Foa", "Moindou", "Sarraméa", "Thio"], "La Foa"),
-    ("NC-SIVOMVKP", "SIVOM VKP", ["Voh", "Koné", "Pouembout"], "Koné"),
-    ("NC-SIVMNORD", "SIVM Nord", ["Kaala-Gomen", "Koumac", "Poum"], "Koumac"),
-    ("NC-SIVMCOTEEST", "SIVM de la Côte Est", ["Houaïlou", "Ponérihouen", "Poindimié", "Touho", "Hienghène", "Pouébo"], "Poindimié"),
+    ("NC-SIGN", "Syndicat intercommunal du Grand Nouméa (SIGN)", ["Nouméa", "Dumbéa", "Mont-Dore", "Païta"], "Nouméa", "syndicat_intercommunal"),
+    ("NC-SMTU", "Syndicat mixte des transports urbains du Grand Nouméa (SMTU)", ["Nouméa", "Dumbéa", "Mont-Dore", "Païta"], "Nouméa", "syndicat_mixte"),
+    ("NC-SIVMSUD", "SIVM Sud", ["Bourail", "Boulouparis", "Farino", "La Foa", "Moindou", "Païta", "Sarraméa", "Thio"], "La Foa", "syndicat_intercommunal"),
+    ("NC-SIVOMVKP", "SIVOM VKP", ["Voh", "Koné", "Pouembout"], "Koné", "syndicat_intercommunal"),
+    ("NC-SIVMNORD", "SIVM Nord", ["Kaala-Gomen", "Koumac", "Poum"], "Koumac", "syndicat_intercommunal"),
+    ("NC-SIVMCOTEOUEST", "SIVM de la Côte Ouest", ["Kaala-Gomen", "Koumac", "Poum"], "Kaala-Gomen", "syndicat_intercommunal"),
+    ("NC-SIVMCOTEEST", "SIVM de la Côte Est", ["Houaïlou", "Ponérihouen", "Poindimié", "Touho", "Hienghène", "Pouébo"], "Poindimié", "syndicat_intercommunal"),
+    ("NC-SIVUTIPEEP", "SIVU TIPEEP", ["Touho", "Poindimié"], "Poindimié", "syndicat_intercommunal"),
 ]
 
 PF_MEMBER_CODES = {"Taputapuatea": "98750"}
@@ -193,6 +196,7 @@ POINTS = {
     "La Foa": [-21.7100, 165.8270],
     "Poindimié": [-20.9490, 165.3330],
     "Koumac": [-20.5620, 164.2840],
+    "Kaala-Gomen": [-20.6671, 164.39719],
     "Papeete": [-17.5516, -149.5585],
     "Uturoa": [-16.7330, -151.4330],
     "Taiohae": [-8.9100, -140.1000],
@@ -270,14 +274,14 @@ def build_nc():
 
     by = feature_name_map(communes)
     groups, group_centres, missing = [], {}, {}
-    for code, name, members, centre in NC_GROUPS:
+    for code, name, members, centre, kind in NC_GROUPS:
         selected, absent = [], []
         for m in members:
             x = find_by_name(communes, m)
             selected.append(x) if x else absent.append(m)
         if absent:
             missing[name] = absent
-        u = union_features(selected, code, name, region="988", dept="988", territory="NC", kind="syndicat_intercommunal")
+        u = union_features(selected, code, name, region="988", dept="988", territory="NC", kind=kind, centerName=centre)
         if u:
             groups.append(u)
             group_centres[code] = {"name": centre, "at": POINTS.get(centre)}
@@ -611,6 +615,11 @@ def build_nc_overview(nc, center):
         "groupements": transform_fc(nc["groupements"]),
         "regions": transform_fc(nc["regions"]),
         "centers": [{**x, "overview_at": tp(x["at"])} for x in nc["centers"]],
+        "group_centers": {
+            code: {**x, "at": tp(x["at"])}
+            for code, x in nc["group_centers"].items()
+            if x.get("at")
+        },
     }
 
 
@@ -620,6 +629,8 @@ def write_overview(kind, data):
         write_json(base / f"{level}.geojson", fc(data[level]))
     write_json(base / "centers.json", data["centers"])
     write_json(base / "commune-centers.json", {f["properties"]["code"]: representative_latlng(f) for f in data["communes"]})
+    if data.get("group_centers") is not None:
+        write_json(base / "group-centers.json", data["group_centers"])
 
 
 def main():
@@ -651,7 +662,7 @@ def main():
         "overview_slots": slots,
         "notes": {
             "nc_departements": "3 provinces; geometries simplified from the official terrestrial administrative limits for browser performance.",
-            "nc_groupements": "5 groupements territoriaux principaux affichés (SIGN, SIVM Sud, SIVOM VKP, SIVM Nord, SIVM Côte Est). Le SIVU Tipeep, qui recouvre Touho/Poindimié et chevauche le SIVM Côte Est, n'est pas utilisé comme couche principale afin d'éviter une fausse partition superposée.",
+            "nc_groupements": "8 groupements actifs et cartographiables affichés avec superpositions assumées : SIGN, SMTU du Grand Nouméa, SIVM Sud, SIVOM VKP, SIVM Nord, SIVM Côte Ouest, SIVM Côte Est et SIVU TIPEEP. Les structures dissoutes ne sont pas réintroduites.",
             "pf_departements": "5 subdivisions administratives, rendered as unions of island land polygons.",
             "pf_groupements": "7 communities of communes, rendered as unions of member islands.",
             "pf_overview": "archipelago cartogram preserving each archipelago's internal island pattern while compressing ocean distances.",
