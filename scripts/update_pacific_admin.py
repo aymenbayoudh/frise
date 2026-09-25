@@ -76,9 +76,36 @@ def clean_geometry(geom):
     return mapping(g) if g else None
 
 
+COORDINATE_DECIMALS = 5
+
+
+def compact_geojson_for_write(obj: Any) -> Any:
+    """Round only GeoJSON coordinate arrays; keep properties and metadata intact."""
+    if isinstance(obj, dict):
+        out = {}
+        for key, value in obj.items():
+            if key == "coordinates":
+                out[key] = round_coordinate_tree(value)
+            else:
+                out[key] = compact_geojson_for_write(value)
+        return out
+    if isinstance(obj, list):
+        return [compact_geojson_for_write(v) for v in obj]
+    return obj
+
+
+def round_coordinate_tree(value: Any) -> Any:
+    if isinstance(value, list):
+        return [round_coordinate_tree(v) for v in value]
+    if isinstance(value, float):
+        return round(value, COORDINATE_DECIMALS)
+    return value
+
+
 def write_json(path: Path, obj: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    compact = compact_geojson_for_write(obj)
+    path.write_text(json.dumps(compact, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
 def feature(code: str, name: str, geom, **extra: Any) -> dict[str, Any] | None:
