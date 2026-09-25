@@ -828,9 +828,9 @@ function overseasByDepartment(code){code=String(code||'');return doms.find(d=>St
 function overseasByRegion(code){code=String(code||'');return doms.find(d=>String(d.region)===code)||null}
 function eventVisibleAtMode(d,target=mode){
  if(d.mode===target)return true;
- const raw=String(keyOf(d)),u=units[d.unit]||{};
- if(target===3&&d.mode===2)return !!overseasByDepartment(raw)||['987','988'].includes(String(u.region||''));
- if(target===2&&d.mode===3)return !['987','988'].includes(raw)&&!!overseasByRegion(raw);
+ const raw=String(keyOf(d)),u=units[d.unit]||{},displayDept=displayDepartmentCode(raw);
+ if(target===3&&d.mode===2)return displayDept==='20R'||!!overseasByDepartment(raw)||['987','988'].includes(String(u.region||''));
+ if(target===2&&d.mode===3)return raw==='94'||(!['987','988'].includes(raw)&&!!overseasByRegion(raw));
  return false
 }
 function firstPopulatedCartMode(rows=data){for(let level=0;level<=3;level++)if(rows.some(d=>eventVisibleAtMode(d,level)))return level;return-1}
@@ -1005,7 +1005,7 @@ function subprefEntriesForDepartments(meta,wanted,depCapitalByCode,showLabel){
  for(const dep of wanted)for(const code of OVERSEAS_ARRONDISSEMENT_CENTERS[dep]||[])add(dep,code);
  return out
 }
-function itemDisplayAdminCode(d,target=mode){const raw=String(keyOf(d)),u=units[d.unit]||{};if(target===3&&d.mode===2)return String(overseasByDepartment(raw)?.region||(['987','988'].includes(String(u.region||''))?u.region:raw));if(target===2&&d.mode===3)return displayDepartmentCode(String(overseasByRegion(raw)?.dept||raw));return target===2?displayDepartmentCode(raw):raw}
+function itemDisplayAdminCode(d,target=mode){const raw=String(keyOf(d)),u=units[d.unit]||{};if(target===3&&d.mode===2){const specialRegion=SPECIAL_DEPARTMENT_REGIONS[displayDepartmentCode(raw)];return String(overseasByDepartment(raw)?.region||specialRegion||(['987','988'].includes(String(u.region||''))?u.region:raw))}if(target===2&&d.mode===3)return displayDepartmentCode(String(overseasByRegion(raw)?.dept||(raw==='94'?'20R':raw)));return target===2?displayDepartmentCode(raw):raw}
 let departmentRenderGeoCache=null,departmentOutlineGeoCache=null;
 function recodeDepartmentFeature(f){const raw=featureAdminCode(f),code=displayDepartmentCode(raw);if(code===raw)return f;return{...f,properties:{...(f.properties||{}),code,nom:SPECIAL_DEPARTMENT_NAMES[code],_mergedDeptPart:true,_rawDept:raw}}}
 function departmentRenderGeo(){if(departmentRenderGeoCache)return departmentRenderGeoCache;if(!deptGeo)return null;return departmentRenderGeoCache={type:'FeatureCollection',features:(deptGeo.features||[]).map(recodeDepartmentFeature)}}
@@ -1029,8 +1029,8 @@ function groups(list){
    if(mode===3){
      const code=itemDisplayAdminCode(d,3),found=byCode.get(String(code));
      if(found){found.items.push(d);return}
-     const overseas=overseasByRegion(code),k=d.mode===2&&overseas?'overseas-region-'+code:d.unit,
-           g=d.mode===2&&overseas?{key:k,name:overseas.name,code,region:code,dept:overseas.dept,at:overseas.at,items:[]}:{key:k,...units[d.unit],code,items:[]};
+     const overseas=overseasByRegion(code),corsica=d.mode===2&&code==='94',k=corsica?'merged-region-94':d.mode===2&&overseas?'overseas-region-'+code:d.unit,
+           g=corsica?{key:k,name:'Collectivité de Corse',code:'94',region:'94',dept:'20R',at:d.at,items:[]}:d.mode===2&&overseas?{key:k,name:overseas.name,code,region:code,dept:overseas.dept,at:overseas.at,items:[]}:{key:k,...units[d.unit],code,items:[]};
      register(k,g);g.items.push(d);return
    }
    const k=d.unit;if(!out.has(k))register(k,{key:k,...units[k],items:[]});out.get(k).items.push(d)
@@ -2425,7 +2425,7 @@ async function updateSubdivisions(force=false){
      drawCommuneContextLabels(ctx.geo,ctx.epci,true)
     }
    }else if(mode===3&&overviewDeptGeo?.features?.length){
-    const geo=displayDepartmentOutlineGeo();
+    const geo=mergeFeatureCollections(recodeSpmOverviewGeo(filteredOverviewGeo(overviewDeptGeo)),pacificOverviewLevel(2));
     if(geo?.features?.length)L.geoJSON(geo,{pane:'subAdminPane',interactive:false,style:{pane:'subAdminPane',color:'#101316',weight:adminStroke(strokeSetting(3,'departement')),opacity:.96,fillOpacity:0}}).addTo(subAdmin)
    }else if(mode===2){
     const geo=filteredOverviewGeo(await ensureOverviewArrGeo());if(key!==subdivisionKey||!overviewActive||mode!==2)return;
@@ -2658,15 +2658,22 @@ async function selectedCenterContextDepartments(){
  }catch{}
  return fallback?rawDepartmentCodes(fallback):[]
 }
+function corsicaDepartmentViewFocused(){
+ if(mode!==2)return false;
+ if(String(selection?.code||'')==='20R')return true;
+ const f=(displayRegionGeo()?.features||[]).find(x=>featureAdminCode(x)==='94');if(!f)return false;
+ const c=map.getCenter(),b=featureBounds(f);return !!(b?.isValid?.()&&b.contains(c)&&pointInFeature(c.lat,c.lng,f))
+}
 async function updateCenters(force=false){
  const contextDepts=await selectedCenterContextDepartments();
  const z=map.getZoom(),mobile=compactMapUi(),focusedOverseas=overviewActive?null:overseasForView(),
        overseasSubprefFocus=(mode===0||mode===1||mode===2)&&!!(focusedOverseas?.departmentArrondissements||focusedOverseas?.syntheticSubprefCenters),
+       corsicaDeptFocus=corsicaDepartmentViewFocused(),
        showRegionNames=!mobile&&overviewActive||z>=(mobile&&mode>=2?4.7:mobile?5.85:6.15),
-       showDeptNames=z>=(mobile?6.65:7.05),
-       showDeptPref=mode===2&&(z>=6||overseasSubprefFocus),
-       showSubpref=(mode===0||mode===1||mode===2)&&(z>=7||overseasSubprefFocus),
-       showSubprefNames=overseasSubprefFocus||z>=(mobile?7.35:7.75),
+       showDeptNames=corsicaDeptFocus||z>=(mobile?6.65:7.05),
+       showDeptPref=mode===2&&(z>=6||overseasSubprefFocus||corsicaDeptFocus),
+       showSubpref=(mode===0||mode===1||mode===2)&&(z>=7||overseasSubprefFocus||corsicaDeptFocus),
+       showSubprefNames=corsicaDeptFocus||overseasSubprefFocus||z>=(mobile?7.35:7.75),
        showRegionDeptSecondary=mode===3&&z>=6,
        showRegionDeptSecondaryNames=z>=(mobile?6.25:6.6);
  let visibleRegions=[],visibleDepts=[],visibleKey='national';
@@ -2676,7 +2683,7 @@ async function updateCenters(force=false){
    else if(mode===2&&selection)visibleDepts=rawDepartmentCodes(String(selection.code));
    else if((mode===0||mode===1)&&selection){
      visibleDepts=contextDepts.length?contextDepts:visibleCodesFromGeo(displayDepartmentRenderGeo()).sort()
-   }else visibleDepts=visibleCodesFromGeo(displayDepartmentRenderGeo()).sort()
+   }else visibleDepts=unique(visibleCodesFromGeo(displayDepartmentRenderGeo()).flatMap(rawDepartmentCodes)).sort()
  }
  if(showRegionDeptSecondary||showDeptPref||showSubpref)visibleKey=(showRegionDeptSecondary?visibleRegions:visibleDepts).join(',');
  const key=(overviewActive?'overview:':'geo:')+mode+':'+(showRegionNames?'rN':'rD')+':'+(showDeptPref?'dP':'d0')+':'+(showDeptNames?'dN':'dD')+':'+(showSubpref?'sP':'s0')+':'+(showSubprefNames?'sN':'sD')+':'+(showRegionDeptSecondaryNames?'rdN':'rdD')+':'+visibleKey;
