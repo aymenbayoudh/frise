@@ -1401,16 +1401,20 @@ const ADMIN_BOUNDARY_SOURCES=[
  {label:'Etalab 2025',base:'https://etalab-datasets.geo.data.gouv.fr/2025/geojson/'}
 ];
 let activeAdminBoundarySource=ADMIN_BOUNDARY_SOURCES[0];
-async function loadAdminBoundaryBundle(){
- const [manifest,departements,regions,epci]=await Promise.all([
+async function loadAdminBoundaryCore(){
+ const [manifest,departements,regions]=await Promise.all([
    getJSON(IGN_ADMIN_BASE+'manifest.json').catch(()=>null),
    getJSON(IGN_GEO_BASE+'departements.geojson'),
-   getJSON(IGN_GEO_BASE+'regions.geojson'),
-   getJSON(IGN_GEO_BASE+'epci.geojson')
+   getJSON(IGN_GEO_BASE+'regions.geojson')
  ]);
- if(!departements?.features?.length||!regions?.features?.length||!epci?.features?.length)throw Error('Jeu IGN ADMIN EXPRESS 2026 local incomplet');
+ if(!departements?.features?.length||!regions?.features?.length)throw Error('Jeu IGN ADMIN EXPRESS 2026 local incomplet');
  ignAdminManifest=manifest;activeAdminBoundarySource={label:'IGN ADMIN EXPRESS COG CARTO PE 2026',base:IGN_GEO_BASE};
- return{source:activeAdminBoundarySource,departements,regions,epci}
+ return{source:activeAdminBoundarySource,departements,regions}
+}
+async function loadAdminBoundaryBundle(){
+ const core=await loadAdminBoundaryCore(),epci=await getJSON(IGN_GEO_BASE+'epci.geojson');
+ if(!epci?.features?.length)throw Error('EPCI IGN ADMIN EXPRESS 2026 local vide');
+ return{...core,epci}
 }
 async function getJSONFallback(urls){let last=null;for(const url of urls){try{const j=await getJSON(url);if(j?.features?.length)return j}catch(e){last=e}}throw(last||Error("Aucune source disponible"))}
 const ADMIN_2026_GEOJSON_BASE='https://etalab-datasets.geo.data.gouv.fr/2026/geojson/';
@@ -4053,25 +4057,36 @@ for(const event of ['pointerdown','wheel','keydown'])$('map').addEventListener(e
 async function bootCartography(){
  const savedWidth=Number(localStorage.getItem(SIDE_WIDTH_KEY));if(savedWidth)applySideWidth(savedWidth);
  restoreCachedCartData();updateScaleSelector(mode,false);
- renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');const overviewPromise=loadIgnOverview(),pacificPromise=loadPacificAdmin(),catalogPromise=loadAdminCatalog(),seatPromise=loadIgnCommuneSeats();home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours administratifs…';
+ renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');
+ const overviewPromise=loadIgnOverview(),
+       adminCorePromise=loadAdminBoundaryCore().then(bundle=>{deptGeo=bundle.departements;regionGeo=bundle.regions;departmentRenderGeoCache=null;departmentOutlineGeoCache=null;invalidateGroupCache();return bundle}),
+       catalogPromise=loadAdminCatalog();
+ home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours administratifs…';
  const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}else{renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
  await overviewPromise;
- if(overviewReady()){const preload=()=>ensureOverviewEpciGeo().catch(()=>{});if('requestIdleCallback'in window)requestIdleCallback(preload,{timeout:2200});else setTimeout(preload,450)}
+ if(overviewReady())runCartoBackground(()=>ensureOverviewEpciGeo(),{timeout:1800,delay:180});
  if(overviewReady()&&!selection&&!cartBootInteracted){overviewBootResolved=true;home()}
- const results=await Promise.allSettled([
-  loadAdminBoundaryBundle().then(bundle=>{deptGeo=bundle.departements;regionGeo=bundle.regions;epciGeo=bundle.epci;departmentRenderGeoCache=null;departmentOutlineGeoCache=null;invalidateGroupCache();augmentGrandParisGroups(bundle.epci).then(augmented=>{if(!augmented?.features?.length)return;epciGeo=augmented;invalidateGroupCache();if(mode===1&&!overviewActive){draw();updateCenters(true)}}).catch(()=>{})})
- ]);
+ const results=await Promise.allSettled([adminCorePromise]);
  await privateConnectPromise;
- await Promise.allSettled([overviewPromise,pacificPromise,catalogPromise]);
+ await Promise.allSettled([overviewPromise,catalogPromise]);
  overviewBootResolved=true;updateInsetVisibility();
  if(mode===1)try{if(overviewReady())await ensureOverviewEpciGeo();else await ensureEpciGeo()}catch{}
- if(cartGithubMode&&hasImportedCartData){
+ hydrateOverseasFromCore();
+ if(!selection&&!cartBootInteracted)home();else{draw();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true)}
+ // Vérification des références : utile, mais ne doit plus retarder l'affichage.
+ if(cartGithubMode&&hasImportedCartData)runCartoBackground(async()=>{
   const usedUnits=new Set(data.map(d=>d.unit)),privateUnits=Object.fromEntries(Object.entries(units).filter(([key])=>usedUnits.has(key)));
   try{await validateCartAdminReferences({rows:data,units:privateUnits})}catch(e){$('status').textContent=e.message}
- }
- hydrateOverseasFromCore();
- await Promise.allSettled(doms.filter(d=>d.nationalEpci&&['971','972','973','974','976'].includes(String(d.dept))).map(d=>ensureOverseasEpciGeometry(d)));
- if(!selection&&!cartBootInteracted)home();else draw();refreshAdminStyle();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true);
+ },{timeout:4200,delay:900});
+ // Préchauffage des couches susceptibles d'être utilisées ensuite. Elles sont
+ // alors déjà en mémoire/cache quand l'utilisateur zoome ou change de mode.
+ runCartoBackground(async()=>{
+  await Promise.allSettled([ensureEpciGeo(),loadIgnCommuneSeats(),loadPacificAdmin()]);
+  if(overviewActive||mode===1){pointRenderKey='';draw();updateCenters(true)}
+ },{timeout:6500,delay:1800});
+ // Les EPCI des DROM sont encore moins urgents : les charger seulement quand
+ // le navigateur est libre, sans bloquer le premier écran.
+ runCartoBackground(()=>Promise.allSettled(doms.filter(d=>d.nationalEpci&&['971','972','973','974','976'].includes(String(d.dept))).map(d=>ensureOverseasEpciGeometry(d))),{timeout:10000,delay:4200});
  const failed=results.filter(r=>r.status==='rejected').length;
  if(!$('status').textContent||$('status').textContent==='Chargement des contours administratifs…'||$('status').textContent==='Chargement des contours IGN…'||$('status').textContent==='Chargement des contours…')$('status').textContent=failed?'Impossible de charger le référentiel administratif local. Les sources de secours restent disponibles.':''
 }
