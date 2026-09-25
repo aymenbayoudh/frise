@@ -180,14 +180,20 @@ def pick_layer(names: list[str], *wanted: str) -> str | None:
     return None
 
 
-def ogr_to_geojson(gpkg: Path, layer: str, tmp: Path) -> dict[str, Any]:
-    subprocess.run([
+def ogr_to_geojson(gpkg: Path, layer: str, tmp: Path, *, simplify: float | None = None) -> dict[str, Any]:
+    args = [
         "ogr2ogr", "-overwrite", "-f", "GeoJSON",
         "-t_srs", "EPSG:4326",
         "-lco", "RFC7946=YES",
         "-lco", "COORDINATE_PRECISION=5",
-        str(tmp), str(gpkg), layer,
-    ], check=True)
+    ]
+    # CARTO PLUS is only shown in the compact overview. A ~13 m tolerance on
+    # EPCI borders stays below a screen pixel even at the overview handoff zoom,
+    # while removing many redundant coastline/boundary vertices.
+    if simplify and simplify > 0:
+        args.extend(["-simplify", str(simplify)])
+    args.extend([str(tmp), str(gpkg), layer])
+    subprocess.run(args, check=True)
     return json.loads(tmp.read_text(encoding="utf-8"))
 
 
@@ -240,7 +246,12 @@ def main() -> int:
             layer = pick_layer(names, *wanted)
             if not layer:
                 continue
-            raw = ogr_to_geojson(gpkg, layer, td_path / f"{output}.geojson")
+            raw = ogr_to_geojson(
+                gpkg,
+                layer,
+                td_path / f"{output}.geojson",
+                simplify=0.00012 if output == "epci" else None,
+            )
             canonical = {
                 "epci": "epci",
                 "arrondissements": "arrondissement",
