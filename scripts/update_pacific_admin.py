@@ -566,33 +566,46 @@ def build_pf_overview(pf, center):
     groups = unions_from_codes(pf["groupements"])
     region = unions_from_codes(pf["regions"])
 
-    overview_centers = []
-    for x in pf["centers"]:
-        # Choose an archipelago from the department code when possible, else
-        # use the city/locality itself.
-        code = x.get("code", "")
-        city = fold(x["name"])
+    def overview_key_for_place(name, admin_code=""):
+        city = fold(name)
         # Physical locality wins over the administrative unit: the
         # Tuamotu-Gambier subdivision office is in Papeete, so its marker must
         # stay with Tahiti rather than be projected into the Tuamotu cluster.
-        key = ""
         if city in {fold("Papeete"), fold("Taravao")}:
-            key = "ilesduvent"
-        elif city == fold("Uturoa"):
-            key = "ilessouslevent"
-        elif city == fold("Taiohae"):
-            key = "marquises"
-        elif city == fold("Tubuai"):
-            key = "australes"
-        elif city in {fold("Rangiroa"), fold("Hao")}:
-            key = "tuamotugambier"
-        if not key:
-            dep = next((d for d in pf["departements"] if d["properties"]["code"] == code), None)
-            key = pf_sub_key(dep["properties"]["nom"]) if dep else ""
+            return "ilesduvent"
+        if city == fold("Uturoa"):
+            return "ilessouslevent"
+        if city == fold("Taiohae"):
+            return "marquises"
+        if city == fold("Tubuai"):
+            return "australes"
+        if city in {fold("Rangiroa"), fold("Hao")}:
+            return "tuamotugambier"
+        dep = next((d for d in pf["departements"] if d["properties"]["code"] == admin_code), None)
+        return pf_sub_key(dep["properties"]["nom"]) if dep else ""
+
+    overview_centers = []
+    for x in pf["centers"]:
+        key = overview_key_for_place(x["name"], x.get("code", ""))
         tr = transforms.get(key)
         if tr:
             overview_centers.append({**x, "overview_at": tr[1](x["at"])})
-    return {"communes": communes, "departements": deps, "groupements": groups, "regions": region, "centers": overview_centers}
+
+    overview_group_centers = {}
+    for code, x in pf["group_centers"].items():
+        key = overview_key_for_place(x.get("name", ""))
+        tr = transforms.get(key)
+        if tr and x.get("at"):
+            overview_group_centers[code] = {**x, "at": tr[1](x["at"])}
+
+    return {
+        "communes": communes,
+        "departements": deps,
+        "groupements": groups,
+        "regions": region,
+        "centers": overview_centers,
+        "group_centers": overview_group_centers,
+    }
 
 
 def build_nc_overview(nc, center):
