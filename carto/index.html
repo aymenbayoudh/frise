@@ -1186,6 +1186,7 @@ function normalizePacificOverview(kind,payload){
  for(const k of ['regions','departements','groupements','communes'])transformOverviewGeo(payload[k],xy);
  for(const e of payload.centers||[])if(Array.isArray(e.overview_at))e.overview_at=ll(e.overview_at);
  for(const k of Object.keys(payload.communeCenters||{}))if(Array.isArray(payload.communeCenters[k]))payload.communeCenters[k]=ll(payload.communeCenters[k]);
+ for(const k of Object.keys(payload.groupCenters||{}))if(Array.isArray(payload.groupCenters[k]?.at))payload.groupCenters[k].at=ll(payload.groupCenters[k].at);
  return payload
 }
 function pacificDetailedReady(){return ['pf','nc'].every(kind=>pacificAdmin[kind]?.communes?.features?.length&&pacificAdmin[kind]?.regions?.features?.length)}
@@ -1195,12 +1196,12 @@ async function loadPacificOverview(){
  pacificOverviewLoadPromise=(async()=>{
   const load=async kind=>{
    const overviewBase=PACIFIC_ADMIN_BASE+kind+'/overview/';
-   const [oRegions,oDepartements,oGroupements,oCommunes,oCenters,oCommuneCenters]=await Promise.all([
+   const [oRegions,oDepartements,oGroupements,oCommunes,oCenters,oCommuneCenters,oGroupCenters]=await Promise.all([
     getJSON(overviewBase+'regions.geojson'),getJSON(overviewBase+'departements.geojson'),getJSON(overviewBase+'groupements.geojson'),getJSON(overviewBase+'communes.geojson'),
-    getJSON(overviewBase+'centers.json').catch(()=>([])),getJSON(overviewBase+'commune-centers.json').catch(()=>({}))
+    getJSON(overviewBase+'centers.json').catch(()=>([])),getJSON(overviewBase+'commune-centers.json').catch(()=>({})),getJSON(overviewBase+'group-centers.json').catch(()=>({}))
    ]);
-   const ov=normalizePacificOverview(kind,{regions:oRegions,departements:oDepartements,groupements:oGroupements,communes:oCommunes,centers:oCenters,communeCenters:oCommuneCenters});
-   return{overview:{regions:ov.regions,departements:ov.departements,groupements:ov.groupements,communes:ov.communes},overviewCenters:ov.centers,overviewCommuneCenters:ov.communeCenters}
+   const ov=normalizePacificOverview(kind,{regions:oRegions,departements:oDepartements,groupements:oGroupements,communes:oCommunes,centers:oCenters,communeCenters:oCommuneCenters,groupCenters:oGroupCenters});
+   return{overview:{regions:ov.regions,departements:ov.departements,groupements:ov.groupements,communes:ov.communes},overviewCenters:ov.centers,overviewCommuneCenters:ov.communeCenters,overviewGroupCenters:ov.groupCenters||{}}
   };
   const [pf,nc]=await Promise.all([load('pf'),load('nc')]);
   pacificAdmin={pf:{...(pacificAdmin.pf||{}),...pf},nc:{...(pacificAdmin.nc||{}),...nc}};pacificOverviewCache.clear();
@@ -1221,7 +1222,7 @@ async function loadPacificAdmin(){
    ]);
    return{...(pacificAdmin[kind]||{}),regions,departements,groupements,communes,communeCenters,centers,groupCenters}
   };
-  const [pf,nc]=await Promise.all([load('pf'),load('nc')]);pacificAdmin={pf,nc};pacificOverviewCache.clear();
+  const [pf,nc]=await Promise.all([load('pf'),load('nc')]);pacificAdmin={pf,nc};pacificOverviewCache.clear();groupCenterCache.clear();
   for(const [kind,dept] of [['pf','987'],['nc','988']]){const d=doms.find(x=>String(x.dept)===dept),src=pacificAdmin[kind];if(!d||!src)continue;d.geo=src.regions;d.detailGeo=src.communes;d.departmentGeo=src.departements;d.epciGeo=src.groupements;d.epciCodes=new Set((src.groupements.features||[]).map(featureAdminCode).filter(Boolean));d.geoSource='pacific';d.fittedGeo=false}
   invalidateGroupCache();return pacificAdmin
  })().catch(e=>{console.warn('Données administratives Pacifique indisponibles',e);return pacificAdmin}).finally(()=>{pacificLoadPromise=null});
@@ -1246,7 +1247,8 @@ function pacificAdminCenterCommuneCodes(){
  const out=new Set();
  for(const kind of ['pf','nc']){
   const src=pacificAdmin[kind];if(!src)continue;
-  for(const e of src.centers||[]){const code=pacificCenterCommuneCode(kind,e,e?.at);if(code)out.add(code)}
+  const entries=overviewActive?(src.overviewCenters||src.centers||[]):(src.centers||src.overviewCenters||[]);
+  for(const e of entries){const code=pacificCenterCommuneCode(kind,e,e?.at);if(code)out.add(code)}
  }
  return out
 }
@@ -1696,7 +1698,7 @@ function ensureFocusedOverseasModeGeometry(){
 async function groupCenterCommune(code){
  code=String(code||'');if(!code)return null;if(groupCenterCache.has(code))return groupCenterCache.get(code);
  for(const kind of ['pf','nc']){
-  const src=pacificAdmin[kind],gc=src?.groupCenters?.[code];
+  const src=pacificAdmin[kind],gc=overviewActive?(src?.overviewGroupCenters?.[code]||src?.groupCenters?.[code]):(src?.groupCenters?.[code]||src?.overviewGroupCenters?.[code]);
   if(gc?.at){
    const centerFeature=pacificCommuneFeatureByName(kind,gc.name),centerCode=featureAdminCode(centerFeature)||code,
          p={code:centerCode,name:String(gc.name||code),dept:kind==='pf'?'987':'988',region:kind==='pf'?'987':'988',at:gc.at,feature:centerFeature||null};
@@ -1731,7 +1733,7 @@ async function groupCenterAlreadyMarked(code,name=''){
  code=String(code||'');if(code&&isKnownAdminCenterCommune(code))return true;
  const normalized=compactName(name);
  if(normalized){
-  for(const kind of ['pf','nc'])if((pacificAdmin[kind]?.centers||[]).some(e=>compactName(e?.name)===normalized))return true
+  for(const kind of ['pf','nc']){const src=pacificAdmin[kind],entries=overviewActive?(src?.overviewCenters||src?.centers||[]):(src?.centers||src?.overviewCenters||[]);if(entries.some(e=>compactName(e?.name)===normalized))return true}
  }
  if(!code)return false;
  try{
@@ -1755,7 +1757,7 @@ async function showGroupCenter(code,persistent=false){
  const labelAt=overviewActive?overviewPointForCommune(info.code,info.at):info.at;
  // A prefecture/subprefecture keeps its administrative label only. Never add
  // a second city-centre label, even if center rendering finishes a frame later.
- if(labelAt&&!alreadyMarked)L.marker(labelAt,{icon:groupCenterLabelIcon(info.name),interactive:false,zIndexOffset:120}).addTo(groupCenter);
+ if(labelAt&&!alreadyMarked)L.marker(labelAt,{pane:'groupCenterPane',icon:groupCenterLabelIcon(info.name),interactive:false,zIndexOffset:120}).addTo(groupCenter);
  scheduleMapLabelCollisions()
 }
 function hideGroupCenterSoon(code){clearTimeout(groupCenterHideTimer);if(selection&&String(selection.code)===String(code))return;groupCenterHideTimer=setTimeout(()=>{if(mode===1&&(!selection||String(selection.code)!==String(code))){groupCenterToken++;groupCenter.clearLayers();activeGroupCenterCommuneCode='';scheduleMapLabelCollisions()}},110)}
@@ -1777,6 +1779,31 @@ function setMainOutlineHover(code,on){
  };
  mainOutline.eachLayer(visitOutline);admin.eachLayer(visitAdmin)
 }
+const ncOverlapChoiceByStack=new Map();
+function ncGroupStackAt(latlng){
+ if(mode!==1||!latlng)return[];
+ const src=pacificAdmin.nc,geo=overviewActive?src?.overview?.groupements:src?.groupements;if(!geo?.features?.length)return[];
+ const p=L.latLng(latlng),stack=[],seen=new Set();
+ for(const f of geo.features||[]){
+  const code=featureAdminCode(f);if(!code||seen.has(code))continue;
+  const b=featureBounds(f);if(!b?.isValid?.()||!b.contains(p)||!pointInFeature(p.lat,p.lng,f))continue;
+  seen.add(code);stack.push({code,name:featureAdminName(f),feature:f})
+ }
+ return stack
+}
+function ncResolvedGroupAt(latlng,fallbackCode='',step=0){
+ const stack=ncGroupStackAt(latlng);
+ if(!stack.length)return{code:String(fallbackCode||''),name:'',stack:[],stackKey:''};
+ const stackKey=stack.map(x=>x.code).sort().join('|'),preferred=ncOverlapChoiceByStack.get(stackKey);
+ let index=preferred?stack.findIndex(x=>x.code===preferred):-1;if(index<0)index=stack.length-1;
+ if(step&&stack.length>1){index=(index+step+stack.length)%stack.length;ncOverlapChoiceByStack.set(stackKey,stack[index].code)}
+ return{...stack[index],stack,stackKey}
+}
+function adminHitTooltip(entry,fallbackName=''){
+ const code=String(entry?.code||''),name=entry?.name||fallbackName||code,n=countCode(code),
+       overlap=entry?.stack?.length>1?' · '+entry.stack.length+' groupements superposés · clic droit pour changer':'';
+ return escape(name)+' · '+n+' exemple'+(n>1?'s':'')+overlap
+}
 function addAdminHitGeo(geo){
  if(!geo?.features?.length||mode<1)return;
  L.geoJSON(geo,{
@@ -1784,11 +1811,28 @@ function addAdminHitGeo(geo){
    interactive:true,
    style:{pane:'adminHitPane',color:'#000000',weight:0,opacity:0,fillColor:'#ffffff',fillOpacity:.001},
    onEachFeature:(f,l)=>{
-     const code=featureAdminCode(f),name=featureAdminName(f);
+     const code=featureAdminCode(f),name=featureAdminName(f),isNc=mode===1&&(String(code).startsWith('NC-')||String(f?.properties?.territory||'').toUpperCase()==='NC');
      if(!code)return;
-     l.bindTooltip(escape(name)+' · '+countCode(code)+' exemple'+(countCode(code)>1?'s':''),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
-     bindMapHover(l,e=>{l.openTooltip(e.latlng);setMainOutlineHover(code,true);if(mode===1)showGroupCenter(code,false)},()=>{l.closeTooltip();setMainOutlineHover(code,false);if(mode===1)hideGroupCenterSoon(code)});
-     l.on('click',e=>{L.DomEvent.stopPropagation(e);const g=groupByCode(code),fromOverview=overviewActive;if(g?.items?.length)choose(g,fromOverview?null:l.getBounds(),{fromOverview});else clearUnitSelection()})
+     let hovered={code,name,stack:[],stackKey:''};
+     const resolve=e=>isNc?ncResolvedGroupAt(e?.latlng,code):{code,name,stack:[],stackKey:''};
+     l.bindTooltip(adminHitTooltip(hovered,name),{sticky:true,direction:'top',opacity:.96,className:'admin-unit-tooltip'});
+     bindMapHover(l,e=>{
+       hovered=resolve(e);l.setTooltipContent(adminHitTooltip(hovered,name));l.openTooltip(e.latlng);
+       setMainOutlineHover(hovered.code,true);if(mode===1)showGroupCenter(hovered.code,false)
+     },()=>{
+       l.closeTooltip();setMainOutlineHover(hovered.code,false);if(mode===1)hideGroupCenterSoon(hovered.code)
+     });
+     if(isNc)l.on('contextmenu',e=>{
+       const current=ncResolvedGroupAt(e.latlng,code);if(current.stack.length<2)return;
+       L.DomEvent.stopPropagation(e);if(e.originalEvent)L.DomEvent.preventDefault(e.originalEvent);
+       setMainOutlineHover(hovered.code,false);hovered=ncResolvedGroupAt(e.latlng,code,1);
+       l.setTooltipContent(adminHitTooltip(hovered,name));l.openTooltip(e.latlng);
+       setMainOutlineHover(hovered.code,true);showGroupCenter(hovered.code,false)
+     });
+     l.on('click',e=>{
+       L.DomEvent.stopPropagation(e);const hit=isNc?ncResolvedGroupAt(e.latlng,code):{code},g=groupByCode(hit.code),fromOverview=overviewActive;
+       if(g?.items?.length)choose(g,fromOverview?null:l.getBounds(),{fromOverview});else clearUnitSelection()
+     })
    }
  }).addTo(adminHits)
 }
