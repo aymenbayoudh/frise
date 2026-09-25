@@ -1054,30 +1054,50 @@ function cartoPersistentJsonUrl(url){
  }catch{return false}
 }
 async function fetchJsonResponse(url,options={}){const r=await fetch(url,{signal:AbortSignal.timeout(45000),...options});if(!r.ok)throw Error(r.status);return r}
+function runCartoBackground(task,{timeout=5000,delay=700}={}){
+ const run=()=>Promise.resolve().then(task).catch(e=>console.warn('Préchargement carto ignoré',e));
+ if('requestIdleCallback'in window)requestIdleCallback(run,{timeout});else setTimeout(run,delay)
+}
 async function persistentCartoJson(url){
  if(!cartoPersistentJsonUrl(url)||!('caches' in window))return(await fetchJsonResponse(url)).json();
  const store=await caches.open(CARTO_PERSISTENT_JSON_CACHE),request=new Request(url,{credentials:'same-origin'}),hit=await store.match(request);
  if(hit){
-  // Stale-while-revalidate: immediate local display, silent refresh for the next use.
-  fetchJsonResponse(url,{cache:'no-cache'}).then(r=>store.put(request,r.clone())).catch(()=>{});
+  // Répondre depuis le disque tout de suite. La revalidation attend un moment
+  // creux pour ne pas concurrencer les couches encore absentes du cache.
+  runCartoBackground(()=>fetchJsonResponse(url,{cache:'no-cache'}).then(r=>store.put(request,r.clone())),{timeout:6500,delay:1400});
   return hit.json()
  }
  const r=await fetchJsonResponse(url);try{await store.put(request,r.clone())}catch{}return r.json()
 }
 function getJSON(url){if(!cache.has(url))cache.set(url,persistentCartoJson(url).catch(e=>{cache.delete(url);throw e}));return cache.get(url)}
 function overviewReady(){return !!(overviewRegionGeo?.features?.length&&overviewDeptGeo?.features?.length)}
+let ignOverviewExtrasPromise=null;
+function loadIgnOverviewExtras(){
+ if(ignOverviewExtrasPromise)return ignOverviewExtrasPromise;
+ ignOverviewExtrasPromise=Promise.all([
+  getJSON(IGN_OVERVIEW_BASE+'collectivites.geojson').catch(()=>null),
+  getJSON(IGN_OVERVIEW_BASE+'commune-centers.json').catch(()=>({})),
+  getJSON(IGN_OVERVIEW_BASE+'group-centers.json').catch(()=>({}))
+ ]).then(([collectivites,centers,groupCenters])=>{
+  overviewCollectiviteGeo=collectivites;overviewCommuneCenters=centers||{};overviewGroupCenters=groupCenters||{};groupCenterCache.clear();overviewDepartmentRenderGeoCache=null;overviewDepartmentOutlineGeoCache=null;
+  if(overviewActive){pointRenderKey='';draw();updateCenters(true)}
+  return true
+ }).catch(e=>{console.warn('Compléments CARTO PLUS indisponibles',e);return false});
+ return ignOverviewExtrasPromise
+}
 async function loadIgnOverview(){
  try{
-  const [manifest,regions,departements,collectivites,centers,groupCenters]=await Promise.all([
+  // Le premier écran n'a besoin que des régions et départements. Les centres
+  // et collectivités arrivent juste après sans retarder l'affichage national.
+  const [manifest,regions,departements]=await Promise.all([
    getJSON(IGN_OVERVIEW_BASE+'manifest.json'),
    getJSON(IGN_OVERVIEW_BASE+'regions.geojson'),
-   getJSON(IGN_OVERVIEW_BASE+'departements.geojson'),
-   getJSON(IGN_OVERVIEW_BASE+'collectivites.geojson').catch(()=>null),
-   getJSON(IGN_OVERVIEW_BASE+'commune-centers.json').catch(()=>({})),
-   getJSON(IGN_OVERVIEW_BASE+'group-centers.json').catch(()=>({}))
+   getJSON(IGN_OVERVIEW_BASE+'departements.geojson')
   ]);
   if(!regions?.features?.length||!departements?.features?.length)throw Error('Vue CARTO PLUS incomplète');
-  ignOverviewManifest=manifest;overviewRegionGeo=regions;overviewDeptGeo=departements;overviewCollectiviteGeo=collectivites;overviewCommuneCenters=centers||{};overviewGroupCenters=groupCenters||{};groupCenterCache.clear();overviewDepartmentRenderGeoCache=null;overviewDepartmentOutlineGeoCache=null;return true
+  ignOverviewManifest=manifest;overviewRegionGeo=regions;overviewDeptGeo=departements;overviewDepartmentRenderGeoCache=null;overviewDepartmentOutlineGeoCache=null;
+  runCartoBackground(loadIgnOverviewExtras,{timeout:1800,delay:120});
+  return true
  }catch(e){console.warn('IGN CARTO PLUS indisponible',e);return false}
 }
 async function ensureOverviewEpciGeo(){
