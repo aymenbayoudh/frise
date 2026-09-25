@@ -1519,7 +1519,7 @@ async function augmentGrandParisGroups(geo){
  mgpTrueFeature=geo.features.find(f=>featureAdminCode(f)===GRAND_PARIS_CODE)||null;
  const base=geo.features.filter(f=>featureAdminCode(f)!==GRAND_PARIS_CODE),baseCodes=new Set(base.map(featureAdminCode).filter(Boolean)),extra=[];
  try{
-   const ept=await getJSON(EPT_GEO_URL);
+   const ept=await fetch(EPT_GEO_URL,{signal:AbortSignal.timeout(6500)}).then(r=>{if(!r.ok)throw Error(r.status);return r.json()});
    for(const f of ept?.features||[]){
      const code=String(f.properties?.code_ept||''),name=String(f.properties?.lib_ept||f.properties?.territoire||code);
      if(!code||baseCodes.has(code)||/^T?1$/i.test(code)||/^Paris$/i.test(name))continue;
@@ -1536,7 +1536,16 @@ let epciLoadPromise=null;
 async function ensureEpciGeo(){
  if(epciGeo?.features?.length)return epciGeo;
  if(epciLoadPromise)return epciLoadPromise;
- epciLoadPromise=getJSON(IGN_GEO_BASE+'epci.geojson').then(j=>{if(!j?.features?.length)throw Error('EPCI IGN local vide');return j}).then(augmentGrandParisGroups).then(j=>{epciGeo=j;invalidateGroupCache();return epciGeo}).finally(()=>{epciLoadPromise=null});
+ epciLoadPromise=getJSON(IGN_GEO_BASE+'epci.geojson').then(j=>{
+  if(!j?.features?.length)throw Error('EPCI IGN local vide');
+  epciGeo=j;invalidateGroupCache();
+  augmentGrandParisGroups(j).then(augmented=>{
+   if(!augmented?.features?.length)return;
+   epciGeo=augmented;invalidateGroupCache();
+   if(mode===1&&!overviewActive){draw();updateCenters(true)}
+  }).catch(()=>{});
+  return epciGeo
+ }).finally(()=>{epciLoadPromise=null});
  return epciLoadPromise
 }
 
@@ -2168,7 +2177,17 @@ function updateScaleSelector(value=mode,animate=true){
  if(glass){glass.setAttribute('aria-valuenow',String(Math.round(v)));glass.setAttribute('aria-valuetext',modes[Math.round(v)]||modes[mode])}
  document.querySelectorAll('.scale-labels [data-mode]').forEach(b=>{const active=+b.dataset.mode===Math.round(v);b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))})
 }
-function setMode(n){endCartSearchReveal();closeMapDetail();mode=Math.max(0,Math.min(3,+n));if(data.some(d=>d._localOnly))try{const saved=JSON.parse(localStorage.getItem(CART_LOCAL_IMPORT_KEY)||'null');if(saved&&Array.isArray(saved.rows)){saved.mode=mode;localStorage.setItem(CART_LOCAL_IMPORT_KEY,JSON.stringify(saved))}}catch{}invalidateGroupCache();epoch++;markCartCloudStateDirty();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();selectedGroup.clearLayers();adminHits.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;if(mode!==0){communeData.clearLayers();communeDataKey=''}subdivisionKey='';communeLabelKey='';centerKey='';updateScaleSelector(mode,true);renderSide();draw();updateSubdivisions(true);updateCenters(true);updateBasemap();ensureFocusedOverseasModeGeometry();if(mode===1&&overviewActive&&!overviewEpciGeo){$('status').textContent='Chargement des groupements IGN…';ensureOverviewEpciGeo().then(()=>{if(mode!==1||!overviewActive)return;renderSide();draw();updateCenters(true);$('status').textContent=''}).catch(()=>{if(mode===1&&overviewActive)$('status').textContent='Contours CARTO PLUS des groupements indisponibles.'})}else if(mode===1&&!overviewActive&&!epciGeo){$('status').textContent='Chargement des groupements…';ensureEpciGeo().then(()=>{if(mode!==1||overviewActive)return;renderSide();draw();ensureFocusedOverseasModeGeometry();updateCenters(true);$('status').textContent=''}).catch(()=>{if(mode===1&&!overviewActive)$('status').textContent='Contours des groupements indisponibles.'})}}
+let groupLoadStatusToken=0;
+function clearGroupLoadStatus(){groupLoadStatusToken++;const status=$('status');if(/^Chargement des groupements/.test(status.textContent||''))status.textContent=''}
+function setMode(n){clearGroupLoadStatus();endCartSearchReveal();closeMapDetail();mode=Math.max(0,Math.min(3,+n));if(data.some(d=>d._localOnly))try{const saved=JSON.parse(localStorage.getItem(CART_LOCAL_IMPORT_KEY)||'null');if(saved&&Array.isArray(saved.rows)){saved.mode=mode;localStorage.setItem(CART_LOCAL_IMPORT_KEY,JSON.stringify(saved))}}catch{}invalidateGroupCache();epoch++;markCartCloudStateDirty();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();subAdmin.clearLayers();communeHits.clearLayers();mainOutline.clearLayers();selectedGroup.clearLayers();adminHits.clearLayers();communeLabels.clearLayers();centers.clearLayers();groupCenter.clearLayers();groupCenterToken++;if(mode!==0){communeData.clearLayers();communeDataKey=''}subdivisionKey='';communeLabelKey='';centerKey='';updateScaleSelector(mode,true);renderSide();draw();updateSubdivisions(true);updateCenters(true);updateBasemap();ensureFocusedOverseasModeGeometry();
+ const loadGroups=(promise,isOverview)=>{
+  const token=++groupLoadStatusToken;
+  const timer=setTimeout(()=>{if(token===groupLoadStatusToken&&mode===1&&overviewActive===isOverview)$('status').textContent=isOverview?'Chargement des groupements IGN…':'Chargement des groupements…'},220);
+  promise.then(()=>{clearTimeout(timer);if(token!==groupLoadStatusToken||mode!==1||overviewActive!==isOverview)return;renderSide();draw();if(!isOverview)ensureFocusedOverseasModeGeometry();updateCenters(true);if(/^Chargement des groupements/.test($('status').textContent||''))$('status').textContent=''}).catch(()=>{clearTimeout(timer);if(token!==groupLoadStatusToken||mode!==1||overviewActive!==isOverview)return;$('status').textContent=isOverview?'Contours CARTO PLUS des groupements indisponibles.':'Contours des groupements indisponibles.'})
+ };
+ if(mode===1&&overviewActive&&!overviewEpciGeo)loadGroups(ensureOverviewEpciGeo(),true);
+ else if(mode===1&&!overviewActive&&!epciGeo)loadGroups(ensureEpciGeo(),false)
+}
 
 let metaPromise=null,adminCenterCommuneCodes=new Set();
 async function loadJsonAny(urls){let last=null;for(const url of urls){try{return await getJSON(url)}catch(e){last=e}}throw last||Error('Source indisponible')}
@@ -3999,9 +4018,10 @@ async function bootCartography(){
  renderTags();renderDeckTree();$('visibleCount').textContent=visibleAll().length+' fiche'+(visibleAll().length>1?'s':'');const overviewPromise=loadIgnOverview(),pacificPromise=loadPacificAdmin(),catalogPromise=loadAdminCatalog(),seatPromise=loadIgnCommuneSeats();home();updateBasemap();updateCartOwnerUi();$('status').textContent='Chargement des contours administratifs…';
  const privateConnectPromise=autoConnectCartGithub().then(ok=>{if(ok){const availableTags=new Set(unique(data.flatMap(d=>d.tags||[])));selectedTags=new Set([...selectedTags].filter(t=>availableTags.has(t)));renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}else{renderTags();renderDeckTree();filterChanged();updateCartOwnerUi()}return ok});
  await overviewPromise;
+ if(overviewReady()){const preload=()=>ensureOverviewEpciGeo().catch(()=>{});if('requestIdleCallback'in window)requestIdleCallback(preload,{timeout:2200});else setTimeout(preload,450)}
  if(overviewReady()&&!selection&&!cartBootInteracted){overviewBootResolved=true;home()}
  const results=await Promise.allSettled([
-  loadAdminBoundaryBundle().then(async bundle=>{deptGeo=bundle.departements;regionGeo=bundle.regions;epciGeo=await augmentGrandParisGroups(bundle.epci);departmentRenderGeoCache=null;departmentOutlineGeoCache=null;invalidateGroupCache()})
+  loadAdminBoundaryBundle().then(bundle=>{deptGeo=bundle.departements;regionGeo=bundle.regions;epciGeo=bundle.epci;departmentRenderGeoCache=null;departmentOutlineGeoCache=null;invalidateGroupCache();augmentGrandParisGroups(bundle.epci).then(augmented=>{if(!augmented?.features?.length)return;epciGeo=augmented;invalidateGroupCache();if(mode===1&&!overviewActive){draw();updateCenters(true)}}).catch(()=>{})})
  ]);
  await privateConnectPromise;
  await Promise.allSettled([overviewPromise,pacificPromise,catalogPromise]);
