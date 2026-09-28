@@ -183,6 +183,7 @@ header{position:relative;z-index:1600}
 
 /* Aperçu : mêmes contrôles que la frise, boîte plus généreuse sans grossir le texte. */
 .map-detail{width:min(430px,calc(100% - 150px))!important;max-height:470px!important;padding:9px 14px 14px 17px!important;box-shadow:0 6px 20px #17223618!important;font-size:.72rem!important;line-height:1.3!important}
+@media(pointer:fine) and (min-width:761px){.map-detail{zoom:var(--map-detail-zoom,1.15)}}
 .map-detail-head{height:24px!important;margin:-4px -5px 1px -8px!important}
 .map-detail .detail-actions{display:flex;justify-content:flex-end;gap:4px}
 .map-detail .detail-actions button{min-height:22px!important;padding:1px 6px!important;border:1px solid var(--line)!important;border-radius:9px!important;background:#fff!important;color:var(--ink)!important;font-size:.64rem!important;font-weight:650!important}
@@ -660,6 +661,12 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
       <span>Régions</span><div class="settings-color-control"><input id="settingBaseColor3" type="color" aria-label="Couleur de base des régions"><input id="settingBaseColorCode3" type="text" maxlength="7" aria-label="Code couleur des régions"></div>
     </div>
 
+    <h3 class="settings-section-title">Affichage commun à toutes les vues</h3>
+    <div class="settings-grid settings-stroke-grid">
+      <span>Taille de la bulle (ordinateur)</span><label class="settings-stroke-control"><input id="settingMapDetailZoom" type="number" min="100" max="150" step="5" inputmode="numeric" aria-label="Taille de la bulle d’événement sur ordinateur"><small>%</small></label>
+    </div>
+    <p class="settings-hint">Ce réglage s’applique à la fiche ouverte en vues Communes, Groupements, Départements et Régions. Il concerne l’affichage sur ordinateur.</p>
+
     <h3 class="settings-section-title">Limites, centres et étiquettes</h3>
     <details class="settings-mode-block"><summary>Mode Communes</summary><div class="settings-grid settings-stroke-grid">
       <span>Communes avec exemples</span><label class="settings-stroke-control"><input id="settingStrokeCommuneExample" type="number" min="0.1" max="6" step="0.05" inputmode="decimal" aria-label="Épaisseur des communes avec exemples en mode Communes"><small>px</small></label>
@@ -835,7 +842,7 @@ function eventVisibleAtMode(d,target=mode){
 }
 function firstPopulatedCartMode(rows=data){for(let level=0;level<=3;level++)if(rows.some(d=>eventVisibleAtMode(d,level)))return level;return-1}
 
-const CART_DATA_KEY='cartographie-v2:data',CART_LOCAL_IMPORT_KEY='cartographie-v1:local-import',CART_FILTER_KEY='cartographie-v2:filters',CART_BASE_COLORS_KEY='cartographie-v4:base-colors',CART_STROKES_KEY='cartographie-v1:boundary-strokes',CART_SETTING_LINKS_KEY='cartographie-v1:display-setting-links',CART_UNIT_OPACITY_KEY='cartographie-v1:unit-opacity',CART_COMMUNE_EXAMPLE_FILL_SCALE_KEY='cartographie-v1:commune-example-fill-scale',SHARED_GITHUB_KEY='frise-private-github-v1',CART_CLOUD_UPDATED_KEY='cartographie-v3:cloud-state-updated',CART_GITHUB_OWNER='aymenbayoudh',CART_GITHUB_REPO='frise-data',CART_GITHUB_BRANCH='main',CART_GITHUB_MANIFEST='carto-files.json',CART_GITHUB_MANUAL_FILE='carto/ajouts_manuels.csv',CART_GITHUB_FALLBACK_FILE='carto.csv',CART_GITHUB_STATE_FILE='carto-user-state.json',CART_LAST_SOURCE_KEY='cartographie-v1:last-source';
+const CART_DATA_KEY='cartographie-v2:data',CART_LOCAL_IMPORT_KEY='cartographie-v1:local-import',CART_FILTER_KEY='cartographie-v2:filters',CART_BASE_COLORS_KEY='cartographie-v4:base-colors',CART_STROKES_KEY='cartographie-v1:boundary-strokes',CART_SETTING_LINKS_KEY='cartographie-v1:display-setting-links',CART_UNIT_OPACITY_KEY='cartographie-v1:unit-opacity',CART_COMMUNE_EXAMPLE_FILL_SCALE_KEY='cartographie-v1:commune-example-fill-scale',CART_MAP_DETAIL_ZOOM_KEY='cartographie-v1:map-detail-zoom',SHARED_GITHUB_KEY='frise-private-github-v1',CART_CLOUD_UPDATED_KEY='cartographie-v3:cloud-state-updated',CART_GITHUB_OWNER='aymenbayoudh',CART_GITHUB_REPO='frise-data',CART_GITHUB_BRANCH='main',CART_GITHUB_MANIFEST='carto-files.json',CART_GITHUB_MANUAL_FILE='carto/ajouts_manuels.csv',CART_GITHUB_FALLBACK_FILE='carto.csv',CART_GITHUB_STATE_FILE='carto-user-state.json',CART_LAST_SOURCE_KEY='cartographie-v1:last-source';
 let cartGithubMode=false,cartGithubConfig=null,cartGithubFiles=[],cartGithubFileShas={},cartGithubFileTexts={},cartGithubFileMaxIds={},cartGithubSyncChain=Promise.resolve(),cartPrivateMediaCache=new Map(),cartCloudTimer=null,applyingCartCloudState=false,cartDataDirty=false;
 const modeKeys=['commune','interco','departement','region'],BASE_COLOR_DEFAULTS=['#A8D93F','#245C3D','#D65A94','#1B83B2'];
 const STROKE_DEFAULTS={
@@ -868,6 +875,10 @@ function normalizeBoundaryStrokes(values){
 function normalizeSettingLinks(values){return new Set((Array.isArray(values)?values:[]).map(String).filter(x=>SETTING_LINK_GROUPS.has(x)))}
 function normalizeUnitOpacity(value){if(value==null||value==='')return .68;const n=Number(value);return Number.isFinite(n)?Math.max(.25,Math.min(1,Math.round(n*100)/100)):.68}
 function normalizeCommuneExampleFillScale(value){if(value==null||value==='')return .25;const n=Number(value);return Number.isFinite(n)?Math.max(0,Math.min(1,Math.round(n*100)/100)):.25}
+function normalizeMapDetailZoom(value){if(value==null||value==='')return 115;const n=Number(value);return Number.isFinite(n)?Math.max(100,Math.min(150,Math.round(n/5)*5)):115}
+let mapDetailZoom=(()=>{try{return normalizeMapDetailZoom(localStorage.getItem(CART_MAP_DETAIL_ZOOM_KEY))}catch{return 115}})();
+function applyMapDetailZoom(){document.documentElement.style.setProperty('--map-detail-zoom',(mapDetailZoom/100).toFixed(2))}
+applyMapDetailZoom();
 let defaultColors=(()=>{try{return normalizeBaseColors(JSON.parse(localStorage.getItem(CART_BASE_COLORS_KEY)||'null'))}catch{return[...BASE_COLOR_DEFAULTS]}})();
 let boundaryStrokes=(()=>{try{return normalizeBoundaryStrokes(JSON.parse(localStorage.getItem(CART_STROKES_KEY)||'null'))}catch{return normalizeBoundaryStrokes(null)}})();
 let settingLinks=(()=>{try{return normalizeSettingLinks(JSON.parse(localStorage.getItem(CART_SETTING_LINKS_KEY)||'[]'))}catch{return new Set}})(),pendingSettingLinks=new Set(settingLinks);
@@ -3635,7 +3646,7 @@ function ensureCartStatusClose(){
 const cartStatusObserver=new MutationObserver(ensureCartStatusClose);cartStatusObserver.observe($('status'),{childList:true,characterData:true,subtree:true});ensureCartStatusClose();
 function localCartCloudUpdated(){return Math.max(0,Number(localStorage.getItem(CART_CLOUD_UPDATED_KEY))||0)}
 function hasLocalCartCloudState(){
- return !!(localStorage.getItem(CART_FILTER_KEY)||localStorage.getItem(CART_DECK_PATHS_KEY)||localStorage.getItem(CART_GAME_ERROR_KEY)||localStorage.getItem(CART_GAME_RECENT_KEY)||localStorage.getItem(CART_GAME_KEY)||localStorage.getItem(SIDE_WIDTH_KEY)||localStorage.getItem(CART_BASE_COLORS_KEY)||localStorage.getItem(CART_STROKES_KEY)||localStorage.getItem(CART_SETTING_LINKS_KEY)||localStorage.getItem(CART_UNIT_OPACITY_KEY)||localStorage.getItem(CART_COMMUNE_EXAMPLE_FILL_SCALE_KEY))
+ return !!(localStorage.getItem(CART_FILTER_KEY)||localStorage.getItem(CART_DECK_PATHS_KEY)||localStorage.getItem(CART_GAME_ERROR_KEY)||localStorage.getItem(CART_GAME_RECENT_KEY)||localStorage.getItem(CART_GAME_KEY)||localStorage.getItem(SIDE_WIDTH_KEY)||localStorage.getItem(CART_BASE_COLORS_KEY)||localStorage.getItem(CART_STROKES_KEY)||localStorage.getItem(CART_SETTING_LINKS_KEY)||localStorage.getItem(CART_UNIT_OPACITY_KEY)||localStorage.getItem(CART_COMMUNE_EXAMPLE_FILL_SCALE_KEY)||localStorage.getItem(CART_MAP_DETAIL_ZOOM_KEY))
 }
 function markCartCloudStateDirty(){
  if(applyingCartCloudState)return;
@@ -3648,7 +3659,7 @@ function scheduleCartCloudSync(delay=7000){
  cartCloudTimer=setTimeout(()=>{cartCloudTimer=null;syncCartCloudStateToGitHub().catch(e=>{$('status').textContent=e.message})},Math.max(0,delay))
 }
 function collectCartCloudState(){
- return{version:12,updatedAt:localCartCloudUpdated()||Date.now(),filters:readCartFilterState(),deckPaths:[...cartCanonicalDeckPaths],gameIdentityVersion:1,gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors],boundaryStrokes:normalizeBoundaryStrokes(boundaryStrokes),settingLinks:[...settingLinks],unitOpacity:temporaryPaletteOpacity,communeExampleFillScale}
+ return{version:12,updatedAt:localCartCloudUpdated()||Date.now(),filters:readCartFilterState(),deckPaths:[...cartCanonicalDeckPaths],gameIdentityVersion:1,gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors],boundaryStrokes:normalizeBoundaryStrokes(boundaryStrokes),settingLinks:[...settingLinks],unitOpacity:temporaryPaletteOpacity,communeExampleFillScale,mapDetailZoom}
 }
 function applyCartCloudState(state){
  if(!state||typeof state!=='object')return;applyingCartCloudState=true;
@@ -3665,6 +3676,7 @@ function applyCartCloudState(state){
   if(Array.isArray(state.settingLinks)){settingLinks=normalizeSettingLinks(state.settingLinks);pendingSettingLinks=new Set(settingLinks);localStorage.setItem(CART_SETTING_LINKS_KEY,JSON.stringify([...settingLinks]))}
   if(state.unitOpacity!=null){temporaryPaletteOpacity=normalizeUnitOpacity(state.unitOpacity);localStorage.setItem(CART_UNIT_OPACITY_KEY,String(temporaryPaletteOpacity));syncPaletteOpacityControl()}
   if(state.communeExampleFillScale!=null){communeExampleFillScale=normalizeCommuneExampleFillScale(state.communeExampleFillScale);localStorage.setItem(CART_COMMUNE_EXAMPLE_FILL_SCALE_KEY,String(communeExampleFillScale))}
+  if(state.mapDetailZoom!=null){mapDetailZoom=normalizeMapDetailZoom(state.mapDetailZoom);localStorage.setItem(CART_MAP_DETAIL_ZOOM_KEY,String(mapDetailZoom));applyMapDetailZoom()}
   localStorage.setItem(CART_CLOUD_UPDATED_KEY,String(Math.max(0,Number(state.updatedAt)||Date.now())))
  }finally{applyingCartCloudState=false}
  restoreCartTagFilters();cartDeckTreeRoot=null;buildCartDeckTree()
@@ -3926,14 +3938,14 @@ function refreshSettingLinkButtons(){
  document.querySelectorAll('.settings-link-button').forEach(b=>{const active=pendingSettingLinks.has(b.dataset.linkGroup||'');b.classList.toggle('linked',active);b.setAttribute('aria-pressed',String(active));b.title=active?'Dissocier ce réglage entre les modes':'Lier ce réglage entre les modes'})
 }
 function openCartSettings(){
- closeTools();for(let i=0;i<4;i++)setSettingsColorRow(i,defaultColors[i]);setSettingsStrokeRows(boundaryStrokes);$('settingCommuneExampleFillScale').value=String(Math.round(communeExampleFillScale*100));pendingSettingLinks=new Set(settingLinks);refreshSettingLinkButtons();
+ closeTools();for(let i=0;i<4;i++)setSettingsColorRow(i,defaultColors[i]);setSettingsStrokeRows(boundaryStrokes);$('settingCommuneExampleFillScale').value=String(Math.round(communeExampleFillScale*100));$('settingMapDetailZoom').value=String(mapDetailZoom);pendingSettingLinks=new Set(settingLinks);refreshSettingLinkButtons();
  $('cartSettingsPanel').querySelectorAll('.settings-mode-block').forEach(d=>d.open=false);
  $('settingsScrim').hidden=false;$('cartSettingsPanel').hidden=false
 }
 function closeCartSettings(){$('settingsScrim').hidden=true;$('cartSettingsPanel').hidden=true}
 function refreshDisplaySettings(){
  temporaryPaletteActive=false;temporaryPaletteAssignments.clear();pointRenderKey='';communeDataKey='';centerKey='';subdivisionKey='';
- applyLabelSizeSettings();updateScalePaletteColor();drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true)
+ applyMapDetailZoom();applyLabelSizeSettings();updateScalePaletteColor();drawAdmin();drawPoints();updateInsets();updateLegend();updateCommuneDataLayer(true);updateSubdivisions(true);updateCenters(true)
 }
 for(let i=0;i<4;i++){
  const picker=$('settingBaseColor'+i),code=$('settingBaseColorCode'+i);
@@ -3979,6 +3991,15 @@ function installSettingRowResets(){
  }
 }
 const communeFillScaleInput=$('settingCommuneExampleFillScale');if(communeFillScaleInput){communeFillScaleInput.onblur=()=>{const n=Math.max(0,Math.min(100,Math.round(Number(communeFillScaleInput.value)||0)));communeFillScaleInput.value=String(n)};const control=communeFillScaleInput.closest('.settings-stroke-control');if(control&&!control.querySelector('.settings-row-reset')){const reset=document.createElement('button');reset.type='button';reset.className='settings-row-reset';reset.textContent='↺';reset.title='Rétablir 25 %';reset.setAttribute('aria-label','Rétablir l’opacité de fond des communes avec exemples à 25 %');reset.onclick=e=>{e.preventDefault();e.stopPropagation();communeFillScaleInput.value='25'};control.append(reset)}}
+const mapDetailZoomInput=$('settingMapDetailZoom');
+if(mapDetailZoomInput){
+ mapDetailZoomInput.onblur=()=>{mapDetailZoomInput.value=String(normalizeMapDetailZoom(mapDetailZoomInput.value))};
+ const control=mapDetailZoomInput.closest('.settings-stroke-control');
+ if(control&&!control.querySelector('.settings-row-reset')){
+  const reset=document.createElement('button');reset.type='button';reset.className='settings-row-reset';reset.textContent='↺';reset.title='Rétablir la taille à 115 %';reset.setAttribute('aria-label','Rétablir la taille de la bulle à 115 %');
+  reset.onclick=e=>{e.preventDefault();e.stopPropagation();mapDetailZoomInput.value='115'};control.append(reset)
+ }
+}
 installStrokeSteppers();installSettingLinks();installSettingRowResets();
 $('openSettingsButton').onclick=openCartSettings;
 $('randomizeBasePalette').onclick=e=>{e.preventDefault();generateTetradicBasePalette()};
@@ -3988,7 +4009,7 @@ $('settingsApply').onclick=()=>{
  const next=BASE_COLOR_DEFAULTS.map((fallback,i)=>normalizeBaseColorValue($('settingBaseColorCode'+i).value||$('settingBaseColor'+i).value,fallback));
  defaultColors=next;boundaryStrokes=readSettingsStrokeRows();settingLinks=new Set(pendingSettingLinks);communeExampleFillScale=normalizeCommuneExampleFillScale(Number($('settingCommuneExampleFillScale').value)/100);
  localStorage.setItem(CART_BASE_COLORS_KEY,JSON.stringify(defaultColors));localStorage.setItem(CART_STROKES_KEY,JSON.stringify(boundaryStrokes));localStorage.setItem(CART_SETTING_LINKS_KEY,JSON.stringify([...settingLinks]));localStorage.setItem(CART_COMMUNE_EXAMPLE_FILL_SCALE_KEY,String(communeExampleFillScale));
- markCartCloudStateDirty();closeCartSettings();refreshDisplaySettings();
+ mapDetailZoom=normalizeMapDetailZoom($('settingMapDetailZoom').value);localStorage.setItem(CART_MAP_DETAIL_ZOOM_KEY,String(mapDetailZoom));markCartCloudStateDirty();closeCartSettings();refreshDisplaySettings();
 };
 $('moreButton').onclick=e=>{e.stopPropagation();toggleTool($('moreMenu'))};$('toggleFilters').onclick=e=>{e.stopPropagation();const pop=$('tagFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleFilters').setAttribute('aria-expanded',String(open))};$('toggleGazette').onclick=e=>{e.stopPropagation();const pop=$('gazetteFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleGazette').setAttribute('aria-expanded',String(open))};$('toggleDecks').onclick=e=>{e.stopPropagation();toggleTool($('deckMenu'))};$('tagFilters').onclick=e=>e.stopPropagation();$('gazetteFilters').onclick=e=>e.stopPropagation();$('deckMenu').onclick=e=>e.stopPropagation();$('searchResults').onclick=e=>e.stopPropagation();$('adminSearchResults').onclick=e=>e.stopPropagation();$('adminSearch').onclick=e=>e.stopPropagation();
 async function focusItemFromNavigation(d,targetMode=d?.mode,options={}){
