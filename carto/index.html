@@ -2204,7 +2204,8 @@ async function choose(g,bounds,options={}){
    if(features.length)bounds=L.geoJSON({type:'FeatureCollection',features}).getBounds();else if(overseas?.geo)bounds=L.geoJSON(overseas.geo).getBounds()
   }
  }
- const defaultMax=mode===0?12.25:mode===1?10:mode===2?9:8,maxZoom=Number.isFinite(options.maxZoom)?options.maxZoom:defaultMax;
+ const overseasSelection=mode===2?doms.find(d=>[String(d.dept),String(displayDepartmentCode(d.dept))].includes(String(g.code))):mode===3?doms.find(d=>String(d.region)===String(g.code)):null,
+       defaultMax=mode===0?12.25:mode===1?10:mode===2?9:8,maxZoom=Number.isFinite(options.maxZoom)?options.maxZoom:overseasSelection?11.5:defaultMax;
  if(slideToNext){
   let target=bounds?.isValid?.()?bounds.getCenter():null;
   if(!target&&g.items.length){const latlngs=g.items.map(d=>d.at).filter(at=>Array.isArray(at)&&at.length>=2);if(latlngs.length)target=L.latLngBounds(latlngs).getCenter()}
@@ -2991,7 +2992,7 @@ function initInsetMap(d,i){
 const insetObserver=compactMapUi()&&'IntersectionObserver'in window?new IntersectionObserver(entries=>{for(const entry of entries){if(!entry.isIntersecting)continue;const i=+entry.target.dataset.insetIndex;initInsetMap(doms[i],i);insetObserver.unobserve(entry.target)}},{root:$('overseas'),rootMargin:'90px 0px'}):null;
 for(const [i,d] of doms.entries()){
  const el=document.createElement('div');el.className='inset';el.dataset.insetIndex=String(i);el.innerHTML='<div class="mini" id="mini'+i+'"></div><button aria-label="Afficher '+d.name+'"><span>'+d.name+' <b>0</b></span></button>';$('overseas').append(el);d.el=el;d.count=el.querySelector('b');
- el.querySelector('button').onclick=async()=>{initInsetMap(d,i);overviewActive=false;pointRenderKey='';updateInsetVisibility();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();if(!d.geo)await ensureOverseasGeometry(d);if(mode===1&&d.nationalEpci)await ensureOverseasEpciGeometry(d);if((mode===0||mode===2)&&d.departmentArrondissements)await ensureArrGeo(d.dept);const fitGeo=d.geo||d.detailGeo;if(d.focusWhole&&fitGeo)map.fitBounds(L.geoJSON(fitGeo).getBounds(),{padding:[60,60],maxZoom:d.focusZ||8});else map.setView(d.at,d.focusZ||(d.dept==='973'?6:10));renderSide();draw();updateBasemap();updateSubdivisions(true);updateCenters(true)};
+ el.querySelector('button').onclick=async()=>{initInsetMap(d,i);overviewActive=false;pointRenderKey='';updateInsetVisibility();selection=null;activeItem=null;focus.clearLayers();local.clearLayers();if(!d.geo)await ensureOverseasGeometry(d);if(mode===1&&d.nationalEpci)await ensureOverseasEpciGeometry(d);if((mode===0||mode===2)&&d.departmentArrondissements)await ensureArrGeo(d.dept);const fitGeo=d.geo||d.detailGeo,bounds=fitGeo?L.geoJSON(fitGeo).getBounds():null;if(bounds?.isValid())map.fitBounds(bounds,{padding:[60,60],maxZoom:11.5});else map.setView(d.at,d.focusZ||(d.dept==='973'?6:10));renderSide();draw();updateBasemap();updateSubdivisions(true);updateCenters(true)};
  // Deliberately do not initialize legacy inset maps here: the compact
  // CARTO PLUS/Pacific overview normally replaces them after boot.
 }
