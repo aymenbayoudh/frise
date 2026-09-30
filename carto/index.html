@@ -552,6 +552,10 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 .settings-stroke-grid{gap:7px 12px!important}
 .settings-stroke-control{display:flex;align-items:center;justify-content:flex-end;gap:5px}
 .settings-stroke-control input{width:72px;height:34px;padding:5px 7px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:right}
+.settings-contrast-control{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:190px}
+.settings-contrast-control input[type="range"]{width:142px;min-width:75px;flex:1;accent-color:#245c79;cursor:pointer}
+.settings-contrast-control output{min-width:42px;color:var(--ink);font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:right}
+.settings-contrast-control .settings-row-reset{flex:0 0 28px}
 .settings-stepper-button{display:none}
 .settings-stroke-control small{width:16px;color:var(--muted);font-size:10px}
 .settings-link-button{display:inline-flex;align-items:center;justify-content:center;flex:0 0 28px;width:28px;height:28px;padding:0;border:1px solid transparent;border-radius:7px;background:transparent;color:#84919b;font-size:13px;line-height:1;opacity:.42;filter:grayscale(1);cursor:pointer}
@@ -585,6 +589,9 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
  .settings-color-control input[type="text"]{width:78px;height:34px;padding:5px 6px;font-size:10px}
  .settings-mode-block>summary{min-height:38px;padding:8px 9px;font-size:.72rem}
  .settings-mode-block>.settings-stroke-grid{padding:2px 8px 8px}
+ .settings-contrast-label,.settings-contrast-control{grid-column:1/-1}
+ .settings-contrast-control{min-width:0;justify-content:stretch;padding:0 2px 5px}
+ .settings-contrast-control input[type="range"]{width:auto;min-height:32px}
  .settings-stroke-control{gap:3px}
  .settings-stroke-control input{width:54px;height:32px;padding:4px 4px;font-size:11px;text-align:center;-moz-appearance:textfield}
  .settings-stroke-control input::-webkit-inner-spin-button,.settings-stroke-control input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
@@ -668,6 +675,7 @@ body.side-resizing{cursor:col-resize!important;user-select:none!important}
 
     <h3 class="settings-section-title">Affichage commun à toutes les vues</h3>
     <div class="settings-grid settings-stroke-grid">
+      <span class="settings-contrast-label">Contraste selon le nombre d’exemples</span><label class="settings-contrast-control"><input id="settingDensityContrast" type="range" min="50" max="200" step="5" aria-label="Contraste des couleurs selon le nombre d’exemples"><output id="settingDensityContrastValue" for="settingDensityContrast">125 %</output><button id="resetDensityContrast" class="settings-row-reset" type="button" title="Rétablir le contraste à 125 %" aria-label="Rétablir le contraste à 125 %">↺</button></label>
       <span>Taille de la bulle (ordinateur)</span><label class="settings-stroke-control map-detail-zoom-control"><button type="button" class="map-detail-zoom-step" data-map-detail-zoom-input="settingMapDetailZoom" data-step="-5" aria-label="Réduire la bulle ordinateur">−</button><input id="settingMapDetailZoom" type="number" min="100" max="200" step="5" inputmode="numeric" aria-label="Taille de la bulle d’événement sur ordinateur"><small>%</small><button type="button" class="map-detail-zoom-step" data-map-detail-zoom-input="settingMapDetailZoom" data-step="5" aria-label="Agrandir la bulle ordinateur">+</button></label>
       <span>Taille de la bulle (mobile)</span><label class="settings-stroke-control map-detail-zoom-control"><button type="button" class="map-detail-zoom-step" data-map-detail-zoom-input="settingMapDetailMobileZoom" data-step="-5" aria-label="Réduire la bulle mobile">−</button><input id="settingMapDetailMobileZoom" type="number" min="100" max="200" step="5" inputmode="numeric" aria-label="Taille de la bulle d’événement sur mobile"><small>%</small><button type="button" class="map-detail-zoom-step" data-map-detail-zoom-input="settingMapDetailMobileZoom" data-step="5" aria-label="Agrandir la bulle mobile">+</button></label>
     </div>
@@ -847,7 +855,7 @@ function eventVisibleAtMode(d,target=mode){
 }
 function firstPopulatedCartMode(rows=data){for(let level=0;level<=3;level++)if(rows.some(d=>eventVisibleAtMode(d,level)))return level;return-1}
 
-const CART_DATA_KEY='cartographie-v2:data',CART_LOCAL_IMPORT_KEY='cartographie-v1:local-import',CART_FILTER_KEY='cartographie-v2:filters',CART_BASE_COLORS_KEY='cartographie-v4:base-colors',CART_STROKES_KEY='cartographie-v1:boundary-strokes',CART_SETTING_LINKS_KEY='cartographie-v1:display-setting-links',CART_UNIT_OPACITY_KEY='cartographie-v1:unit-opacity',CART_COMMUNE_EXAMPLE_FILL_SCALE_KEY='cartographie-v1:commune-example-fill-scale',CART_MAP_DETAIL_ZOOM_KEY='cartographie-v1:map-detail-zoom',CART_MAP_DETAIL_MOBILE_ZOOM_KEY='cartographie-v1:map-detail-mobile-zoom',SHARED_GITHUB_KEY='frise-private-github-v1',CART_CLOUD_UPDATED_KEY='cartographie-v3:cloud-state-updated',CART_GITHUB_OWNER='aymenbayoudh',CART_GITHUB_REPO='frise-data',CART_GITHUB_BRANCH='main',CART_GITHUB_MANIFEST='carto-files.json',CART_GITHUB_MANUAL_FILE='carto/ajouts_manuels.csv',CART_GITHUB_FALLBACK_FILE='carto.csv',CART_GITHUB_STATE_FILE='carto-user-state.json',CART_LAST_SOURCE_KEY='cartographie-v1:last-source';
+const CART_DATA_KEY='cartographie-v2:data',CART_LOCAL_IMPORT_KEY='cartographie-v1:local-import',CART_FILTER_KEY='cartographie-v2:filters',CART_BASE_COLORS_KEY='cartographie-v4:base-colors',CART_STROKES_KEY='cartographie-v1:boundary-strokes',CART_SETTING_LINKS_KEY='cartographie-v1:display-setting-links',CART_UNIT_OPACITY_KEY='cartographie-v1:unit-opacity',CART_COMMUNE_EXAMPLE_FILL_SCALE_KEY='cartographie-v1:commune-example-fill-scale',CART_MAP_DETAIL_ZOOM_KEY='cartographie-v1:map-detail-zoom',CART_MAP_DETAIL_MOBILE_ZOOM_KEY='cartographie-v1:map-detail-mobile-zoom',CART_DENSITY_CONTRAST_KEY='cartographie-v1:density-contrast',SHARED_GITHUB_KEY='frise-private-github-v1',CART_CLOUD_UPDATED_KEY='cartographie-v3:cloud-state-updated',CART_GITHUB_OWNER='aymenbayoudh',CART_GITHUB_REPO='frise-data',CART_GITHUB_BRANCH='main',CART_GITHUB_MANIFEST='carto-files.json',CART_GITHUB_MANUAL_FILE='carto/ajouts_manuels.csv',CART_GITHUB_FALLBACK_FILE='carto.csv',CART_GITHUB_STATE_FILE='carto-user-state.json',CART_LAST_SOURCE_KEY='cartographie-v1:last-source';
 let cartGithubMode=false,cartGithubConfig=null,cartGithubFiles=[],cartGithubFileShas={},cartGithubFileTexts={},cartGithubFileMaxIds={},cartGithubSyncChain=Promise.resolve(),cartPrivateMediaCache=new Map(),cartCloudTimer=null,applyingCartCloudState=false,cartDataDirty=false;
 const modeKeys=['commune','interco','departement','region'],BASE_COLOR_DEFAULTS=['#A8D93F','#245C3D','#D65A94','#1B83B2'];
 const STROKE_DEFAULTS={
@@ -881,6 +889,8 @@ function normalizeSettingLinks(values){return new Set((Array.isArray(values)?val
 function normalizeUnitOpacity(value){if(value==null||value==='')return .68;const n=Number(value);return Number.isFinite(n)?Math.max(.25,Math.min(1,Math.round(n*100)/100)):.68}
 function normalizeCommuneExampleFillScale(value){if(value==null||value==='')return .25;const n=Number(value);return Number.isFinite(n)?Math.max(0,Math.min(1,Math.round(n*100)/100)):.25}
 function normalizeMapDetailZoom(value){if(value==null||value==='')return 115;const n=Number(value);return Number.isFinite(n)?Math.max(100,Math.min(200,Math.round(n/5)*5)):115}
+function normalizeDensityContrast(value){if(value==null||value==='')return 125;const n=Number(value);return Number.isFinite(n)?Math.max(50,Math.min(200,Math.round(n/5)*5)):125}
+let densityContrast=(()=>{try{return normalizeDensityContrast(localStorage.getItem(CART_DENSITY_CONTRAST_KEY))}catch{return 125}})();
 let mapDetailZoom=(()=>{try{return normalizeMapDetailZoom(localStorage.getItem(CART_MAP_DETAIL_ZOOM_KEY))}catch{return 115}})(),
     mapDetailMobileZoom=(()=>{try{return normalizeMapDetailZoom(localStorage.getItem(CART_MAP_DETAIL_MOBILE_ZOOM_KEY))}catch{return 115}})();
 function applyMapDetailZoom(){
@@ -1517,17 +1527,17 @@ function baseDensityRamp(level=mode){
    base
  ];
  if(level===1)return[
-   mixHex('#F5F8F4',base,.20),
-   mixHex('#E2EBE0',base,.38),
-   mixHex('#BED2BA',base,.56),
-   mixHex('#7FA486',base,.76),
+   mixHex('#F5F8F4',base,.30),
+   mixHex('#E2EBE0',base,.48),
+   mixHex('#BED2BA',base,.66),
+   mixHex('#7FA486',base,.84),
    mixHex(base,'#0B2F20',.30)
  ];
  if(level===2)return[
-   mixHex('#FFFFFF',base,.18),
-   mixHex('#FFFFFF',base,.36),
-   mixHex('#FFFFFF',base,.54),
-   mixHex('#FFFFFF',base,.74),
+   mixHex('#FFFFFF',base,.30),
+   mixHex('#FFFFFF',base,.48),
+   mixHex('#FFFFFF',base,.66),
+   mixHex('#FFFFFF',base,.84),
    mixHex(base,'#8F285C',.22)
  ];
  return[
@@ -1545,10 +1555,9 @@ function densityPalette(){
 function densityMaxCount(){groups();return groupMaxCountCache}
 function densityColor(n){
  if(n<=0)return'#FFFFFF';
- const ramp=densityPalette(),max=densityMaxCount();
- if(ramp.length===1)return ramp[0];
- const t=Math.max(0,Math.min(1,Math.log1p(n)/Math.log1p(max)));
- return ramp[Math.min(ramp.length-1,Math.max(0,Math.round(t*(ramp.length-1))))]
+ const ramp=densityPalette();if(!ramp.length)return accent;if(ramp.length===1)return ramp[0];
+ const x=densityProgress(n)*(ramp.length-1),i=Math.floor(x),j=Math.min(ramp.length-1,i+1);
+ return mixHex(ramp[i],ramp[j],x-i)
 }
 function epciCodeAtPoint(at){
  const geo=overviewActive?displayEpciGeo():epciGeo;
@@ -1985,9 +1994,15 @@ function drawAdmin(){
  }
  drawMainOutline();drawSelectedGroupOverlay();drawContextAdmin();drawAdminHits()
 }
-function densityProgress(n){const max=densityMaxCount();return max<=1?1:Math.max(0,Math.min(1,Math.log1p(n)/Math.log1p(max)))}
+function densityProgress(n){
+ const max=densityMaxCount();
+ if(n<=0)return 0;
+ if(max<=1)return 1;
+ const fraction=Math.max(0,Math.min(1,Math.log(n)/Math.log(max)));
+ return Math.pow(fraction,100/densityContrast)
+}
 function densityContinuousColor(n){const ramp=densityPalette();if(!ramp.length)return accent;if(ramp.length===1)return ramp[0];const x=densityProgress(n)*(ramp.length-1),i=Math.floor(x),j=Math.min(ramp.length-1,i+1);return mixHex(ramp[i],ramp[j],x-i)}
-function communeBubbleSize(n){const t=densityProgress(n);return compactMapUi()?Math.round(14+20*t):Math.round(22+36*t)}
+function communeBubbleSize(n){const max=densityMaxCount(),t=max<=1?1:Math.max(0,Math.min(1,Math.log1p(n)/Math.log1p(max)));return compactMapUi()?Math.round(14+20*t):Math.round(22+36*t)}
 function icon(items,label,pin=false,showLabel=true){const n=items.length,global=items.every(x=>x.kind==='global'),s=pin?(global?35:26):communeBubbleSize(n),c=pin?itemDisplayColor(items[0]):densityContinuousColor(n),bubbleLabel=showLabel?'<span class="bubble-label">'+escape(label)+'</span>':'';return L.divIcon({className:pin?'pin-wrap':'bubble',iconSize:[s,s],iconAnchor:[s/2,pin?s:s/2],html:pin?'<div class="pin-body '+(global?'global':'')+'" style="--unit-color:'+c+'"><span>'+(n>1?n:global?'◆':'')+'</span></div>':'<div class="bubble-body" style="--unit-color:'+c+';width:'+s+'px;height:'+s+'px">'+n+'</div>'+bubbleLabel});}
 function addMarker(at,items,label,pin,fn,target=points,showLabel=true,tooltipText=''){const marker=L.marker(at,{pane:'eventPointPane',icon:icon(items,label,pin,showLabel),title:stripHtml(label),alt:stripHtml(label),keyboard:true}).addTo(target);marker.bindTooltip(escape(tooltipText||stripHtml(label)+' · '+items.length+' exemple'+(items.length>1?'s':'')));marker.on('click',fn);}
 function communeWideDisplayAt(d){
@@ -3665,7 +3680,7 @@ function ensureCartStatusClose(){
 const cartStatusObserver=new MutationObserver(ensureCartStatusClose);cartStatusObserver.observe($('status'),{childList:true,characterData:true,subtree:true});ensureCartStatusClose();
 function localCartCloudUpdated(){return Math.max(0,Number(localStorage.getItem(CART_CLOUD_UPDATED_KEY))||0)}
 function hasLocalCartCloudState(){
- return !!(localStorage.getItem(CART_FILTER_KEY)||localStorage.getItem(CART_DECK_PATHS_KEY)||localStorage.getItem(CART_GAME_ERROR_KEY)||localStorage.getItem(CART_GAME_RECENT_KEY)||localStorage.getItem(CART_GAME_KEY)||localStorage.getItem(SIDE_WIDTH_KEY)||localStorage.getItem(CART_BASE_COLORS_KEY)||localStorage.getItem(CART_STROKES_KEY)||localStorage.getItem(CART_SETTING_LINKS_KEY)||localStorage.getItem(CART_UNIT_OPACITY_KEY)||localStorage.getItem(CART_COMMUNE_EXAMPLE_FILL_SCALE_KEY)||localStorage.getItem(CART_MAP_DETAIL_ZOOM_KEY)||localStorage.getItem(CART_MAP_DETAIL_MOBILE_ZOOM_KEY))
+ return !!(localStorage.getItem(CART_FILTER_KEY)||localStorage.getItem(CART_DECK_PATHS_KEY)||localStorage.getItem(CART_GAME_ERROR_KEY)||localStorage.getItem(CART_GAME_RECENT_KEY)||localStorage.getItem(CART_GAME_KEY)||localStorage.getItem(SIDE_WIDTH_KEY)||localStorage.getItem(CART_BASE_COLORS_KEY)||localStorage.getItem(CART_STROKES_KEY)||localStorage.getItem(CART_SETTING_LINKS_KEY)||localStorage.getItem(CART_UNIT_OPACITY_KEY)||localStorage.getItem(CART_COMMUNE_EXAMPLE_FILL_SCALE_KEY)||localStorage.getItem(CART_MAP_DETAIL_ZOOM_KEY)||localStorage.getItem(CART_MAP_DETAIL_MOBILE_ZOOM_KEY)||localStorage.getItem(CART_DENSITY_CONTRAST_KEY))
 }
 function markCartCloudStateDirty(){
  if(applyingCartCloudState)return;
@@ -3678,7 +3693,7 @@ function scheduleCartCloudSync(delay=7000){
  cartCloudTimer=setTimeout(()=>{cartCloudTimer=null;syncCartCloudStateToGitHub().catch(e=>{$('status').textContent=e.message})},Math.max(0,delay))
 }
 function collectCartCloudState(){
- return{version:12,updatedAt:localCartCloudUpdated()||Date.now(),filters:readCartFilterState(),deckPaths:[...cartCanonicalDeckPaths],gameIdentityVersion:1,gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors],boundaryStrokes:normalizeBoundaryStrokes(boundaryStrokes),settingLinks:[...settingLinks],unitOpacity:temporaryPaletteOpacity,communeExampleFillScale,mapDetailZoom,mapDetailMobileZoom}
+ return{version:12,updatedAt:localCartCloudUpdated()||Date.now(),filters:readCartFilterState(),deckPaths:[...cartCanonicalDeckPaths],gameIdentityVersion:1,gameErrors:readGameErrors(),gameRecent:readGameRecent(),gameBests:readGameBests(),mode,sideWidth:parseFloat(getComputedStyle(document.querySelector('.workspace')).getPropertyValue('--side-width'))||320,baseColors:[...defaultColors],boundaryStrokes:normalizeBoundaryStrokes(boundaryStrokes),settingLinks:[...settingLinks],unitOpacity:temporaryPaletteOpacity,communeExampleFillScale,mapDetailZoom,mapDetailMobileZoom,densityContrast}
 }
 function applyCartCloudState(state){
  if(!state||typeof state!=='object')return;applyingCartCloudState=true;
@@ -3697,6 +3712,7 @@ function applyCartCloudState(state){
   if(state.communeExampleFillScale!=null){communeExampleFillScale=normalizeCommuneExampleFillScale(state.communeExampleFillScale);localStorage.setItem(CART_COMMUNE_EXAMPLE_FILL_SCALE_KEY,String(communeExampleFillScale))}
   if(state.mapDetailZoom!=null){mapDetailZoom=normalizeMapDetailZoom(state.mapDetailZoom);localStorage.setItem(CART_MAP_DETAIL_ZOOM_KEY,String(mapDetailZoom))}
   if(state.mapDetailMobileZoom!=null){mapDetailMobileZoom=normalizeMapDetailZoom(state.mapDetailMobileZoom);localStorage.setItem(CART_MAP_DETAIL_MOBILE_ZOOM_KEY,String(mapDetailMobileZoom))}
+  if(state.densityContrast!=null){densityContrast=normalizeDensityContrast(state.densityContrast);localStorage.setItem(CART_DENSITY_CONTRAST_KEY,String(densityContrast))}
   applyMapDetailZoom();localStorage.setItem(CART_CLOUD_UPDATED_KEY,String(Math.max(0,Number(state.updatedAt)||Date.now())))
  }finally{applyingCartCloudState=false}
  restoreCartTagFilters();cartDeckTreeRoot=null;buildCartDeckTree()
@@ -3958,7 +3974,7 @@ function refreshSettingLinkButtons(){
  document.querySelectorAll('.settings-link-button').forEach(b=>{const active=pendingSettingLinks.has(b.dataset.linkGroup||'');b.classList.toggle('linked',active);b.setAttribute('aria-pressed',String(active));b.title=active?'Dissocier ce réglage entre les modes':'Lier ce réglage entre les modes'})
 }
 function openCartSettings(){
- closeTools();for(let i=0;i<4;i++)setSettingsColorRow(i,defaultColors[i]);setSettingsStrokeRows(boundaryStrokes);$('settingCommuneExampleFillScale').value=String(Math.round(communeExampleFillScale*100));$('settingMapDetailZoom').value=String(mapDetailZoom);$('settingMapDetailMobileZoom').value=String(mapDetailMobileZoom);pendingSettingLinks=new Set(settingLinks);refreshSettingLinkButtons();
+ closeTools();for(let i=0;i<4;i++)setSettingsColorRow(i,defaultColors[i]);setSettingsStrokeRows(boundaryStrokes);$('settingDensityContrast').value=String(densityContrast);$('settingDensityContrastValue').value=densityContrast+' %';$('settingCommuneExampleFillScale').value=String(Math.round(communeExampleFillScale*100));$('settingMapDetailZoom').value=String(mapDetailZoom);$('settingMapDetailMobileZoom').value=String(mapDetailMobileZoom);pendingSettingLinks=new Set(settingLinks);refreshSettingLinkButtons();
  $('cartSettingsPanel').querySelectorAll('.settings-mode-block').forEach(d=>d.open=false);
  $('settingsScrim').hidden=false;$('cartSettingsPanel').hidden=false
 }
@@ -4023,6 +4039,9 @@ for(const id of ['settingMapDetailZoom','settingMapDetailMobileZoom']){
 for(const button of document.querySelectorAll('.map-detail-zoom-step')){
  button.onclick=e=>{e.preventDefault();e.stopPropagation();const input=$(button.dataset.mapDetailZoomInput);if(input)input.value=String(normalizeMapDetailZoom(input.value)+Number(button.dataset.step))}
 }
+const densityContrastInput=$('settingDensityContrast'),densityContrastValue=$('settingDensityContrastValue');
+densityContrastInput.oninput=()=>{densityContrastValue.value=normalizeDensityContrast(densityContrastInput.value)+' %'};
+$('resetDensityContrast').onclick=e=>{e.preventDefault();densityContrastInput.value='125';densityContrastValue.value='125 %'};
 installStrokeSteppers();installSettingLinks();installSettingRowResets();
 $('openSettingsButton').onclick=openCartSettings;
 $('randomizeBasePalette').onclick=e=>{e.preventDefault();generateTetradicBasePalette()};
@@ -4032,6 +4051,7 @@ $('settingsApply').onclick=()=>{
  const next=BASE_COLOR_DEFAULTS.map((fallback,i)=>normalizeBaseColorValue($('settingBaseColorCode'+i).value||$('settingBaseColor'+i).value,fallback));
  defaultColors=next;boundaryStrokes=readSettingsStrokeRows();settingLinks=new Set(pendingSettingLinks);communeExampleFillScale=normalizeCommuneExampleFillScale(Number($('settingCommuneExampleFillScale').value)/100);
  localStorage.setItem(CART_BASE_COLORS_KEY,JSON.stringify(defaultColors));localStorage.setItem(CART_STROKES_KEY,JSON.stringify(boundaryStrokes));localStorage.setItem(CART_SETTING_LINKS_KEY,JSON.stringify([...settingLinks]));localStorage.setItem(CART_COMMUNE_EXAMPLE_FILL_SCALE_KEY,String(communeExampleFillScale));
+ densityContrast=normalizeDensityContrast(densityContrastInput.value);localStorage.setItem(CART_DENSITY_CONTRAST_KEY,String(densityContrast));
  mapDetailZoom=normalizeMapDetailZoom($('settingMapDetailZoom').value);mapDetailMobileZoom=normalizeMapDetailZoom($('settingMapDetailMobileZoom').value);localStorage.setItem(CART_MAP_DETAIL_ZOOM_KEY,String(mapDetailZoom));localStorage.setItem(CART_MAP_DETAIL_MOBILE_ZOOM_KEY,String(mapDetailMobileZoom));markCartCloudStateDirty();closeCartSettings();refreshDisplaySettings();
 };
 $('moreButton').onclick=e=>{e.stopPropagation();toggleTool($('moreMenu'))};$('toggleFilters').onclick=e=>{e.stopPropagation();const pop=$('tagFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleFilters').setAttribute('aria-expanded',String(open))};$('toggleGazette').onclick=e=>{e.stopPropagation();const pop=$('gazetteFilters'),open=pop.hidden;closeTools();pop.hidden=!open;$('toggleGazette').setAttribute('aria-expanded',String(open))};$('toggleDecks').onclick=e=>{e.stopPropagation();toggleTool($('deckMenu'))};$('tagFilters').onclick=e=>e.stopPropagation();$('gazetteFilters').onclick=e=>e.stopPropagation();$('deckMenu').onclick=e=>e.stopPropagation();$('searchResults').onclick=e=>e.stopPropagation();$('adminSearchResults').onclick=e=>e.stopPropagation();$('adminSearch').onclick=e=>e.stopPropagation();
